@@ -1,0 +1,42 @@
+schema: '2.0'
+stages:
+  data_ingestion:
+    cmd: python -m src.components.data_ingestion
+    deps:
+    - path: src/components/data_ingestion.py
+      hash: md5
+      md5: d137a76f7a6ec9b07f3b33d123e5056a
+      size: 5876
+    - path: src/data_access/fetch_data.py
+      hash: md5
+      md5: 8408ff2e3d3ae2cc12461649406d48f8
+      size: 2072
+    - path: src/entity/artifact_entity.py
+      hash: md5
+      md5: 5d7673a697e1d97a9bbdc9b7239e72d1
+      size: 133
+    - path: src/entity/config_entity.py
+      hash: md5
+      md5: 88be2f5af469bb71a34bf737aec87792
+      size: 1072
+    - path: src/exception/__init__.py
+      hash: md5
+      md5: 5baf671152d73a06c9fb5eae8e07aa19
+      size: 1816
+    - path: src/logger/__init__.py
+      hash: md5
+      md5: 2e5bf5dd6f9e6de0f08c2d0c76ffb87f
+      size: 1462
+    outs:
+    - path: artifact/data_ingestion/feature_store/data.csv
+      hash: md5
+      md5: 23ff292583b9f7e2544a1acd649def4a
+      size: 51688902
+    - path: artifact/data_ingestion/ingested/test.csv
+      hash: md5
+      md5: 3617c5335a03cd43a308664d7ab5d9cf
+      size: 12830916
+    - path: artifact/data_ingestion/ingested/train.csv
+      hash: md5
+      md5: bd3f69542293b8b110236348672070ea
+      size: 38858028

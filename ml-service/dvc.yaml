@@ -1,0 +1,19 @@
+stages:
+
+  data_ingestion:
+
+    cmd: python -m src.components.data_ingestion
+
+    deps:
+      - src/components/data_ingestion.py
+      - src/entity/config_entity.py
+      - src/entity/artifact_entity.py
+      - src/data_access/fetch_data.py
+      - src/logger/__init__.py
+      - src/exception/__init__.py
+
+    outs:
+      - artifact/data_ingestion/feature_store/data.csv
+      - artifact/data_ingestion/ingested/train.csv
+      - artifact/data_ingestion/ingested/test.csv
+

@@ -1,0 +1,8 @@
+columns:
+  Message ID: int64
+  Subject: object
+  Message: object
+  Spam/Ham: object
+  Date: object
+
+
