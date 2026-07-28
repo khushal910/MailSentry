@@ -33,3 +33,16 @@ SCHEMA_FILE_PATH = os.path.join("config", "schema.yaml")
 # Backend configuration
 BACKEND_DIR_NAME = "backend"
 BACKEND_MODEL_PATH_DIR_NAME = "model"
+
+# Data Transformation related constants
+DATA_TRANSFORMATION_DIR_NAME = "data_transformation"
+DATA_TRANSFORMATION_TRANSFORMED_TRAIN_FILE = "transformed_train.csv"
+DATA_TRANSFORMATION_TRANSFORMED_TEST_FILE = "transformed_test.csv"
+DATA_TRANSFORMATION_PREPROCESSOR_FILE = "preprocessing.pkl"
+LABEL_ENCODER_FILE_NAME = "label_encoder.pkl"
+
+# Model training related constants
+TRANSFORM_TARGET_COLUMN = "target"
+MODEL_TRAINER_DIR_NAME = "model_trainer"
+MODEL_FILE_NAME = "model.pkl"
+MODEL_REPORT_FILE_NAME = "model_report.yaml"

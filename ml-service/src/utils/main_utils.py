@@ -22,3 +22,22 @@ def read_yaml_file(file_path: str | Path) -> dict:
         content = yaml.safe_load(yaml_file)
 
     return content
+
+
+def read_csv(file_path: str | Path):
+    """
+    Reads a CSV file and returns its contents as a DataFrame.
+
+    Args:
+        file_path (str | Path): Path to the CSV file.
+        
+    Returns:
+        DataFrame: Parsed CSV content.
+    """
+    import pandas as pd
+
+    file_path = Path(file_path)
+
+    dataframe = pd.read_csv(file_path)
+
+    return dataframe

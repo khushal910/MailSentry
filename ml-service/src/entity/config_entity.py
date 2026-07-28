@@ -26,3 +26,21 @@ class DataIngestionConfig:
 @dataclass
 class DataValidationConfig:
     schema_file_path: str = SCHEMA_FILE_PATH
+
+@dataclass
+class DataTransformationConfig:
+    data_transform_dir: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME)
+    transform_train_file :str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_TRANSFORMED_TRAIN_FILE)
+    transform_test_file :str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_TRANSFORMED_TEST_FILE)
+    preprocessor_file :str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_PREPROCESSOR_FILE)
+    label_encoder_file_path: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, LABEL_ENCODER_FILE_NAME)
+    
+
+@dataclass
+class TrainModelConfig:
+    model_trainer_dir: str = os.path.join(training_pipeline_config.artifact_dir,MODEL_TRAINER_DIR_NAME)
+    trained_model_file_path: str = os.path.join(model_trainer_dir,MODEL_FILE_NAME)
+    model_report_file_path: str = os.path.join(model_trainer_dir,MODEL_REPORT_FILE_NAME)
+    preprocessor_file_backend_path: str = os.path.join(training_pipeline_config.bakend_dir, BACKEND_MODEL_PATH_DIR_NAME, DATA_TRANSFORMATION_PREPROCESSOR_FILE)
+    trained_model_backend_path: str = os.path.join(training_pipeline_config.bakend_dir, BACKEND_MODEL_PATH_DIR_NAME, MODEL_FILE_NAME)
+   

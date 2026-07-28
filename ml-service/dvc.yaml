@@ -17,3 +17,22 @@ stages:
       - artifact/data_ingestion/ingested/train.csv
       - artifact/data_ingestion/ingested/test.csv
 
+  data_transformation:
+
+    cmd: python -m src.components.data_transformation
+
+    deps:
+      - artifact/data_ingestion/ingested/train.csv
+      - artifact/data_ingestion/ingested/test.csv
+      - src/components/data_transformation.py
+      - src/entity/config_entity.py
+      - src/utils/main_utils.py
+      - src/logger/__init__.py
+      - src/exception/__init__.py
+      - config/schema.yaml
+   
+    outs:
+      - artifact/data_transformation/transformed_train.csv
+      - artifact/data_transformation/transformed_test.csv
+      - artifact/data_transformation/preprocessing.pkl
+      - artifact/data_transformation/label_encoder.pkl

@@ -13,12 +13,12 @@ stages:
       size: 2072
     - path: src/entity/artifact_entity.py
       hash: md5
-      md5: 5d7673a697e1d97a9bbdc9b7239e72d1
-      size: 133
+      md5: 16bb373fed56ef9a7d6dad659f081f27
+      size: 290
     - path: src/entity/config_entity.py
       hash: md5
-      md5: 88be2f5af469bb71a34bf737aec87792
-      size: 1072
+      md5: d6c3ca47f8000dd8055fbd0d19cf49e4
+      size: 2465
     - path: src/exception/__init__.py
       hash: md5
       md5: 5baf671152d73a06c9fb5eae8e07aa19
@@ -34,9 +34,61 @@ stages:
       size: 51688902
     - path: artifact/data_ingestion/ingested/test.csv
       hash: md5
-      md5: 3617c5335a03cd43a308664d7ab5d9cf
-      size: 12830916
+      md5: 9151430c7f8f33a68a226c79663c935b
+      size: 13369422
     - path: artifact/data_ingestion/ingested/train.csv
       hash: md5
-      md5: bd3f69542293b8b110236348672070ea
-      size: 38858028
+      md5: 6b30defc725b45b6d0574cdbb40136ee
+      size: 38319522
+  data_transformation:
+    cmd: python -m src.components.data_transformation
+    deps:
+    - path: artifact/data_ingestion/ingested/test.csv
+      hash: md5
+      md5: 9151430c7f8f33a68a226c79663c935b
+      size: 13369422
+    - path: artifact/data_ingestion/ingested/train.csv
+      hash: md5
+      md5: 6b30defc725b45b6d0574cdbb40136ee
+      size: 38319522
+    - path: config/schema.yaml
+      hash: md5
+      md5: b4c45403c90dc48a468851d4bf97373c
+      size: 278
+    - path: src/components/data_transformation.py
+      hash: md5
+      md5: c39dcf0a8c999e3123a675f597e41efd
+      size: 15863
+    - path: src/entity/config_entity.py
+      hash: md5
+      md5: d6c3ca47f8000dd8055fbd0d19cf49e4
+      size: 2465
+    - path: src/exception/__init__.py
+      hash: md5
+      md5: 5baf671152d73a06c9fb5eae8e07aa19
+      size: 1816
+    - path: src/logger/__init__.py
+      hash: md5
+      md5: 2e5bf5dd6f9e6de0f08c2d0c76ffb87f
+      size: 1462
+    - path: src/utils/main_utils.py
+      hash: md5
+      md5: 030b1f0e73997d213bc6a154ee8ed75c
+      size: 946
+    outs:
+    - path: artifact/data_transformation/label_encoder.pkl
+      hash: md5
+      md5: 9cf2dcddf88811fca8c1bb0485f2ca51
+      size: 486
+    - path: artifact/data_transformation/preprocessing.pkl
+      hash: md5
+      md5: de2373261ea4af3a28ef59807cc0612e
+      size: 266785
+    - path: artifact/data_transformation/transformed_test.csv
+      hash: md5
+      md5: 11e4497f85168a605070f62d7599f071
+      size: 246448307
+    - path: artifact/data_transformation/transformed_train.csv
+      hash: md5
+      md5: 0c9d400bde4a495819553ad30f9de7e6
+      size: 738686127
