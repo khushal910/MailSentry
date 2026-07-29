@@ -89,12 +89,12 @@ stages:
       size: 738934642
     - path: src/components/model_traning.py
       hash: md5
-      md5: cf7ea984ca2977294f14445c85c5d1f1
-      size: 15019
+      md5: 19c8c7f1b64e51ddac06b6f5ade0bbb4
+      size: 14883
     - path: src/components/models.py
       hash: md5
-      md5: 0785dc935c58285d6c767291bc5d76d1
-      size: 6605
+      md5: d5e35dca185f0965e7f96f1eb5c29c74
+      size: 6357
     - path: src/utils/mlflow_utils.py
       hash: md5
       md5: 700284ba00a7965152109a7f2f31e4ff
@@ -102,9 +102,9 @@ stages:
     outs:
     - path: artifact/model_trainer/model.pkl
       hash: md5
-      md5: 1b8b771e6e00c2e49232107513c151e6
-      size: 56715
+      md5: 4305bff8d464ba2a3e324a3c82ba9a80
+      size: 56606
     - path: artifact/model_trainer/model_report.yaml
       hash: md5
-      md5: baf466ce3d96890f372e35c2540e5fa6
-      size: 319
+      md5: 542efa33ad329000c5ea6eb60e497099
+      size: 2130

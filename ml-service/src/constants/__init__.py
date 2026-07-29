@@ -42,7 +42,13 @@ DATA_TRANSFORMATION_PREPROCESSOR_FILE = "preprocessing.pkl"
 LABEL_ENCODER_FILE_NAME = "label_encoder.pkl"
 
 # Model training related constants
-TRANSFORM_TARGET_COLUMN = "target"
+TARGET_COLUMN = "target"
 MODEL_TRAINER_DIR_NAME = "model_trainer"
 MODEL_FILE_NAME = "model.pkl"
 MODEL_REPORT_FILE_NAME = "model_report.yaml"
+MODEL_EVALUATE_METRIC = "f1"
+
+# MLflow configuration
+DAGSHUB_USERNAME =  os.getenv("DAGSHUB_USERNAME")
+DAGSHUB_REPOSITORY =  os.getenv("DAGSHUB_REPOSITORY")
+EXPERIMENT_NAME =  os.getenv("EXPERIMENT_NAME")

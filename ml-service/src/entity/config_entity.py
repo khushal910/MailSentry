@@ -2,7 +2,7 @@ import os
 
 from src.constants import *
 from dataclasses import dataclass
-from datetime import datetime
+from typing import Any, Any, Dict
 
 @dataclass
 class TrainingPipelineConfig:
@@ -43,4 +43,23 @@ class TrainModelConfig:
     model_report_file_path: str = os.path.join(model_trainer_dir,MODEL_REPORT_FILE_NAME)
     preprocessor_file_backend_path: str = os.path.join(training_pipeline_config.bakend_dir, BACKEND_MODEL_PATH_DIR_NAME, DATA_TRANSFORMATION_PREPROCESSOR_FILE)
     trained_model_backend_path: str = os.path.join(training_pipeline_config.bakend_dir, BACKEND_MODEL_PATH_DIR_NAME, MODEL_FILE_NAME)
+    model_evaluate_metric: str = MODEL_EVALUATE_METRIC
    
+   
+@dataclass(frozen=True)
+class _ModelBundle:
+    """Container for a model and its logging parameters."""
+
+    name: str
+    model: Any
+    params: Dict[str, Any]
+
+
+@dataclass(frozen=True)
+class _ModelEvaluation:
+    """Container for a trained model and its evaluation metrics."""
+
+    name: str
+    model: Any
+    params: Dict[str, Any]
+    metrics: Dict[str, float]

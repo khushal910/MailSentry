@@ -6,11 +6,7 @@ stages:
 
     deps:
       - src/components/data_ingestion.py
-      - src/entity/config_entity.py
-      - src/entity/artifact_entity.py
       - src/data_access/fetch_data.py
-      - src/logger/__init__.py
-      - src/exception/__init__.py
 
     outs:
       - artifact/data_ingestion/feature_store/data.csv
@@ -25,10 +21,6 @@ stages:
       - artifact/data_ingestion/ingested/train.csv
       - artifact/data_ingestion/ingested/test.csv
       - src/components/data_transformation.py
-      - src/entity/config_entity.py
-      - src/utils/main_utils.py
-      - src/logger/__init__.py
-      - src/exception/__init__.py
       - config/schema.yaml
    
     outs:
@@ -36,3 +28,15 @@ stages:
       - artifact/data_transformation/transformed_test.csv
       - artifact/data_transformation/preprocessing.pkl
       - artifact/data_transformation/label_encoder.pkl
+  
+  model_training:
+    cmd: python -m src.components.model_traning
+    deps:
+      - src/components/model_traning.py
+      - src/utils/mlflow_utils.py
+      - artifact/data_transformation/transformed_train.csv
+      - artifact/data_transformation/transformed_test.csv
+      - src/components/models.py
+    outs:
+      - artifact/model_trainer/model.pkl
+      - artifact/model_trainer/model_report.yaml
