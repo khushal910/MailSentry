@@ -118,9 +118,12 @@ class DataIngestion:
                   raise MyException(e, sys) from e
             
    
-try:
-      data_ingestion = DataIngestion()
-      data_ingestion.initiate_data_ingestion()
-except Exception as e:
-      logger.error(f"Error occurred in data ingestion component: {e}")
-      raise MyException(e, sys) from e
+if __name__ == "__main__":
+      try:
+            logger.info("Starting data ingestion process")
+            data_ingestion = DataIngestion()
+            data_ingestion.initiate_data_ingestion()
+            logger.info("Data ingestion process completed successfully")
+      except Exception as e:
+            logger.error(f"Error occurred in data ingestion component: {e}")
+            raise MyException(e, sys) from e
