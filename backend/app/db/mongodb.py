@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from app.core.config import settings
 from pymongo.database import Database
+from app.utils.main_utile import return_response
 
 class MongoDB:
 
@@ -23,5 +24,8 @@ class MongoDB:
 
 def get_database() -> Database:
     if MongoDB.database is None:
-        raise RuntimeError("MongoDB is not connected.")
+        return return_response(
+            status_code=500,
+            message="MongoDB is not connected."
+        )
     return MongoDB.database
