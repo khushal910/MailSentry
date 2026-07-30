@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 
 
 class UserRegisterSchema(BaseModel):
-    name: str
+    username: str
     email: EmailStr
     password: str
 
