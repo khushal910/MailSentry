@@ -22,5 +22,6 @@ async def login(user: UserLoginSchema, response: Response):
     
 
 @auth_router.post("/logout")
-async def logout():
-    return await logout(response=None)
+async def _logout(response: Response):
+
+    return logout(response=response)
