@@ -1,14 +1,26 @@
 from fastapi import APIRouter
 from app.schemas.user import UserRegisterSchema, UserLoginSchema
+from app.services.auth.registrer import register_user
+from app.services.auth.login import login_user
+from app.services.auth.logout import logout
+from fastapi import Response
 
 auth_router = APIRouter()
 
 
 @auth_router.post("/register")
 async def register(user: UserRegisterSchema):
-    return user
-
+    
+    return await register_user(user)
+    
+    
 
 @auth_router.post("/login")
-async def login(user: UserLoginSchema):
-    return user
+async def login(user: UserLoginSchema, response: Response):
+    
+    return await login_user(user, response=response)
+    
+
+@auth_router.post("/logout")
+async def logout():
+    return await logout(response=None)
