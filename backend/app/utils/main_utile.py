@@ -8,79 +8,113 @@ from fastapi import HTTPException, status
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt with a salt round of 12."""
+    try:
+        salt = bcrypt.gensalt(rounds=12)
     
-    salt = bcrypt.gensalt(rounds=12)
-    
-    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    except Exception as e:
+        return return_response(
+            status_code=500,
+            message=f"Error hashing password: {str(e)}"
+        )
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     """Verify a plain password against a bcrypt hash."""
     
-    return bcrypt.checkpw(plain.encode('utf-8'), hashed.encode('utf-8'))
+    try:
+        return bcrypt.checkpw(plain.encode('utf-8'), hashed.encode('utf-8'))
+    except Exception as e:
+        return return_response(
+            status_code=500,
+            message=f"Error verifying password: {str(e)}"
+        )
 
 
 def create_access_token(user_id: str, username: str) -> str:
     """Generate a JWT access token."""
 
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+    try:
+        
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
 
-    payload = {
-        "user_id": user_id,
-        "username": username,
-        "exp": expire,
-        "iat": datetime.now(timezone.utc),
-    }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        payload = {
+            "user_id": user_id,
+            "username": username,
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+        }
+        return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
+    except Exception as e:
+        return return_response(
+            status_code=500,
+            message=f"Error creating access token: {str(e)}"
+        )
+    
 def decode_token(token: str) -> dict:
     """
     Decode and validate JWT token.
     Returns the payload if valid.
     """
-
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access token is missing"
-        )
-
+    
     try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
-        )
 
-        user_id = payload.get("sub")
-        username = payload.get("username")
-
-        if user_id is None or username is None:
+        if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload"
+                detail="Access token is missing"
             )
 
-        return payload
+        try:
+            payload = jwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[settings.ALGORITHM]
+            )
 
-    except ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Access token has expired"
+            user_id = payload.get("sub")
+            username = payload.get("username")
+
+            if user_id is None or username is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token payload"
+                )
+
+            return payload
+
+        except ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Access token has expired"
+            )
+
+        except JWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid access token"
+        
         )
-
-    except JWTError:
+            
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error decoding token: {str(e)}"
         )
 
 def validate_email(email: str) -> bool:
     """Simple email format validation."""
     
-    return re.match(r'^[^@]+@[^@]+\.[^@]+$', email) is not None
+    try:
+        return re.match(r'^[^@]+@[^@]+\.[^@]+$', email) is not None
+    except Exception as e:
+        return return_response(
+            status_code=500,
+            message=f"Error validating email: {str(e)}"
+        )
 
 
 def validate_password_strength(password: str) -> bool:
@@ -88,17 +122,22 @@ def validate_password_strength(password: str) -> bool:
     Validate password strength.
     At least 8 characters, one uppercase, one lowercase, one digit.
     """
-    
-    if settings.PASSWORD_RULE_APPLY:
-        if len(password) < settings.PASSWORD_LENGTH:
-            return False
-        if not re.search(r'[A-Z]', password):
-            return False
-        if not re.search(r'[a-z]', password):
-            return False
-        if not re.search(r'\d', password):
-            return False
-    return True
+    try:
+        if settings.PASSWORD_RULE_APPLY:
+            if len(password) < settings.PASSWORD_LENGTH:
+                return False
+            if not re.search(r'[A-Z]', password):
+                return False
+            if not re.search(r'[a-z]', password):
+                return False
+            if not re.search(r'\d', password):
+                return False
+        return True
+    except Exception as e:
+        return return_response(
+            status_code=500,
+            message=f"Error validating password strength: {str(e)}"
+        )
 
 def return_response(status_code: int, message: str, data: dict = None):
     """
@@ -112,12 +151,20 @@ def return_response(status_code: int, message: str, data: dict = None):
     Returns:
         dict: A dictionary containing the response details.
     """
-    response = {
-        "success": 200 <= status_code < 300,
-        "status_code": status_code,
-        "message": message,
-    }
-    if data is not None:
-        response["data"] = data
+    
+    try:
+        response = {
+            "success": 200 <= status_code < 300,
+            "status_code": status_code,
+            "message": message,
+        }
+        if data is not None:
+            response["data"] = data
 
-    return response
+        return response
+    except Exception as e:
+        return {
+            "success": False,
+            "status_code": 500,
+            "message": f"Error generating response: {str(e)}"
+        }
