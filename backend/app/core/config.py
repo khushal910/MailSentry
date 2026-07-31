@@ -30,8 +30,17 @@ class Settings:
         PASSWORD_RULE_APPLY = os.getenv("PASSWORD_RULE_APPLY") == "True"
         
         SECURE_COOKIES = os.getenv("SECURE_COOKIES") == "True"
-    
+
+        # SMTP — email delivery
+        SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        SMTP_PORT     = int(os.getenv("SMTP_PORT", 587))
+        SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+        SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+        SMTP_USE_TLS  = os.getenv("SMTP_USE_TLS", "True") == "True"
+        EMAIL_FROM    = os.getenv("EMAIL_FROM", "noreply@mailsentry.app")
+        EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "MailSentry")
+
     except Exception as e:
         print(f"Error loading environment variables: {str(e)}")
 
-settings = Settings()
+settings = Settings()
