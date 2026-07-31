@@ -34,15 +34,14 @@ class GoogleOAuthService:
     def __init__(self, repo: GoogleAccountRepository | None = None):
         self.repo = repo if repo is not None else GoogleAccountRepository()
 
-    def generate_auth_url_with_state(self) -> tuple[str, str]:
+    def generate_auth_url_with_state(
+        self, user_id: str | None = None, google_email: str | None = None
+    ) -> tuple[str, str]:
         """
         Generates a secure OAuth state parameter and the Google authorization URL.
-
-        Returns (state, auth_url) so the *caller* (the router endpoint) can set
-        the cookie directly on its own RedirectResponse object. This is the correct
-        pattern — it avoids the fragile approach of setting the cookie on a temp
-        Response() and then manually copying Set-Cookie headers to a RedirectResponse,
-        which can silently drop the cookie due to internal Starlette header encoding.
+        Distinguishes between First Login vs Returning Login:
+        - First Login (no valid refresh token in DB): uses prompt="consent", access_type="offline"
+        - Returning Login (valid refresh token exists): uses access_type="offline", include_granted_scopes="true" (omits prompt="consent")
         """
         if not settings.GOOGLE_CLIENT_ID:
             logger.error("GOOGLE_CLIENT_ID environment variable is missing.")
@@ -51,39 +50,42 @@ class GoogleOAuthService:
                 detail="Google Client ID is not configured on the server."
             )
 
-        # 1. Generate cryptographically secure CSRF state
+        # 1. Check if user already has a valid stored refresh token in MongoDB
+        returning_user = self.repo.has_valid_refresh_token(
+            user_id=user_id, google_email=google_email
+        )
+
+        # 2. Generate cryptographically secure CSRF state
         state = generate_oauth_state()
 
-        # 2. Build Google authorization URL
+        # 3. Build Google authorization URL
         params = {
             "client_id": settings.GOOGLE_CLIENT_ID,
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
             "response_type": "code",
             "scope": " ".join(SCOPES),
             "access_type": "offline",
-            "prompt": "consent",
             "state": state,
         }
 
+        if returning_user:
+            params["include_granted_scopes"] = "true"
+            logger.info("Generated Google OAuth authorization URL for RETURNING user (prompt=consent omitted).")
+        else:
+            params["prompt"] = "consent"
+            logger.info("Generated Google OAuth authorization URL for FIRST-TIME user (prompt=consent included).")
+
         auth_url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
-        logger.info("Generated Google OAuth login URL.")
-        # Return both so the router can set the cookie on the final response
         return state, auth_url
 
-    def generate_auth_url(self, response: Response) -> str:
+    def generate_auth_url(
+        self, response: Response, user_id: str | None = None, google_email: str | None = None
+    ) -> str:
         """
         Legacy wrapper kept for backward compatibility.
-        Prefer generate_auth_url_with_state() in new code.
         """
-        state, auth_url = self.generate_auth_url_with_state()
-        response.set_cookie(
-            key="oauth_state",
-            value=state,
-            httponly=True,
-            secure=settings.SECURE_COOKIES,
-            samesite="lax",
-            path="/",
-            max_age=600,
+        state, auth_url = self.generate_auth_url_with_state(
+            user_id=user_id, google_email=google_email
         )
         return auth_url
 
@@ -234,10 +236,16 @@ class GoogleOAuthService:
         Encrypts refresh_token (if present), calculates access token expiry,
         and delegates persistence to GoogleAccountRepository.
         Never stores plain access_token in MongoDB.
+        If refresh_token is None, existing encrypted refresh token in MongoDB is preserved.
         """
         self.repo.ensure_indexes()
 
-        encrypted_refresh_token = encrypt_token(refresh_token) if refresh_token else None
+        if refresh_token:
+            logger.info("New refresh token received from Google. Encrypting and updating MongoDB.")
+            encrypted_refresh_token = encrypt_token(refresh_token)
+        else:
+            logger.info("No new refresh token in Google response (returning user). Preserving existing refresh token.")
+            encrypted_refresh_token = None
         
         access_token_expiry = None
         if expires_in is not None:
@@ -253,9 +261,87 @@ class GoogleOAuthService:
 
         return saved_doc
 
+    async def refresh_google_access_token(self, google_email: str) -> str:
+        """
+        Refreshes Google OAuth access token automatically using stored encrypted refresh token.
+        1. Reads and decrypts refresh_token from MongoDB.
+        2. Calls Google Token endpoint with grant_type=refresh_token.
+        3. Updates access_token_expiry in MongoDB.
+        4. Returns fresh access_token.
+        """
+        decrypted_rt = self.repo.get_decrypted_refresh_token(google_email)
+        if not decrypted_rt:
+            logger.error(f"Cannot refresh access token: No refresh token found for email {google_email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No refresh token available. User must re-authenticate with Google."
+            )
+
+        if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+            logger.error("Google Client ID or Client Secret missing in settings.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Google OAuth server configuration missing."
+            )
+
+        payload = {
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+            "refresh_token": decrypted_rt,
+            "grant_type": "refresh_token",
+        }
+
+        try:
+            logger.info(f"Refreshing Google access token for {google_email}...")
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(GOOGLE_TOKEN_URL, data=payload)
+                data = resp.json()
+
+            if resp.status_code != 200 or "error" in data:
+                error_msg = data.get("error_description") or data.get("error") or "Unknown refresh error"
+                logger.error(f"Google token refresh failed for {google_email}: {error_msg}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Failed to refresh Google access token: {error_msg}"
+                )
+
+            access_token = data.get("access_token")
+            expires_in = data.get("expires_in", 3600)
+
+            if not access_token:
+                logger.error("No access_token returned in Google refresh response.")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid response from Google token refresh endpoint."
+                )
+
+            # Calculate and store updated expiry
+            new_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            self.repo.update_access_token_expiry(google_email, new_expiry)
+
+            # Check if Google optionally rotated the refresh_token
+            new_rt = data.get("refresh_token")
+            if new_rt:
+                logger.info(f"Google issued a rotated refresh token for {google_email}. Updating MongoDB.")
+                encrypted_new_rt = encrypt_token(new_rt)
+                self.repo.upsert_account(
+                    google_email=google_email,
+                    encrypted_refresh_token=encrypted_new_rt,
+                    access_token_expiry=new_expiry,
+                )
+
+            logger.info(f"Successfully refreshed Google access token for {google_email}. Expires in {expires_in}s.")
+            return access_token
+
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error during Google token refresh for {google_email}: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to connect to Google token endpoint: {str(e)}"
+            )
+
     def get_user_google_credentials(self, google_email: str) -> dict:
         """
-        Prepared helper method for future Gmail API integration.
         Retrieves decrypted refresh_token and account details for a Google user.
         """
         decrypted_rt = self.repo.get_decrypted_refresh_token(google_email)

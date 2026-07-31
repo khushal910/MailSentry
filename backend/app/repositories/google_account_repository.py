@@ -107,10 +107,40 @@ class GoogleAccountRepository:
             logger.info(f"Created new Google account in MongoDB: {email}")
             return doc
 
+    def has_valid_refresh_token(self, user_id: str | None = None, google_email: str | None = None) -> bool:
+        """
+        Checks if a Google account record exists for the user_id or google_email
+        AND contains a non-empty stored refresh_token.
+        """
+        doc = None
+        if user_id:
+            doc = self.find_by_user_id(user_id)
+        if not doc and google_email:
+            doc = self.find_by_email(google_email)
+
+        if doc and doc.get("refresh_token"):
+            logger.debug("Found existing valid refresh token for account.")
+            return True
+        return False
+
+    def update_access_token_expiry(
+        self, google_email: str, access_token_expiry: datetime
+    ) -> bool:
+        """
+        Updates only the access_token_expiry timestamp for a given Google account.
+        """
+        email = google_email.strip().lower()
+        now = datetime.now(timezone.utc)
+        result = self.collection.update_one(
+            {"google_email": email},
+            {"$set": {"access_token_expiry": access_token_expiry, "updated_at": now}}
+        )
+        return result.modified_count > 0
+
     def get_decrypted_refresh_token(self, google_email: str) -> str | None:
         """
         Retrieves and decrypts the refresh token for a Google account by email.
-        Helper method prepared for future Gmail API integration.
+        Helper method prepared for Gmail API integration and token refresh.
         """
         from app.utils.encryption_util import decrypt_token
         doc = self.find_by_email(google_email)

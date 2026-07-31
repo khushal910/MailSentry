@@ -34,33 +34,39 @@ def _get_frontend_base(request: Request) -> str:
 
 @google_auth_router.get("/login")
 async def google_login(
+    request: Request,
+    user_id: str | None = Query(None),
+    google_email: str | None = Query(None),
     service: GoogleOAuthService = Depends(get_google_oauth_service)
 ):
     """
     GET /auth/google/login
 
     Initiates Google OAuth 2.0 Authorization Code Flow.
-    Generates a stateless HMAC-signed state token (CSRF protection) and
-    sends the browser to Google's consent screen.
-
-    Why stateless (no cookie):
-    Cookie-based state validation is unreliable in cross-origin redirect
-    chains: the oauth_state cookie set here may be lost before Google
-    redirects back, because browsers can drop cookies set on 302 responses
-    before following the redirect, and SameSite/third-party restrictions
-    further complicate cross-origin flows.
-
-    The HMAC-signed state token is self-contained — validation requires
-    only the server SECRET_KEY, not a stored cookie.
+    Differentiates First Login vs Returning Login:
+    - If user is already authenticated or has a stored refresh token in MongoDB,
+      omits prompt="consent" so Google signs them in without showing the consent screen.
+    - Otherwise, includes prompt="consent" to request offline access and refresh_token.
     """
     try:
-        # 1. Build the Google authorization URL (also returns the raw state string)
-        state, auth_url = service.generate_auth_url_with_state()
+        # Check if user is logged in via access_token cookie
+        if not user_id:
+            token = request.cookies.get("access_token")
+            if token:
+                try:
+                    from app.utils.main_utile import decode_token
+                    payload = decode_token(token)
+                    user_id = payload.get("user_id") or payload.get("sub")
+                except Exception:
+                    pass
 
-        # 2. Redirect the browser to Google's consent screen
+        # 1. Build the Google authorization URL (also returns the raw state string)
+        state, auth_url = service.generate_auth_url_with_state(user_id=user_id, google_email=google_email)
+
+        # 2. Redirect the browser to Google's consent screen / sign-in screen
         redirect = RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
 
-        logger.info("Google OAuth login initiated — redirecting to Google consent screen.")
+        logger.info("Google OAuth login initiated — redirecting to Google.")
         return redirect
     except HTTPException:
         raise
@@ -240,3 +246,40 @@ async def set_token(
     except Exception as e:
         logger.error(f"Error in /auth/google/set-token: {str(e)}")
         return return_response(status_code=500, message="Failed to set token")
+
+
+@google_auth_router.post("/refresh-token")
+async def refresh_google_token(
+    request: Request,
+    google_email: str | None = Query(None),
+    service: GoogleOAuthService = Depends(get_google_oauth_service)
+):
+    """
+    POST /auth/google/refresh-token
+
+    Triggers an automatic refresh of the Google OAuth access token using the stored
+    encrypted refresh token in MongoDB.
+    Accepts google_email in body or query param.
+    """
+    try:
+        body = {}
+        try:
+            body = await request.json()
+        except Exception:
+            pass
+
+        email = google_email or body.get("google_email")
+        if not email:
+            return return_response(status_code=400, message="google_email is required")
+
+        fresh_access_token = await service.refresh_google_access_token(email)
+        return return_response(
+            status_code=200,
+            message="Google access token refreshed successfully",
+            data={"access_token": fresh_access_token, "google_email": email}
+        )
+    except HTTPException as he:
+        return return_response(status_code=he.status_code, message=he.detail)
+    except Exception as e:
+        logger.error(f"Error in /auth/google/refresh-token: {str(e)}")
+        return return_response(status_code=500, message="Failed to refresh Google access token")
