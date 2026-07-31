@@ -54,7 +54,7 @@ class Settings:
         GOOGLE_ACCOUNT_COLLECTION_NAME = os.getenv(
             "GOOGLE_ACCOUNT_COLLECTION_NAME", "google_accounts"
         )
-        FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8080")
 
 
 
