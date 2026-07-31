@@ -5,6 +5,8 @@ from app.services.auth.login import login_user
 from app.services.auth.logout import logout
 from app.services.auth.me import get_me
 from app.services.auth.forgot_password import forgot_password_service
+from app.dependencies.auth import get_current_user
+
 
 auth_router = APIRouter()
 
