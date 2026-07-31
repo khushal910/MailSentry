@@ -160,8 +160,62 @@ from app.repositories.google_account_repository import GoogleAccountRepository
 
 
 
+def find_or_create_user_from_google_profile(user_info: dict) -> dict:
+    """
+    Matches the authenticated Google email with an existing MailSentry user.
+    - If user exists: links Google account & updates google_connected=True.
+    - If user does not exist: creates a new MailSentry account using Google profile data.
+    """
+    from app.db.mongodb import get_database
+    db = get_database()
+    users_col = db[settings.USER_COLLECTION_NAME]
+
+    email = user_info["email"].strip().lower()
+    now = datetime.now(timezone.utc)
+    existing_user = users_col.find_one({"email": email})
+
+    if existing_user:
+        # Update google_connected=True on existing user
+        users_col.update_one(
+            {"_id": existing_user["_id"]},
+            {"$set": {"google_connected": True, "updated_at": now}}
+        )
+        existing_user["google_connected"] = True
+        logger.info(f"Linked Google account to existing MailSentry user: {email}")
+        return existing_user
+
+    # User does not exist — auto-create new MailSentry account
+    raw_name = user_info.get("given_name") or user_info.get("name") or email.split("@")[0]
+    # Clean username string
+    base_username = "".join(c for c in raw_name if c.isalnum() or c in ("_", "-")).strip() or "user"
+    username = base_username
+
+    # Ensure username uniqueness
+    counter = 1
+    while users_col.find_one({"username": username}):
+        username = f"{base_username}{counter}"
+        counter += 1
+
+    new_user = {
+        "username": username,
+        "email": email,
+        "password": None,  # Authenticated via OAuth
+        "role": "user",
+        "is_active": True,
+        "google_connected": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    result = users_col.insert_one(new_user)
+    new_user["_id"] = result.inserted_id
+    logger.info(f"Auto-created new MailSentry user via Google OAuth: {email} (username: {username})")
+    return new_user
+
+
 def save_or_update_google_account(
     google_email: str,
+    google_user_id: str | None = None,
     user_id: str | None = None,
     refresh_token: str | None = None,
     expires_in: int | None = None,
@@ -182,10 +236,12 @@ def save_or_update_google_account(
 
     saved_doc = repo.upsert_account(
         google_email=google_email,
+        google_user_id=google_user_id,
         user_id=user_id,
         encrypted_refresh_token=encrypted_refresh_token,
         access_token_expiry=access_token_expiry,
     )
 
     return saved_doc
+
 

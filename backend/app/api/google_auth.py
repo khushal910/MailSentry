@@ -7,9 +7,11 @@ from app.services.auth.google_oauth_service import (
     exchange_code_for_tokens,
     verify_id_token_and_extract_user,
     save_or_update_google_account,
+    find_or_create_user_from_google_profile,
 )
+from app.utils.main_utile import return_response, create_access_token
+from app.core.config import settings
 
-from app.utils.main_utile import return_response
 
 logger = logging.getLogger(__name__)
 
@@ -91,59 +93,47 @@ async def google_callback(
 
         user_info = verify_id_token_and_extract_user(id_token_str)
 
-        # 4. Extract user_id if present (from access_token cookie or user lookup)
-        user_id = None
-        access_token = request.cookies.get("access_token")
-        if access_token:
-            try:
-                from app.utils.main_utile import decode_token
-                payload = decode_token(access_token)
-                user_id = payload.get("user_id") or payload.get("sub")
-            except Exception:
-                pass
+        # 4. Match existing MailSentry user or auto-create a new user profile
+        user_doc = find_or_create_user_from_google_profile(user_info)
+        user_id = str(user_doc["_id"])
+        username = user_doc["username"]
 
-        if not user_id and user_info.get("email"):
-            try:
-                from app.db.mongodb import get_database
-                from app.core.config import settings
-                db = get_database()
-                existing_user = db[settings.USER_COLLECTION_NAME].find_one({"email": user_info["email"]})
-                if existing_user:
-                    user_id = str(existing_user["_id"])
-            except Exception:
-                pass
-
-        # 5. Persist/update Google Account in MongoDB (Encrypted refresh_token, NO permanent access_token)
+        # 5. Persist/update Google Account in MongoDB (google_user_id, encrypted refresh_token, google_connected=True)
         account_doc = save_or_update_google_account(
             google_email=user_info["email"],
+            google_user_id=user_info.get("google_id"),
             user_id=user_id,
             refresh_token=token_data.get("refresh_token"),
             expires_in=token_data.get("expires_in"),
         )
 
-        # 6. Return response
-        res = return_response(
+        # 6. Issue standard MailSentry JWT access token and set HTTP-only cookie
+        jwt_token = create_access_token(user_id=user_id, username=username)
+
+        response.set_cookie(
+            key="access_token",
+            value=jwt_token,
+            httponly=True,
+            secure=settings.SECURE_COOKIES,
+            samesite="lax",
+            max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+        )
+
+        # 7. Return standard authentication response payload
+        return return_response(
             status_code=status.HTTP_200_OK,
-            message="Google authentication successful",
+            message="Google login successful",
             data={
-                "user_info": user_info,
-                "account_summary": {
-                    "google_email": account_doc.get("google_email"),
-                    "google_connected": account_doc.get("google_connected", True),
-                    "user_id": account_doc.get("user_id"),
-                    "access_token_expiry": str(account_doc.get("access_token_expiry")),
-                },
-                "tokens": {
-                    "access_token": token_data.get("access_token"),
-                    "expires_in": token_data.get("expires_in"),
-                    "id_token": token_data.get("id_token"),
-                    "scope": token_data.get("scope"),
-                    "token_type": token_data.get("token_type"),
+                "user": {
+                    "id": user_id,
+                    "username": username,
+                    "email": user_info["email"],
+                    "role": user_doc.get("role", "user"),
+                    "google_connected": True,
                 }
             }
         )
 
-        return res
 
 
     except HTTPException as he:

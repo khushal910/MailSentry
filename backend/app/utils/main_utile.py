@@ -108,7 +108,7 @@ def decode_token(token: str) -> dict:
                 algorithms=[settings.ALGORITHM]
             )
 
-            user_id = payload.get("sub")
+            user_id = payload.get("user_id") or payload.get("sub")
             username = payload.get("username")
 
             if user_id is None or username is None:
@@ -116,6 +116,7 @@ def decode_token(token: str) -> dict:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid token payload"
                 )
+
 
             return payload
 

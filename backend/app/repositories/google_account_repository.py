@@ -45,6 +45,7 @@ class GoogleAccountRepository:
     def upsert_account(
         self,
         google_email: str,
+        google_user_id: str | None = None,
         user_id: str | None = None,
         encrypted_refresh_token: str | None = None,
         access_token_expiry: datetime | None = None,
@@ -53,6 +54,7 @@ class GoogleAccountRepository:
         Upserts (creates or updates) a Google account document in MongoDB.
 
         Rules:
+        - Stores google_user_id, refresh_token (encrypted), google_connected=True, user_id.
         - Never stores access_token permanently.
         - Preserves existing encrypted refresh_token if new one is not provided.
         """
@@ -66,6 +68,9 @@ class GoogleAccountRepository:
                 "updated_at": now,
                 "google_connected": True,
             }
+
+            if google_user_id:
+                update_fields["google_user_id"] = google_user_id
 
             if access_token_expiry is not None:
                 update_fields["access_token_expiry"] = access_token_expiry
@@ -88,6 +93,7 @@ class GoogleAccountRepository:
             # Create new Google account document
             doc = {
                 "user_id": user_id,
+                "google_user_id": google_user_id,
                 "google_email": email,
                 "refresh_token": encrypted_refresh_token,
                 "access_token_expiry": access_token_expiry,
@@ -100,3 +106,4 @@ class GoogleAccountRepository:
             doc["_id"] = result.inserted_id
             logger.info(f"Created new Google account in MongoDB: {email}")
             return doc
+
