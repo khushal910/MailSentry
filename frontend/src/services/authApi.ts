@@ -75,6 +75,14 @@ export const authApi = {
     return res;
   },
 
+  async verifyResetOtp(payload: { email: string; otp: string }) {
+    const res = await safePost("/auth/verify-reset-otp", payload);
+    if (!res.success) {
+      throw new Error(res.message);
+    }
+    return res as BackendResponse & { data?: { reset_token: string } };
+  },
+
   async resetPassword(payload: { token: string; password: string }) {
     const res = await safePost("/auth/reset-password", {
       reset_token: payload.token,
@@ -86,4 +94,5 @@ export const authApi = {
     return res;
   },
 };
+
 

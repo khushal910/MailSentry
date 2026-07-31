@@ -31,7 +31,7 @@ async def forgot_password_service(payload: ForgotPasswordRequest):
             # Invalidate any previous OTP by overwriting fields.
             otp = generate_otp()
             otp_hash = hash_otp(otp)
-            expiry = datetime.now(timezone.utc) + timedelta(minutes=10)
+            expiry = datetime.now(timezone.utc) + timedelta(minutes=settings.OTP_EXPIRATION_MINUTES)
 
             users_col.update_one(
                 {"_id": user["_id"]},

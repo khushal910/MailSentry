@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from pymongo.database import Database
 from app.utils.main_utile import return_response
+from app.core.config import settings
 
 def check_and_update_rate_limit(db: Database, email: str) -> dict | None:
     """
@@ -11,41 +12,45 @@ def check_and_update_rate_limit(db: Database, email: str) -> dict | None:
     This works for both existent and non-existent users to prevent email enumeration.
     """
     try:
-        col = db["otp_rate_limits"]
-        now = datetime.now(timezone.utc)
-        cutoff = now - timedelta(minutes=15)
+       if settings.RATE_LIMIT_APPLY:
+                col = db["otp_rate_limits"]
+                now = datetime.now(timezone.utc)
+                cutoff = now - timedelta(minutes= settings.RATE_LIMIT_WINDOW_MINUTES ) 
+                
+                record = col.find_one({"email": email})
+                if record:
+                    timestamps = record.get("timestamps", [])
+                    # Filter timestamps in the last 15 minutes
+                    active_timestamps = []
+                    for ts in timestamps:
+                        if ts.tzinfo is None:
+                            ts = ts.replace(tzinfo=timezone.utc)
+                        if ts > cutoff:
+                            active_timestamps.append(ts)
+                    
+                    if len(active_timestamps) >= settings.RATE_LIMIT_MAX_REQUESTS:
+                        return return_response(
+                            status_code=429,
+                            message="Too many OTP requests. Please try again after 15 minutes."
+                        )
+                    
+                    # Append new timestamp and update
+                    active_timestamps.append(now)
+                    col.update_one(
+                        {"email": email},
+                        {"$set": {"timestamps": active_timestamps}}
+                    )
+                else:
+                    # Create new record
+                    col.insert_one({
+                        "email": email,
+                        "timestamps": [now]
+                    })
+                    
+                return None
+       else:
+            return None
         
-        record = col.find_one({"email": email})
-        if record:
-            timestamps = record.get("timestamps", [])
-            # Filter timestamps in the last 15 minutes
-            active_timestamps = []
-            for ts in timestamps:
-                if ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
-                if ts > cutoff:
-                    active_timestamps.append(ts)
-            
-            if len(active_timestamps) >= 3:
-                return return_response(
-                    status_code=429,
-                    message="Too many OTP requests. Please try again after 15 minutes."
-                )
-            
-            # Append new timestamp and update
-            active_timestamps.append(now)
-            col.update_one(
-                {"email": email},
-                {"$set": {"timestamps": active_timestamps}}
-            )
-        else:
-            # Create new record
-            col.insert_one({
-                "email": email,
-                "timestamps": [now]
-            })
-            
-        return None
     except Exception as e:
         # Fallback if DB operation fails
         return return_response(

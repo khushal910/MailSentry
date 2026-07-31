@@ -93,117 +93,92 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str) -> 
 
 def _build_otp_html(otp: str, expire_minutes: int = 10) -> str:
     """
-    Build a clean, branded HTML email body for OTP delivery.
-
-    Why a function and not a file?
-        For a single template, an inline f-string keeps the project
-        self-contained without a template directory or Jinja2 dependency.
-        If the number of templates grows, migrate to Jinja2.
-
-    Args:
-        otp            (str): The 6-digit OTP to display.
-        expire_minutes (int): How long the OTP is valid (shown to the user).
-
-    Returns:
-        str: Complete HTML document as a string.
+    Build a classic, high-contrast, clean HTML email body for OTP delivery.
+    Compatible with Gmail, Outlook, Apple Mail, and mobile clients.
     """
-    app_name   = settings.APP_NAME or "MailSentry"
-    from_name  = settings.EMAIL_FROM_NAME or app_name
+    app_name  = settings.APP_NAME or "MailSentry"
+    from_name = settings.EMAIL_FROM_NAME or app_name
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Password Reset — {app_name}</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Your Verification Code — {app_name}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0f0f13;font-family:'Helvetica Neue',Arial,sans-serif;">
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
 
-  <!-- Outer wrapper -->
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"
-         style="background-color:#0f0f13;padding:40px 16px;">
+  <!-- Main Wrapper -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1f5f9;padding:40px 16px;">
     <tr>
       <td align="center">
 
-        <!-- Card -->
-        <table width="100%" cellpadding="0" cellspacing="0" border="0"
-               style="max-width:520px;background-color:#18181f;border-radius:16px;
-                      border:1px solid #2a2a38;overflow:hidden;">
-
-          <!-- Header bar -->
+        <!-- Outer Container Card -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:540px;background-color:#ffffff;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);overflow:hidden;">
+          
+          <!-- Header Banner -->
           <tr>
-            <td style="background:linear-gradient(135deg,#6d28d9 0%,#4f46e5 100%);
-                       padding:28px 40px;">
-              <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;
-                        letter-spacing:-0.3px;">
+            <td style="background:linear-gradient(135deg, #4f46e5 0%, #6d28d9 100%);padding:32px 40px;text-align:center;">
+              <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">
                 🛡️ {app_name}
-              </p>
-              <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.75);">
-                AI-powered email protection
+              </h1>
+              <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.85);font-weight:400;">
+                Secure Email Protection
               </p>
             </td>
           </tr>
 
-          <!-- Body -->
+          <!-- Main Content Body -->
           <tr>
-            <td style="padding:36px 40px;">
-              <h1 style="margin:0 0 8px;font-size:20px;font-weight:600;color:#f4f4f8;">
-                Password Reset Request
-              </h1>
-              <p style="margin:0 0 28px;font-size:14px;color:#9090a8;line-height:1.6;">
-                We received a request to reset your {app_name} password.
-                Use the one-time code below — it expires in
-                <strong style="color:#c4b5fd;">{expire_minutes} minutes</strong>.
+            <td style="padding:40px 40px 32px;">
+              <h2 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#0f172a;line-height:1.3;">
+                Password Reset Verification
+              </h2>
+              <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.6;">
+                We received a request to reset your password. Use the 6-digit code below to verify your request. This code will expire in <strong style="color:#4f46e5;">{expire_minutes} minutes</strong>.
               </p>
 
-              <!-- OTP box -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <!-- OTP Code Display Card -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
                 <tr>
                   <td align="center">
-                    <div style="display:inline-block;background-color:#1e1e2e;
-                                border:2px solid #6d28d9;border-radius:12px;
-                                padding:20px 40px;margin-bottom:28px;">
-                      <p style="margin:0;font-size:11px;font-weight:600;
-                                color:#9090a8;letter-spacing:2px;text-transform:uppercase;">
-                        Your OTP code
-                      </p>
-                      <p style="margin:8px 0 0;font-size:42px;font-weight:800;
-                                color:#a78bfa;letter-spacing:12px;font-variant-numeric:tabular-nums;">
+                    <div style="background-color:#f8fafc;border:2px dashed #6366f1;border-radius:12px;padding:24px 32px;display:inline-block;">
+                      <span style="display:block;font-size:11px;font-weight:700;color:#64748b;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">
+                        YOUR VERIFICATION CODE
+                      </span>
+                      <span style="display:block;font-size:38px;font-weight:800;color:#1e1b4b;letter-spacing:10px;font-family:'Courier New',Courier,monospace;">
                         {otp}
-                      </p>
+                      </span>
                     </div>
                   </td>
                 </tr>
               </table>
 
-              <!-- Warning -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                     style="background-color:#1e1a2e;border-left:3px solid #7c3aed;
-                            border-radius:6px;margin-bottom:24px;">
+              <!-- Security Notice -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;margin-bottom:28px;">
                 <tr>
                   <td style="padding:14px 16px;">
-                    <p style="margin:0;font-size:13px;color:#c4b5fd;line-height:1.5;">
-                      ⚠️ If you did not request this, you can safely ignore this email.
-                      Your account remains secure.
+                    <p style="margin:0;font-size:13px;color:#92400e;line-height:1.5;">
+                      <strong>Security Tip:</strong> If you did not request a password reset, please ignore this email or contact support if you have concerns. Never share your code with anyone.
                     </p>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0;font-size:13px;color:#6060788;">
-                For security, never share this code with anyone.
-                {app_name} will never ask for your OTP.
+              <p style="margin:0;font-size:13px;color:#64748b;line-height:1.5;">
+                Thank you,<br/>
+                <strong style="color:#334155;">The {app_name} Security Team</strong>
               </p>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="background-color:#111118;padding:20px 40px;
-                       border-top:1px solid #2a2a38;">
-              <p style="margin:0;font-size:12px;color:#5a5a72;text-align:center;">
-                Sent by {from_name} &nbsp;·&nbsp;
-                This is an automated message, please do not reply.
+            <td style="background-color:#f8fafc;padding:20px 40px;border-top:1px solid #e2e8f0;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;">
+                Sent by {from_name} &nbsp;•&nbsp; Automated security notification<br/>
+                Please do not reply to this email.
               </p>
             </td>
           </tr>

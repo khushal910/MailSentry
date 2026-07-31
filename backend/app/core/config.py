@@ -39,8 +39,13 @@ class Settings:
         SMTP_USE_TLS  = os.getenv("SMTP_USE_TLS", "True") == "True"
         EMAIL_FROM    = os.getenv("EMAIL_FROM", "noreply@mailsentry.app")
         EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "MailSentry")
+        
+        RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", 3))
+        RATE_LIMIT_APPLY = os.getenv("RATE_LIMIT_APPLY", "True") == "True"
+        RATE_LIMIT_WINDOW_MINUTES  = int(os.getenv("RATE_LIMIT_WINDOW_MINUTES", 15))
+        OTP_EXPIRATION_MINUTES = int(os.getenv("OTP_EXPIRATION_MINUTES", 10))
 
     except Exception as e:
         print(f"Error loading environment variables: {str(e)}")
 
-settings = Settings()
+settings = Settings()
