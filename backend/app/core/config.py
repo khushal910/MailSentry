@@ -45,6 +45,14 @@ class Settings:
         RATE_LIMIT_WINDOW_MINUTES  = int(os.getenv("RATE_LIMIT_WINDOW_MINUTES", 15))
         OTP_EXPIRATION_MINUTES = int(os.getenv("OTP_EXPIRATION_MINUTES", 10))
 
+        # Google OAuth
+        GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+        GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+        GOOGLE_REDIRECT_URI = os.getenv(
+            "GOOGLE_REDIRECT_URI", "http://127.0.0.1:8000/auth/google/callback"
+        )
+
+
     except Exception as e:
         print(f"Error loading environment variables: {str(e)}")
 

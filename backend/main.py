@@ -35,7 +35,11 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+from app.api.google_auth import google_auth_router
+
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+app.include_router(google_auth_router, prefix="/auth/google", tags=["Google OAuth"])
+
 
 
 if(__name__ == "__main__"):

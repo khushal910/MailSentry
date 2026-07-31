@@ -1,0 +1,154 @@
+import hmac
+import logging
+import secrets
+import urllib.parse
+import httpx
+from fastapi import Request, Response, HTTPException, status
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+
+SCOPES = [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/gmail.readonly",
+]
+
+def generate_google_auth_url(response: Response) -> str:
+    """
+    Generates a secure OAuth state parameter, sets it in an HTTP-only cookie,
+    and constructs the Google OAuth 2.0 authorization URL.
+    """
+    if not settings.GOOGLE_CLIENT_ID:
+        logger.error("GOOGLE_CLIENT_ID environment variable is missing.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google Client ID is not configured on the server."
+        )
+
+    # 1. Generate secure random CSRF state
+    state = secrets.token_urlsafe(32)
+
+    # 2. Store state parameter in HTTP-only cookie (valid for 10 minutes)
+    response.set_cookie(
+        key="oauth_state",
+        value=state,
+        httponly=True,
+        secure=settings.SECURE_COOKIES,
+        samesite="lax",
+        max_age=600  # 10 minutes
+    )
+
+    # 3. Construct query parameters for Authorization Code Flow
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": " ".join(SCOPES),
+        "access_type": "offline",
+        "prompt": "consent",
+        "state": state,
+    }
+
+    auth_url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
+    logger.info("Generated Google OAuth login URL with state parameter.")
+    return auth_url
+
+
+def validate_oauth_state(request: Request, state_param: str | None) -> None:
+    """
+    Validates that the incoming state parameter matches the state stored in the HTTP-only cookie.
+    Prevents CSRF attacks.
+    """
+    cookie_state = request.cookies.get("oauth_state")
+
+    if not state_param or not cookie_state:
+        logger.warning("CSRF validation failed: missing state parameter or cookie.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OAuth state parameter: state parameter or cookie missing."
+        )
+
+    # Constant-time comparison to prevent timing attacks
+    if not hmac.compare_digest(state_param, cookie_state):
+        logger.warning("CSRF validation failed: state mismatch.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OAuth state parameter: state mismatch. Potential CSRF attack."
+        )
+
+
+async def exchange_code_for_tokens(code: str) -> dict:
+    """
+    Exchanges the Google authorization code for tokens (access_token, refresh_token, id_token, expires_in).
+    Handles errors gracefully if the code is invalid or expired.
+    """
+    if not settings.GOOGLE_CLIENT_SECRET:
+        logger.error("GOOGLE_CLIENT_SECRET environment variable is missing.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Google Client Secret is not configured on the server."
+        )
+
+    payload = {
+        "code": code,
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(GOOGLE_TOKEN_URL, data=payload)
+            data = resp.json()
+
+        if resp.status_code != 200 or "error" in data:
+            error_msg = data.get("error_description") or data.get("error") or "Unknown error"
+            logger.error(f"Failed to exchange authorization code: {error_msg}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid or expired authorization code: {error_msg}"
+            )
+
+        return data
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error connecting to Google token endpoint: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to connect to Google OAuth service: {str(e)}"
+        )
+
+
+def verify_id_token_and_extract_user(id_token_str: str) -> dict:
+    """
+    Verifies the authenticity of Google's ID Token and extracts the user's profile information.
+    """
+    try:
+        req = google_requests.Request()
+        # Verify ID Token against Google's public keys and check client_id audience
+        user_info = google_id_token.verify_oauth2_token(
+            id_token_str, req, settings.GOOGLE_CLIENT_ID
+        )
+
+        return {
+            "google_id": user_info.get("sub"),
+            "email": user_info.get("email"),
+            "email_verified": user_info.get("email_verified", False),
+            "name": user_info.get("name"),
+            "picture": user_info.get("picture"),
+            "given_name": user_info.get("given_name"),
+            "family_name": user_info.get("family_name"),
+        }
+    except ValueError as e:
+        logger.error(f"Invalid Google ID Token: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to verify Google ID Token: {str(e)}"
+        )
