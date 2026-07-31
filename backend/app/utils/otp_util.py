@@ -16,8 +16,10 @@ Design decisions
   security-sensitive codes.
 """
 
+import hmac
 import hashlib
 import secrets
+
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -117,4 +119,5 @@ def verify_otp(plain_otp: str, stored_hash: str) -> bool:
     candidate_hash = hash_otp(plain_otp)
 
     # compare_digest is constant-time; prevents timing side-channel attacks.
-    return hashlib.compare_digest(candidate_hash, stored_hash)
+    return hmac.compare_digest(candidate_hash, stored_hash)
+

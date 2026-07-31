@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -19,16 +20,18 @@ export const Route = createFileRoute("/forgot-password")({
 });
 
 function ForgotPasswordPage() {
+  const [isSent, setIsSent] = useState(false);
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting, isSubmitSuccessful },
+    formState: { errors, isSubmitting },
   } = useForm<{ email: string }>();
 
   const onSubmit = async (values: { email: string }) => {
     try {
       await authApi.forgotPassword(values.email);
       toast.success("If an account exists, we've sent reset instructions.");
+      setIsSent(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Something went wrong");
     }
@@ -47,7 +50,7 @@ function ForgotPasswordPage() {
         </>
       }
     >
-      {isSubmitSuccessful ? (
+      {isSent ? (
         <div className="rounded-lg border border-success/30 bg-success/10 p-4 text-sm text-success">
           Check your inbox for a reset link. It may take a minute to arrive.
         </div>
