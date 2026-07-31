@@ -1,37 +1,32 @@
 import logging
-from fastapi import APIRouter, Request, Response, Query, HTTPException, status
+from fastapi import APIRouter, Request, Response, Query, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
-from app.services.auth.google_oauth_service import (
-    generate_google_auth_url,
-    validate_oauth_state,
-    exchange_code_for_tokens,
-    verify_id_token_and_extract_user,
-    save_or_update_google_account,
-    find_or_create_user_from_google_profile,
-)
-from app.utils.main_utile import return_response, create_access_token
+
 from app.core.config import settings
+from app.dependencies.google_auth_deps import get_google_oauth_service
+from app.services.auth.google_oauth_service import GoogleOAuthService
+from app.utils.main_utile import return_response, create_access_token
 
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("mailsentry.google_oauth.router")
 
 google_auth_router = APIRouter()
 
 
 @google_auth_router.get("/login")
-async def google_login(response: Response):
+async def google_login(
+    response: Response,
+    service: GoogleOAuthService = Depends(get_google_oauth_service)
+):
     """
     GET /auth/google/login
-    Initiates Google OAuth 2.0 Authorization Code Flow.
+    Initiates Google OAuth 2.0 Authorization Code Flow via injected GoogleOAuthService.
     Generates a secure state parameter, sets an HTTP-only cookie,
     and redirects the user to Google's consent screen.
     """
     try:
-        # Create a temporary redirect response so we can attach the cookie
         temp_resp = Response()
-        auth_url = generate_google_auth_url(temp_resp)
+        auth_url = service.generate_auth_url(temp_resp)
 
-        # Build RedirectResponse and copy Set-Cookie headers
         redirect = RedirectResponse(url=auth_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
         for key, value in temp_resp.headers.raw:
             if key.lower() == b"set-cookie":
@@ -55,16 +50,17 @@ async def google_callback(
     code: str | None = Query(None),
     state: str | None = Query(None),
     error: str | None = Query(None),
+    service: GoogleOAuthService = Depends(get_google_oauth_service),
 ):
     """
     GET /auth/google/callback
-    Handles the Google OAuth 2.0 redirect callback.
-    Validates CSRF state, exchanges the authorization code for tokens,
-    verifies the ID token, and returns user information.
+    Handles the Google OAuth 2.0 redirect callback using injected GoogleOAuthService.
+    Validates CSRF state, exchanges code for tokens, verifies ID token,
+    matches/auto-creates MailSentry user, persists Google account details,
+    and issues standard HTTP-only JWT access token cookie.
     """
-    # Handle user cancellation or Google OAuth errors
     if error:
-        logger.warning(f"Google OAuth error: {error}")
+        logger.warning(f"Google OAuth authorization cancelled or failed: {error}")
         return return_response(
             status_code=status.HTTP_400_BAD_REQUEST,
             message=f"Google OAuth authorization failed or was cancelled: {error}"
@@ -78,28 +74,22 @@ async def google_callback(
 
     try:
         # 1. Validate CSRF state parameter against HTTP-only cookie
-        validate_oauth_state(request, state)
+        service.validate_csrf_state(request, state)
 
         # 2. Exchange authorization code for tokens
-        token_data = await exchange_code_for_tokens(code)
+        token_data = await service.exchange_code_for_tokens(code)
 
         # 3. Verify ID Token and extract user profile information
-        id_token_str = token_data.get("id_token")
-        if not id_token_str:
-            return return_response(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message="ID token missing from Google response"
-            )
-
-        user_info = verify_id_token_and_extract_user(id_token_str)
+        id_token_str = token_data["id_token"]
+        user_info = service.verify_id_token(id_token_str)
 
         # 4. Match existing MailSentry user or auto-create a new user profile
-        user_doc = find_or_create_user_from_google_profile(user_info)
+        user_doc = service.find_or_create_user(user_info)
         user_id = str(user_doc["_id"])
         username = user_doc["username"]
 
-        # 5. Persist/update Google Account in MongoDB (google_user_id, encrypted refresh_token, google_connected=True)
-        account_doc = save_or_update_google_account(
+        # 5. Persist/update Google Account in MongoDB
+        service.persist_google_account(
             google_email=user_info["email"],
             google_user_id=user_info.get("google_id"),
             user_id=user_id,
@@ -133,8 +123,6 @@ async def google_callback(
                 }
             }
         )
-
-
 
     except HTTPException as he:
         return return_response(

@@ -107,3 +107,15 @@ class GoogleAccountRepository:
             logger.info(f"Created new Google account in MongoDB: {email}")
             return doc
 
+    def get_decrypted_refresh_token(self, google_email: str) -> str | None:
+        """
+        Retrieves and decrypts the refresh token for a Google account by email.
+        Helper method prepared for future Gmail API integration.
+        """
+        from app.utils.encryption_util import decrypt_token
+        doc = self.find_by_email(google_email)
+        if not doc or not doc.get("refresh_token"):
+            return None
+        return decrypt_token(doc["refresh_token"])
+
+
