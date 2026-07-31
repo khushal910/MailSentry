@@ -1,4 +1,3 @@
-from langsmith import expect
 from pymongo import MongoClient
 from app.core.config import settings
 from pymongo.database import Database
