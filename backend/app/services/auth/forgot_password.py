@@ -3,8 +3,10 @@ from app.db.mongodb import get_database
 from app.core.config import settings
 from app.utils.otp_util import generate_otp, hash_otp
 from app.utils.email_util import send_reset_otp_email
+from app.utils.rate_limit_util import check_and_update_rate_limit
 from app.utils.main_utile import return_response
 from app.schemas.user import ForgotPasswordRequest
+
 
 
 async def forgot_password_service(payload: ForgotPasswordRequest):
@@ -16,6 +18,12 @@ async def forgot_password_service(payload: ForgotPasswordRequest):
     """
     try:
         db = get_database()
+        
+        # Check and update rate limit (max 3 requests per 15 minutes)
+        rate_limit_error = check_and_update_rate_limit(db, payload.email)
+        if rate_limit_error:
+            return rate_limit_error
+
         users_col = db[settings.USER_COLLECTION_NAME]
         user = users_col.find_one({"email": payload.email})
 
