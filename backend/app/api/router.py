@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, Response
-from app.schemas.user import UserRegisterSchema, UserLoginSchema
+from app.schemas.user import UserRegisterSchema, UserLoginSchema, ForgotPasswordRequest
 from app.services.auth.registrer import register_user
 from app.services.auth.login import login_user
 from app.services.auth.logout import logout
 from app.services.auth.me import get_me
-from app.dependencies.auth import get_current_user
+from app.services.auth.forgot_password import forgot_password_service
 
 auth_router = APIRouter()
 
@@ -25,6 +25,13 @@ try:
         return logout(response=response)
 
 
+    @auth_router.post("/forgot-password")
+    async def forgot_password(request: ForgotPasswordRequest):
+        """Public endpoint for initiating password reset.
+        Delegates to forgot_password_service and returns its response.
+        The request body is validated by Pydantic.
+        """
+        return await forgot_password_service(request)
     @auth_router.get("/me")
     async def me(current_user: dict = Depends(get_current_user)):
         return get_me(current_user)

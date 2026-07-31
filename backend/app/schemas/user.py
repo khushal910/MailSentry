@@ -10,3 +10,8 @@ class UserRegisterSchema(BaseModel):
 class UserLoginSchema(BaseModel):
     email: EmailStr
     password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Request payload for POST /forgot-password"""
+    email: EmailStr
