@@ -34,10 +34,15 @@ class GoogleOAuthService:
     def __init__(self, repo: GoogleAccountRepository | None = None):
         self.repo = repo if repo is not None else GoogleAccountRepository()
 
-    def generate_auth_url(self, response: Response) -> str:
+    def generate_auth_url_with_state(self) -> tuple[str, str]:
         """
-        Generates a secure OAuth state parameter, sets it in an HTTP-only cookie,
-        and constructs the Google OAuth 2.0 authorization URL.
+        Generates a secure OAuth state parameter and the Google authorization URL.
+
+        Returns (state, auth_url) so the *caller* (the router endpoint) can set
+        the cookie directly on its own RedirectResponse object. This is the correct
+        pattern — it avoids the fragile approach of setting the cookie on a temp
+        Response() and then manually copying Set-Cookie headers to a RedirectResponse,
+        which can silently drop the cookie due to internal Starlette header encoding.
         """
         if not settings.GOOGLE_CLIENT_ID:
             logger.error("GOOGLE_CLIENT_ID environment variable is missing.")
@@ -46,20 +51,10 @@ class GoogleOAuthService:
                 detail="Google Client ID is not configured on the server."
             )
 
-        # 1. Generate CSRF state parameter
+        # 1. Generate cryptographically secure CSRF state
         state = generate_oauth_state()
 
-        # 2. Attach state in HTTP-only cookie
-        response.set_cookie(
-            key="oauth_state",
-            value=state,
-            httponly=True,
-            secure=settings.SECURE_COOKIES,
-            samesite="lax",
-            max_age=600  # 10 minutes
-        )
-
-        # 3. Build authorization query params
+        # 2. Build Google authorization URL
         params = {
             "client_id": settings.GOOGLE_CLIENT_ID,
             "redirect_uri": settings.GOOGLE_REDIRECT_URI,
@@ -72,6 +67,24 @@ class GoogleOAuthService:
 
         auth_url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
         logger.info("Generated Google OAuth login URL.")
+        # Return both so the router can set the cookie on the final response
+        return state, auth_url
+
+    def generate_auth_url(self, response: Response) -> str:
+        """
+        Legacy wrapper kept for backward compatibility.
+        Prefer generate_auth_url_with_state() in new code.
+        """
+        state, auth_url = self.generate_auth_url_with_state()
+        response.set_cookie(
+            key="oauth_state",
+            value=state,
+            httponly=True,
+            secure=settings.SECURE_COOKIES,
+            samesite="lax",
+            path="/",
+            max_age=600,
+        )
         return auth_url
 
     def validate_csrf_state(self, request: Request, state_param: str | None) -> None:

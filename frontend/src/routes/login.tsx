@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
@@ -11,7 +12,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader } from "@/components/Loader";
 import { useAuth } from "@/context/AuthContext";
 
+type LoginSearch = {
+  oauth_error?: string;
+};
+
 export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>): LoginSearch => ({
+    oauth_error: typeof search.oauth_error === "string" ? search.oauth_error : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Login — MailSentry" },
@@ -28,9 +36,27 @@ interface FormValues {
 }
 
 function LoginPage() {
-  const { login } = useAuth();
+  const { login, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const { oauth_error: oauthError } = Route.useSearch();
+
+  useEffect(() => {
+    // Show OAuth error toast if redirected back from a failed Google OAuth attempt
+    if (oauthError) {
+      toast.error(`Google sign-in failed: ${oauthError.replace(/_/g, " ")}`);
+      // Clean the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [oauthError]);
+
+  useEffect(() => {
+    // If the user is already authenticated, send them to the dashboard
+    if (!isLoading && isAuthenticated) {
+      navigate({ to: "/dashboard" });
+    }
+  }, [isLoading, isAuthenticated, navigate]);
+
   const {
     register,
     handleSubmit,
@@ -50,6 +76,28 @@ function LoginPage() {
       toast.error(e instanceof Error ? e.message : "Login failed");
     }
   };
+
+  const handleGoogleLogin = () => {
+    const rawBase =
+      (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_URL) ||
+      "http://localhost:8000";
+    // Normalise: must match the origin where the oauth_state cookie will be set
+    const backendUrl = rawBase.replace("127.0.0.1", "localhost");
+    window.location.href = `${backendUrl}/auth/google/login`;
+  };
+
+
+  // Show a loading screen while we're checking if the user is already logged in
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="relative h-12 w-12">
+          <div className="absolute inset-0 rounded-full border-4 border-muted" />
+          <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-brand" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthLayout
@@ -140,7 +188,7 @@ function LoginPage() {
           type="button"
           variant="outline"
           className="w-full"
-          onClick={() => toast.info("Google login is coming soon.")}
+          onClick={handleGoogleLogin}
         >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
             <path
@@ -154,3 +202,4 @@ function LoginPage() {
     </AuthLayout>
   );
 }
+

@@ -25,6 +25,7 @@ import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settin
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
 import { Route as DashboardHistoryRouteImport } from './routes/dashboard.history'
 import { Route as DashboardClassifierRouteImport } from './routes/dashboard.classifier'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
@@ -106,6 +107,11 @@ const DashboardClassifierRoute = DashboardClassifierRouteImport.update({
   path: '/classifier',
   getParentRoute: () => DashboardRoute,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/dashboard/classifier': typeof DashboardClassifierRoute
   '/dashboard/history': typeof DashboardHistoryRoute
   '/dashboard/profile': typeof DashboardProfileRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/dashboard/classifier': typeof DashboardClassifierRoute
   '/dashboard/history': typeof DashboardHistoryRoute
   '/dashboard/profile': typeof DashboardProfileRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/dashboard/classifier': typeof DashboardClassifierRoute
   '/dashboard/history': typeof DashboardHistoryRoute
   '/dashboard/profile': typeof DashboardProfileRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/verify-email'
+    | '/auth/callback'
     | '/dashboard/classifier'
     | '/dashboard/history'
     | '/dashboard/profile'
@@ -192,6 +202,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/verify-email'
+    | '/auth/callback'
     | '/dashboard/classifier'
     | '/dashboard/history'
     | '/dashboard/profile'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/verify-email'
+    | '/auth/callback'
     | '/dashboard/classifier'
     | '/dashboard/history'
     | '/dashboard/profile'
@@ -229,6 +241,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -345,6 +358,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardClassifierRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -380,6 +400,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   VerifyEmailRoute: VerifyEmailRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

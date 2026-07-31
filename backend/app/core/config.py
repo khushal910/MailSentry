@@ -52,8 +52,10 @@ class Settings:
             "GOOGLE_REDIRECT_URI", "http://127.0.0.1:8000/auth/google/callback"
         )
         GOOGLE_ACCOUNT_COLLECTION_NAME = os.getenv(
-            "GOOGLE_ACCOUNT_COLLECTION_NAME", "GOOGLE_ACCOUNT_COLLECTION_NAME"
+            "GOOGLE_ACCOUNT_COLLECTION_NAME", "google_accounts"
         )
+        FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 
 
 

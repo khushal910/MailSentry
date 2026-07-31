@@ -1,4 +1,5 @@
 import logging
+import urllib.parse
 from fastapi import APIRouter, Request, Response, Query, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 
@@ -12,31 +13,59 @@ logger = logging.getLogger("mailsentry.google_oauth.router")
 google_auth_router = APIRouter()
 
 
+def _get_frontend_base(request: Request) -> str:
+    """
+    Returns the canonical frontend base URL from settings.FRONTEND_URL.
+
+    Why settings.FRONTEND_URL instead of sniffing headers:
+    When Google redirects back to /auth/google/callback, the browser issues a
+    plain GET with no Origin or Referer header (browsers strip Referer on
+    cross-site navigations and never send Origin on GET redirects). Sniffing
+    those headers therefore always falls through to reading the *backend* Host
+    header, producing the wrong redirect target.
+
+    The FRONTEND_URL env var is the authoritative source for where the frontend
+    lives and is controlled by the server admin.
+    """
+    frontend_base = settings.FRONTEND_URL.rstrip("/")
+    logger.debug(f"Frontend base URL resolved to: {frontend_base}")
+    return frontend_base
+
+
 @google_auth_router.get("/login")
 async def google_login(
-    response: Response,
     service: GoogleOAuthService = Depends(get_google_oauth_service)
 ):
     """
     GET /auth/google/login
-    Initiates Google OAuth 2.0 Authorization Code Flow via injected GoogleOAuthService.
-    Generates a secure state parameter, sets an HTTP-only cookie,
-    and redirects the user to Google's consent screen.
+
+    Initiates Google OAuth 2.0 Authorization Code Flow.
+    Generates a stateless HMAC-signed state token (CSRF protection) and
+    sends the browser to Google's consent screen.
+
+    Why stateless (no cookie):
+    Cookie-based state validation is unreliable in cross-origin redirect
+    chains: the oauth_state cookie set here may be lost before Google
+    redirects back, because browsers can drop cookies set on 302 responses
+    before following the redirect, and SameSite/third-party restrictions
+    further complicate cross-origin flows.
+
+    The HMAC-signed state token is self-contained — validation requires
+    only the server SECRET_KEY, not a stored cookie.
     """
     try:
-        temp_resp = Response()
-        auth_url = service.generate_auth_url(temp_resp)
+        # 1. Build the Google authorization URL (also returns the raw state string)
+        state, auth_url = service.generate_auth_url_with_state()
 
-        redirect = RedirectResponse(url=auth_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
-        for key, value in temp_resp.headers.raw:
-            if key.lower() == b"set-cookie":
-                redirect.headers.append(key.decode("latin1"), value.decode("latin1"))
+        # 2. Redirect the browser to Google's consent screen
+        redirect = RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
 
+        logger.info("Google OAuth login initiated — redirecting to Google consent screen.")
         return redirect
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error initiating Google OAuth login: {str(e)}")
+        logger.error(f"Error initiating Google OAuth login: {str(e)}", exc_info=True)
         return return_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message=f"Error initiating Google OAuth login: {str(e)}"
@@ -50,45 +79,57 @@ async def google_callback(
     code: str | None = Query(None),
     state: str | None = Query(None),
     error: str | None = Query(None),
+    format: str | None = Query(None),
     service: GoogleOAuthService = Depends(get_google_oauth_service),
 ):
     """
     GET /auth/google/callback
-    Handles the Google OAuth 2.0 redirect callback using injected GoogleOAuthService.
-    Validates CSRF state, exchanges code for tokens, verifies ID token,
-    matches/auto-creates MailSentry user, persists Google account details,
-    and issues standard HTTP-only JWT access token cookie.
+
+    Handles the Google OAuth 2.0 redirect. Instead of setting an HTTP-only cookie here
+    (which fails across 127.0.0.1 vs localhost), we redirect the browser to the
+    frontend /auth/callback page and pass the JWT as a short-lived URL query parameter.
+
+    The frontend /auth/callback page calls POST /auth/google/set-token to convert that
+    URL token into a proper HttpOnly cookie on the correct origin, then navigates to
+    /dashboard. This is the industry-standard approach for OAuth code flows with SPAs.
     """
+    frontend_base = _get_frontend_base(request)
+
     if error:
         logger.warning(f"Google OAuth authorization cancelled or failed: {error}")
-        return return_response(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            message=f"Google OAuth authorization failed or was cancelled: {error}"
-        )
+        error_url = f"{frontend_base}/login?oauth_error={urllib.parse.quote(str(error))}"
+        return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
 
     if not code:
-        return return_response(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            message="Authorization code missing from Google callback"
-        )
+        error_url = f"{frontend_base}/login?oauth_error=missing_code"
+        return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
 
     try:
-        # 1. Validate CSRF state parameter against HTTP-only cookie
+        # Step 1 — Validate CSRF state cookie against query param
+        logger.debug("Step 1: Validating CSRF state parameter.")
         service.validate_csrf_state(request, state)
+        logger.debug("Step 1 OK: CSRF state is valid.")
 
-        # 2. Exchange authorization code for tokens
+        # Step 2 — Exchange authorization code for tokens from Google
+        logger.debug("Step 2: Exchanging authorization code for tokens.")
         token_data = await service.exchange_code_for_tokens(code)
+        logger.debug("Step 2 OK: Received token_data keys: %s", list(token_data.keys()))
 
-        # 3. Verify ID Token and extract user profile information
+        # Step 3 — Verify ID Token and extract user profile
+        logger.debug("Step 3: Verifying Google ID Token.")
         id_token_str = token_data["id_token"]
         user_info = service.verify_id_token(id_token_str)
+        logger.info("Step 3 OK: Verified Google user email=%s", user_info.get("email"))
 
-        # 4. Match existing MailSentry user or auto-create a new user profile
+        # Step 4 — Find existing user or create new MailSentry account
+        logger.debug("Step 4: Finding or creating MailSentry user.")
         user_doc = service.find_or_create_user(user_info)
         user_id = str(user_doc["_id"])
         username = user_doc["username"]
+        logger.info("Step 4 OK: user_id=%s username=%s", user_id, username)
 
-        # 5. Persist/update Google Account in MongoDB
+        # Step 5 — Persist / update Google account record in MongoDB
+        logger.debug("Step 5: Persisting Google account to MongoDB.")
         service.persist_google_account(
             google_email=user_info["email"],
             google_user_id=user_info.get("google_id"),
@@ -96,42 +137,106 @@ async def google_callback(
             refresh_token=token_data.get("refresh_token"),
             expires_in=token_data.get("expires_in"),
         )
+        logger.debug("Step 5 OK: Google account persisted.")
 
-        # 6. Issue standard MailSentry JWT access token and set HTTP-only cookie
+        # Step 6 — Issue MailSentry JWT access token
+        logger.debug("Step 6: Issuing MailSentry JWT access token.")
         jwt_token = create_access_token(user_id=user_id, username=username)
+        logger.debug("Step 6 OK: JWT token created.")
+
+        # 7. If JSON format is explicitly requested (for testing), return JSON + cookie
+        if format == "json":
+            res = return_response(
+                status_code=status.HTTP_200_OK,
+                message="Google login successful",
+                data={
+                    "user": {
+                        "id": user_id,
+                        "username": username,
+                        "email": user_info["email"],
+                        "role": user_doc.get("role", "user"),
+                        "google_connected": True,
+                    }
+                }
+            )
+            response.set_cookie(
+                key="access_token",
+                value=jwt_token,
+                httponly=True,
+                secure=settings.SECURE_COOKIES,
+                samesite="lax",
+                path="/",
+                max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+            )
+            return res
+
+        # 8. Redirect to frontend /auth/callback with token as URL param.
+        #    This is the ONLY safe way to pass a token across origins in a browser
+        #    OAuth flow. The token is consumed immediately by the frontend page.
+        encoded_token = urllib.parse.quote(jwt_token, safe="")
+        redirect_url = f"{frontend_base}/auth/callback?token={encoded_token}"
+
+        redirect_resp = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+        logger.info(
+            f"Google OAuth successful for user_id={user_id}. "
+            f"Redirecting to frontend callback at {frontend_base}/auth/callback"
+        )
+        return redirect_resp
+
+    except HTTPException as he:
+        logger.warning(
+            "HTTPException in Google OAuth callback: status=%s detail=%s",
+            he.status_code, he.detail
+        )
+        error_url = f"{frontend_base}/login?oauth_error={urllib.parse.quote(str(he.detail))}"
+        return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
+    except Exception as e:
+        logger.error("Unexpected error in Google OAuth callback: %s", str(e), exc_info=True)
+        error_url = f"{frontend_base}/login?oauth_error=server_error"
+        return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
+
+
+@google_auth_router.post("/set-token")
+async def set_token(
+    request: Request,
+    response: Response,
+):
+    """
+    POST /auth/google/set-token
+
+    Called by the frontend /auth/callback page immediately after receiving the
+    JWT from the URL query parameter. Validates the token and sets it as a proper
+    HttpOnly cookie on this origin, then returns success.
+
+    The frontend immediately removes the token from the URL and navigates to /dashboard.
+
+    Request body: { "token": "<jwt>" }
+    """
+    try:
+        body = await request.json()
+        token = body.get("token", "").strip()
+
+        if not token:
+            return return_response(status_code=400, message="Token is required")
+
+        # Validate the token is a real, unexpired JWT before setting it as a cookie
+        from app.utils.main_utile import decode_token
+        decode_token(token)  # raises HTTPException 401 if invalid/expired
 
         response.set_cookie(
             key="access_token",
-            value=jwt_token,
+            value=token,
             httponly=True,
             secure=settings.SECURE_COOKIES,
             samesite="lax",
+            path="/",
             max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
         )
-
-        # 7. Return standard authentication response payload
-        return return_response(
-            status_code=status.HTTP_200_OK,
-            message="Google login successful",
-            data={
-                "user": {
-                    "id": user_id,
-                    "username": username,
-                    "email": user_info["email"],
-                    "role": user_doc.get("role", "user"),
-                    "google_connected": True,
-                }
-            }
-        )
+        logger.info("Access token cookie set successfully via /auth/google/set-token")
+        return return_response(status_code=200, message="Token set successfully")
 
     except HTTPException as he:
-        return return_response(
-            status_code=he.status_code,
-            message=he.detail
-        )
+        return return_response(status_code=he.status_code, message=he.detail)
     except Exception as e:
-        logger.error(f"Unexpected error in Google OAuth callback: {str(e)}")
-        return return_response(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Error processing Google OAuth callback: {str(e)}"
-        )
+        logger.error(f"Error in /auth/google/set-token: {str(e)}")
+        return return_response(status_code=500, message="Failed to set token")
