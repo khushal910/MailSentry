@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,8 @@ interface FormValues {
 function SignupPage() {
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const {
     register,
     handleSubmit,
@@ -38,9 +42,13 @@ function SignupPage() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await signup(values.name, values.email, values.password);
-      toast.success("Account created — welcome to MailSentry!");
-      navigate({ to: "/verify-email" });
+      const res = await signup(values.name, values.email, values.password);
+      if (res.success) {
+        toast.success(res.message);
+        navigate({ to: "/dashboard" });
+      } else {
+        toast.error(res.message);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Sign up failed");
     }
@@ -70,9 +78,7 @@ function SignupPage() {
               maxLength: { value: 80, message: "Too long" },
             })}
           />
-          {errors.name && (
-            <p className="text-xs text-destructive">{errors.name.message}</p>
-          )}
+          {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -85,39 +91,58 @@ function SignupPage() {
               pattern: { value: /^\S+@\S+\.\S+$/, message: "Invalid email" },
             })}
           />
-          {errors.email && (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            {...register("password", {
-              required: "Password is required",
-              minLength: { value: 8, message: "Minimum 8 characters" },
-            })}
-          />
-          {errors.password && (
-            <p className="text-xs text-destructive">{errors.password.message}</p>
-          )}
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              className="pr-10"
+              {...register("password", {
+                required: "Password is required",
+                minLength: {
+                  value: Number(import.meta.env.VITE_PASSWORD_MIN_LENGTH),
+                  message: `Minimum ${import.meta.env.VITE_PASSWORD_MIN_LENGTH} characters`,
+                },
+              })}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">Confirm password</Label>
-          <Input
-            id="confirm"
-            type="password"
-            placeholder="••••••••"
-            {...register("confirm", {
-              required: "Please confirm your password",
-              validate: (v) => v === password || "Passwords must match",
-            })}
-          />
-          {errors.confirm && (
-            <p className="text-xs text-destructive">{errors.confirm.message}</p>
-          )}
+          <div className="relative">
+            <Input
+              id="confirm"
+              type={showConfirm ? "text" : "password"}
+              placeholder="••••••••"
+              className="pr-10"
+              {...register("confirm", {
+                required: "Please confirm your password",
+                validate: (v) => v === password || "Passwords must match",
+              })}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={showConfirm ? "Hide confirm password" : "Show confirm password"}
+            >
+              {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {errors.confirm && <p className="text-xs text-destructive">{errors.confirm.message}</p>}
         </div>
 
         <Button

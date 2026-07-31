@@ -60,8 +60,8 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
       <button
-        onClick={() => {
-          logout();
+        onClick={async () => {
+          await logout();
           navigate({ to: "/login" });
         }}
         className="mt-6 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"

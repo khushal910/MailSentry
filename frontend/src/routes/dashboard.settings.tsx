@@ -144,8 +144,8 @@ function SettingsPage() {
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      onClick={() => {
-                        logout();
+                      onClick={async () => {
+                        await logout();
                         toast.success("Account deleted");
                         navigate({ to: "/" });
                       }}

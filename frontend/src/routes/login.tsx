@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,7 @@ interface FormValues {
 function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -36,9 +39,13 @@ function LoginPage() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await login(values.email, values.password);
-      toast.success("Welcome back!");
-      navigate({ to: "/dashboard" });
+      const res = await login(values.email, values.password);
+      if (res.success) {
+        toast.success(res.message);
+        navigate({ to: "/dashboard" });
+      } else {
+        toast.error(res.message);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Login failed");
     }
@@ -70,9 +77,7 @@ function LoginPage() {
               pattern: { value: /^\S+@\S+\.\S+$/, message: "Invalid email" },
             })}
           />
-          {errors.email && (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -84,19 +89,31 @@ function LoginPage() {
               Forgot password?
             </Link>
           </div>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            autoComplete="current-password"
-            {...register("password", {
-              required: "Password is required",
-              minLength: { value: 6, message: "Minimum 6 characters" },
-            })}
-          />
-          {errors.password && (
-            <p className="text-xs text-destructive">{errors.password.message}</p>
-          )}
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              className="pr-10"
+              {...register("password", {
+                required: "Password is required",
+                minLength: {
+                  value: Number(import.meta.env.VITE_PASSWORD_MIN_LENGTH),
+                  message: `Minimum ${import.meta.env.VITE_PASSWORD_MIN_LENGTH} characters`,
+                },
+              })}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
         </div>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <Checkbox {...(register("remember") as any)} /> Remember me
@@ -115,9 +132,7 @@ function LoginPage() {
             <span className="w-full border-t border-border/60" />
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="bg-transparent px-2 text-muted-foreground">
-              or continue with
-            </span>
+            <span className="bg-transparent px-2 text-muted-foreground">or continue with</span>
           </div>
         </div>
 

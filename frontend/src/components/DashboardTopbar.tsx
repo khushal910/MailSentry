@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Menu, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +17,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export function DashboardTopbar() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const initials =
     user?.name
@@ -78,7 +79,7 @@ export function DashboardTopbar() {
             <Link to="/dashboard/settings">Settings</Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => logout()} className="text-destructive">
+          <DropdownMenuItem onSelect={async () => { await logout(); navigate({ to: "/login" }); }} className="text-destructive">
             Log out
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -120,7 +120,7 @@ def validate_email(email: str) -> bool:
 def validate_password_strength(password: str) -> bool:
     """
     Validate password strength.
-    At least 8 characters, one uppercase, one lowercase, one digit.
+    At least {settings.PASSWORD_LENGTH} characters, one uppercase, one lowercase, one digit.
     """
     try:
         if settings.PASSWORD_RULE_APPLY:

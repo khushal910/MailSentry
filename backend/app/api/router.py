@@ -10,9 +10,9 @@ auth_router = APIRouter()
 try:
 
     @auth_router.post("/register")
-    async def register(user: UserRegisterSchema):
+    async def register(user: UserRegisterSchema, response: Response):
         
-        return await register_user(user)
+        return await register_user(user, response=response)
         
         
 

@@ -1,19 +1,23 @@
 from datetime import datetime, timezone
 from typing import Dict, Any
+from fastapi import Response
 from app.core.config import settings
 from app.db.mongodb import get_database
 from app.utils.main_utile import (validate_email, validate_password_strength, hash_password, create_access_token, return_response)
 from app.schemas.user import UserRegisterSchema
 
-async def register_user(user_data: UserRegisterSchema) -> Dict[str, Any]:
+async def register_user(user_data: UserRegisterSchema, response: Response) -> Dict[str, Any]:
     """
     Registers a new user in the system using environment‑based configuration.
+    On success, generates an access token and stores it in an HTTP-only cookie
+    (same behaviour as login).
 
     Args:
         user_data (dict): Must contain 'username', 'email', and 'password'.
+        response (Response): FastAPI Response object used to set the cookie.
 
     Returns:
-        dict: Registered user info (without password hash) and an access token.
+        dict: Standardised response with success, status_code, and message.
 
     Raises:
         ValueError: If validation fails or user already exists.
@@ -67,17 +71,25 @@ async def register_user(user_data: UserRegisterSchema) -> Dict[str, Any]:
         result = users_col.insert_one(new_user)
         user_id = str(result.inserted_id)
 
+        # Generate access token and store in HTTP-only cookie (same as login)
+        access_token = create_access_token(
+            user_id=user_id,
+            username=username
+        )
 
-        # Prepare response 
-        response_user = {
-            "id": user_id,
-            "username": username,
-            "email": email,
-        }
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=settings.SECURE_COOKIES,
+            samesite="lax",
+            max_age=60 * 30
+        )
 
-        return {
-            "user": response_user,
-        }
+        return return_response(
+            status_code=201,
+            message="User registered successfully"
+        )
 
     except Exception as e:
         return return_response(
