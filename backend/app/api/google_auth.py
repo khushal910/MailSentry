@@ -6,7 +6,9 @@ from app.services.auth.google_oauth_service import (
     validate_oauth_state,
     exchange_code_for_tokens,
     verify_id_token_and_extract_user,
+    save_or_update_google_account,
 )
+
 from app.utils.main_utile import return_response
 
 logger = logging.getLogger(__name__)
@@ -89,15 +91,50 @@ async def google_callback(
 
         user_info = verify_id_token_and_extract_user(id_token_str)
 
-        # 4. Clean up state cookie
+        # 4. Extract user_id if present (from access_token cookie or user lookup)
+        user_id = None
+        access_token = request.cookies.get("access_token")
+        if access_token:
+            try:
+                from app.utils.main_utile import decode_token
+                payload = decode_token(access_token)
+                user_id = payload.get("user_id") or payload.get("sub")
+            except Exception:
+                pass
+
+        if not user_id and user_info.get("email"):
+            try:
+                from app.db.mongodb import get_database
+                from app.core.config import settings
+                db = get_database()
+                existing_user = db[settings.USER_COLLECTION_NAME].find_one({"email": user_info["email"]})
+                if existing_user:
+                    user_id = str(existing_user["_id"])
+            except Exception:
+                pass
+
+        # 5. Persist/update Google Account in MongoDB (Encrypted refresh_token, NO permanent access_token)
+        account_doc = save_or_update_google_account(
+            google_email=user_info["email"],
+            user_id=user_id,
+            refresh_token=token_data.get("refresh_token"),
+            expires_in=token_data.get("expires_in"),
+        )
+
+        # 6. Return response
         res = return_response(
             status_code=status.HTTP_200_OK,
             message="Google authentication successful",
             data={
                 "user_info": user_info,
+                "account_summary": {
+                    "google_email": account_doc.get("google_email"),
+                    "google_connected": account_doc.get("google_connected", True),
+                    "user_id": account_doc.get("user_id"),
+                    "access_token_expiry": str(account_doc.get("access_token_expiry")),
+                },
                 "tokens": {
                     "access_token": token_data.get("access_token"),
-                    "refresh_token": token_data.get("refresh_token"),
                     "expires_in": token_data.get("expires_in"),
                     "id_token": token_data.get("id_token"),
                     "scope": token_data.get("scope"),
@@ -106,11 +143,8 @@ async def google_callback(
             }
         )
 
-        # Delete oauth_state cookie after validation
-        resp = Response(content=res, media_type="application/json") if isinstance(res, str) else None
-        # Return standard response dictionary or response with cleared cookie
-        # In FastAPI returning dict gets auto JSON-encoded
         return res
+
 
     except HTTPException as he:
         return return_response(

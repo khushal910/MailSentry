@@ -152,3 +152,40 @@ def verify_id_token_and_extract_user(id_token_str: str) -> dict:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to verify Google ID Token: {str(e)}"
         )
+
+
+from datetime import datetime, timezone, timedelta
+from app.utils.encryption_util import encrypt_token
+from app.repositories.google_account_repository import GoogleAccountRepository
+
+
+
+def save_or_update_google_account(
+    google_email: str,
+    user_id: str | None = None,
+    refresh_token: str | None = None,
+    expires_in: int | None = None,
+) -> dict:
+    """
+    Encrypts the refresh_token (if present), calculates access token expiry,
+    and delegates persistence/upsert to GoogleAccountRepository.
+    Never stores plain access_token in MongoDB.
+    """
+    repo = GoogleAccountRepository()
+    repo.ensure_indexes()
+
+    encrypted_refresh_token = encrypt_token(refresh_token) if refresh_token else None
+    
+    access_token_expiry = None
+    if expires_in is not None:
+        access_token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+
+    saved_doc = repo.upsert_account(
+        google_email=google_email,
+        user_id=user_id,
+        encrypted_refresh_token=encrypted_refresh_token,
+        access_token_expiry=access_token_expiry,
+    )
+
+    return saved_doc
+

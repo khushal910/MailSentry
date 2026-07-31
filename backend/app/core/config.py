@@ -51,6 +51,10 @@ class Settings:
         GOOGLE_REDIRECT_URI = os.getenv(
             "GOOGLE_REDIRECT_URI", "http://127.0.0.1:8000/auth/google/callback"
         )
+        GOOGLE_ACCOUNT_COLLECTION_NAME = os.getenv(
+            "GOOGLE_ACCOUNT_COLLECTION_NAME", "GOOGLE_ACCOUNT_COLLECTION_NAME"
+        )
+
 
 
     except Exception as e:
