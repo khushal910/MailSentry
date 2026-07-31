@@ -53,6 +53,39 @@ def create_access_token(user_id: str, username: str) -> str:
             status_code=500,
             message=f"Error creating access token: {str(e)}"
         )
+
+# Password‑reset JWT helpers
+def create_password_reset_token(email: str) -> str:
+    """Create a short‑lived JWT for password‑reset flows.
+    Payload includes email, purpose='password_reset', exp (10 min), iat.
+    """
+    try:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=10)
+        payload = {
+            "email": email,
+            "purpose": "password_reset",
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+        }
+        return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    except Exception as e:
+        raise RuntimeError(f"Error creating password reset token: {str(e)}")
+
+def verify_password_reset_token(token: str) -> dict:
+    """Validate a password‑reset token and return its payload.
+    Raises HTTPException(401) for missing, expired, invalid, or wrong‑purpose tokens.
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("purpose") != "password_reset":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token purpose")
+        return payload
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Password reset token has expired")
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password reset token")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error verifying token: {str(e)}")
     
 def decode_token(token: str) -> dict:
     """
