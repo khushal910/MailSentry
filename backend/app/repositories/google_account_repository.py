@@ -47,6 +47,19 @@ class GoogleAccountRepository:
             doc = self.collection.find_one({"user_id": ObjectId(user_id)})
         return doc
 
+    def disconnect_account(self, user_id: str) -> bool:
+        """
+        Marks Google account as disconnected for the user and unsets refresh token.
+        """
+        now = datetime.now(timezone.utc)
+        query = {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]} if ObjectId.is_valid(user_id) else {"user_id": str(user_id)}
+        result = self.collection.update_many(
+            query,
+            {"$set": {"google_connected": False, "refresh_token": None, "updated_at": now}}
+        )
+        modified = getattr(result, "modified_count", 0)
+        return (modified > 0) if isinstance(modified, (int, float)) else True
+
     def upsert_account(
         self,
         google_email: str,

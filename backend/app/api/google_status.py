@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends
 from app.dependencies.auth import get_current_user
-from app.services.auth.google_status import get_google_status_service
+from app.services.auth.google_status import (
+    get_google_status_service,
+    disconnect_google_service,
+)
 from app.schemas.google_auth import (
     GoogleStatusConnectedResponse,
     GoogleStatusNotConnectedResponse,
@@ -22,3 +25,17 @@ async def get_google_status(current_user: dict = Depends(get_current_user)):
     """
     user_id = str(current_user["_id"])
     return get_google_status_service(user_id)
+
+
+@google_status_router.post(
+    "/disconnect",
+    summary="Disconnect Google Account for current user",
+)
+async def disconnect_google(current_user: dict = Depends(get_current_user)):
+    """
+    POST /api/google/disconnect
+
+    Disconnects the Google account for the authenticated user.
+    """
+    user_id = str(current_user["_id"])
+    return disconnect_google_service(user_id)

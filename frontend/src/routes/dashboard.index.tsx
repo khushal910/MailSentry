@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { formatConfidence, formatDate, truncate } from "@/utils/format";
 import { PageTransition } from "@/components/PageTransition";
 import { useAuth } from "@/context/AuthContext";
+import { GmailStatusCard } from "@/components/GmailStatusCard";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({
@@ -63,7 +64,7 @@ function DashboardHome() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome{user?.name ? `, ${user.name.split(" ")[0]}` : ""} 
+            Welcome{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Here's a snapshot of your inbox intelligence.
@@ -74,6 +75,10 @@ function DashboardHome() {
             Run classifier <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
+      </div>
+
+      <div className="mt-6">
+        <GmailStatusCard />
       </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

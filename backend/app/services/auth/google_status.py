@@ -48,3 +48,37 @@ def get_google_status_service(
         "connected_at": _format_datetime(created_at),
         "last_updated": _format_datetime(updated_at),
     }
+
+
+def disconnect_google_service(
+    user_id: str, repo: GoogleAccountRepository | None = None
+) -> dict:
+    """
+    Disconnects Google Account for the given user_id.
+    """
+    if repo is None:
+        repo = GoogleAccountRepository()
+
+    repo.disconnect_account(user_id)
+
+    from app.db.mongodb import get_database
+    from app.core.config import settings
+    from bson import ObjectId
+
+    db = get_database()
+    users_col = db[settings.USER_COLLECTION_NAME]
+    if ObjectId.is_valid(user_id):
+        users_col.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {"google_connected": False, "updated_at": datetime.now(timezone.utc)}}
+        )
+    else:
+        users_col.update_one(
+            {"_id": user_id},
+            {"$set": {"google_connected": False, "updated_at": datetime.now(timezone.utc)}}
+        )
+
+    return {
+        "success": True,
+        "message": "Gmail account disconnected successfully"
+    }

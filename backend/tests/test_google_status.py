@@ -156,6 +156,43 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["detail"], "User not found")
 
+    def test_google_disconnect(self):
+        user_id = str(ObjectId())
+        user_doc = {
+            "_id": ObjectId(user_id),
+            "username": "testuser",
+            "email": "testuser@example.com",
+        }
+
+        mock_db = MagicMock()
+        mock_users_col = MagicMock()
+        mock_users_col.find_one.return_value = user_doc
+
+        mock_google_col = MagicMock()
+
+        def get_col(name):
+            if name == settings.USER_COLLECTION_NAME:
+                return mock_users_col
+            elif name == settings.GOOGLE_ACCOUNT_COLLECTION_NAME:
+                return mock_google_col
+            return MagicMock()
+
+        mock_db.__getitem__.side_effect = get_col
+
+        token = create_access_token(user_id=user_id, username="testuser")
+
+        with patch("app.dependencies.auth.get_database", return_value=mock_db), \
+             patch("app.repositories.google_account_repository.get_database", return_value=mock_db), \
+             patch("app.db.mongodb.get_database", return_value=mock_db):
+            response = self.client.post(
+                "/api/google/disconnect",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+
 
 if __name__ == "__main__":
     unittest.main()
