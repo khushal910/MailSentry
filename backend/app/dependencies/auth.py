@@ -16,6 +16,11 @@ async def get_current_user(request: Request) -> dict:
 
     token = request.cookies.get("access_token")
     if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required"
@@ -24,7 +29,7 @@ async def get_current_user(request: Request) -> dict:
     # decode_token raises HTTPException on invalid/expired tokens
     payload = decode_token(token)
 
-    user_id = payload.get("user_id")
+    user_id = payload.get("user_id") or payload.get("sub")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -35,7 +40,10 @@ async def get_current_user(request: Request) -> dict:
     users_col = db[settings.USER_COLLECTION_NAME]
 
     try:
-        user = users_col.find_one({"_id": ObjectId(user_id)})
+        if ObjectId.is_valid(user_id):
+            user = users_col.find_one({"_id": ObjectId(user_id)})
+        else:
+            user = users_col.find_one({"_id": user_id})
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -44,7 +52,7 @@ async def get_current_user(request: Request) -> dict:
 
     if user is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
 

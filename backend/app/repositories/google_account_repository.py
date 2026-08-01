@@ -5,6 +5,8 @@ from pymongo import ASCENDING
 from app.db.mongodb import get_database
 from app.core.config import settings
 
+from bson import ObjectId
+
 logger = logging.getLogger(__name__)
 
 class GoogleAccountRepository:
@@ -40,7 +42,10 @@ class GoogleAccountRepository:
         """
         Finds a Google account document by user_id.
         """
-        return self.collection.find_one({"user_id": user_id})
+        doc = self.collection.find_one({"user_id": str(user_id)})
+        if not doc and ObjectId.is_valid(user_id):
+            doc = self.collection.find_one({"user_id": ObjectId(user_id)})
+        return doc
 
     def upsert_account(
         self,

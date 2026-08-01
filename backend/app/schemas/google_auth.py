@@ -1,3 +1,4 @@
+
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 
@@ -38,3 +39,15 @@ class MailSentryUserSummarySchema(BaseModel):
 class GoogleAuthResponseData(BaseModel):
     """Data object returned upon successful Google OAuth callback."""
     user: MailSentryUserSummarySchema
+
+class GoogleStatusConnectedResponse(BaseModel):
+    """Response schema when Google account is connected."""
+    connected: bool = True
+    google_email: str
+    connected_at: str
+    last_updated: str
+
+class GoogleStatusNotConnectedResponse(BaseModel):
+    """Response schema when Google account is not connected."""
+    connected: bool = False
+

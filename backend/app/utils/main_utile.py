@@ -109,14 +109,12 @@ def decode_token(token: str) -> dict:
             )
 
             user_id = payload.get("user_id") or payload.get("sub")
-            username = payload.get("username")
 
-            if user_id is None or username is None:
+            if user_id is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid token payload"
                 )
-
 
             return payload
 
@@ -130,12 +128,13 @@ def decode_token(token: str) -> dict:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid access token"
-        
-        )
-            
+            )
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Error decoding token: {str(e)}"
         )
 
