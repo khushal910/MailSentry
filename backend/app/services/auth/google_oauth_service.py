@@ -131,7 +131,15 @@ class GoogleOAuthService:
     async def exchange_code_for_tokens(self, code: str) -> dict:
         """
         Exchanges the authorization code for tokens (access_token, refresh_token, id_token, expires_in).
+        - No code / Invalid code -> 400 Bad Request
+        - Google server error -> 500 Internal Server Error
         """
+        if not code or not code.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Authorization code is missing or empty."
+            )
+
         if not settings.GOOGLE_CLIENT_SECRET:
             logger.error("GOOGLE_CLIENT_SECRET environment variable is missing.")
             raise HTTPException(
@@ -152,12 +160,19 @@ class GoogleOAuthService:
                 resp = await client.post(GOOGLE_TOKEN_URL, data=payload)
                 data = resp.json()
 
+            if resp.status_code >= 500:
+                logger.error(f"Google OAuth server returned 5xx error: {resp.status_code}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Google server error while exchanging authorization code."
+                )
+
             if resp.status_code != 200 or "error" in data:
-                error_msg = data.get("error_description") or data.get("error") or "Unknown error"
+                error_msg = data.get("error_description") or data.get("error") or "Invalid authorization code"
                 logger.error(f"Failed to exchange authorization code: {error_msg}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid or expired authorization code: {error_msg}"
+                    detail=f"Invalid authorization code: {error_msg}"
                 )
 
             # Validate expected fields in token payload
@@ -169,42 +184,64 @@ class GoogleOAuthService:
                 )
 
             return data
+        except HTTPException:
+            raise
         except httpx.HTTPError as e:
             logger.error(f"HTTP error connecting to Google token endpoint: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to connect to Google OAuth service: {str(e)}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Google server error: {str(e)}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error during code exchange: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Google server error: {str(e)}"
             )
 
     def verify_id_token(self, id_token_str: str) -> dict:
         """
         Verifies Google's ID Token authenticity and extracts user profile data.
+        - Invalid ID Token -> 401 Unauthorized
+        - Email missing -> 400 Bad Request
         """
         try:
             req = google_requests.Request()
             user_info = google_id_token.verify_oauth2_token(
                 id_token_str, req, settings.GOOGLE_CLIENT_ID
             )
-
-            email = user_info.get("email")
-            if not email:
-                raise ValueError("Email missing from Google ID token payload.")
-
-            return {
-                "google_id": user_info.get("sub"),
-                "email": email,
-                "email_verified": user_info.get("email_verified", False),
-                "name": user_info.get("name"),
-                "picture": user_info.get("picture"),
-                "given_name": user_info.get("given_name"),
-                "family_name": user_info.get("family_name"),
-            }
-        except ValueError as e:
+        except Exception as e:
             logger.error(f"Invalid Google ID Token: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to verify Google ID Token: {str(e)}"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid Google ID Token: {str(e)}"
             )
+
+        email = user_info.get("email")
+        if not email:
+            logger.error("Email missing from Google ID token payload.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email missing from Google ID token payload."
+            )
+
+        google_user_id = user_info.get("sub")
+        if not google_user_id:
+            logger.error("Google user ID (sub) missing from ID token.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Google user ID missing from ID token."
+            )
+
+        return {
+            "google_id": google_user_id,
+            "email": email,
+            "email_verified": user_info.get("email_verified", False),
+            "name": user_info.get("name"),
+            "picture": user_info.get("picture"),
+            "given_name": user_info.get("given_name"),
+            "family_name": user_info.get("family_name"),
+        }
 
     def find_or_create_user(self, user_info: dict) -> dict:
         """

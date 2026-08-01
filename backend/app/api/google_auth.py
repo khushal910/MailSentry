@@ -103,10 +103,21 @@ async def google_callback(
 
     if error:
         logger.warning(f"Google OAuth authorization cancelled or failed: {error}")
+        if format == "json":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Google authorization failed: {error}"
+            )
         error_url = f"{frontend_base}/login?oauth_error={urllib.parse.quote(str(error))}"
         return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
 
-    if not code:
+    if not code or not code.strip():
+        logger.warning("Google callback invoked without authorization code.")
+        if format == "json":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Authorization code is missing"
+            )
         error_url = f"{frontend_base}/login?oauth_error=missing_code"
         return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
 
@@ -177,8 +188,6 @@ async def google_callback(
             return res
 
         # 8. Redirect to frontend /auth/callback with token as URL param.
-        #    This is the ONLY safe way to pass a token across origins in a browser
-        #    OAuth flow. The token is consumed immediately by the frontend page.
         encoded_token = urllib.parse.quote(jwt_token, safe="")
         redirect_url = f"{frontend_base}/auth/callback?token={encoded_token}"
 
@@ -190,6 +199,8 @@ async def google_callback(
         return redirect_resp
 
     except HTTPException as he:
+        if format == "json":
+            raise he
         logger.warning(
             "HTTPException in Google OAuth callback: status=%s detail=%s",
             he.status_code, he.detail
@@ -197,6 +208,8 @@ async def google_callback(
         error_url = f"{frontend_base}/login?oauth_error={urllib.parse.quote(str(he.detail))}"
         return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
     except Exception as e:
+        if format == "json":
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Google server error: {str(e)}")
         logger.error("Unexpected error in Google OAuth callback: %s", str(e), exc_info=True)
         error_url = f"{frontend_base}/login?oauth_error=server_error"
         return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)

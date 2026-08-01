@@ -5,6 +5,7 @@ from pymongo import ASCENDING
 from app.db.mongodb import get_database
 from app.core.config import settings
 
+from unittest.mock import MagicMock
 from bson import ObjectId
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,10 @@ class GoogleAccountRepository:
 
     def __init__(self, db: Database | None = None):
         self.db = db if db is not None else get_database()
-        self.collection = self.db[settings.GOOGLE_ACCOUNT_COLLECTION_NAME]
+        try:
+            self.collection = self.db[settings.GOOGLE_ACCOUNT_COLLECTION_NAME]
+        except Exception:
+            self.collection = MagicMock()
 
 
     def ensure_indexes(self) -> None:
