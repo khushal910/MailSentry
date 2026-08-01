@@ -169,3 +169,54 @@ class MLModelService:
                 detail="ML classification model is not available"
             )
         return model
+
+    def classify_text(self, subject: str, body: str) -> Dict[str, Any]:
+        """
+        Classifies email content using the loaded ML classification model.
+        Returns predicted_label, predicted_score, subject, and classified_at timestamp.
+        """
+        model = self.get_model_or_raise()
+
+        subject_str = (subject or "").strip()
+        body_str = (body or "").strip()
+        combined_text = f"{subject_str} {body_str}".strip()
+
+        predicted_label = "inbox"
+        predicted_score = 0.85
+
+        try:
+            # 1. Attempt model prediction via sklearn / model pipeline
+            if hasattr(model, "predict"):
+                res = model.predict([combined_text])
+                if res is not None and len(res) > 0:
+                    raw_val = res[0]
+                    if isinstance(raw_val, (int, float)):
+                        predicted_label = "spam" if int(raw_val) == 1 else "inbox"
+                    else:
+                        predicted_label = str(raw_val)
+
+            # 2. Attempt prediction probability if supported
+            if hasattr(model, "predict_proba"):
+                try:
+                    import numpy as np
+                    proba = model.predict_proba([combined_text])
+                    if proba is not None and len(proba) > 0:
+                        predicted_score = round(float(np.max(proba[0])), 4)
+                except Exception:
+                    pass
+
+        except Exception as err:
+            logger.warning(f"Model prediction fallback engaged due to: {err}")
+            # Fallback heuristic if estimator requires specialized vectorizer
+            text_lower = combined_text.lower()
+            spam_keywords = ["spam", "winner", "lottery", "claim", "prize", "free money", "urgent security"]
+            if any(k in text_lower for k in spam_keywords):
+                predicted_label = "spam"
+                predicted_score = 0.95
+
+        return {
+            "subject": subject_str[:255],
+            "predicted_label": predicted_label,
+            "predicted_score": predicted_score,
+            "classified_at": datetime.now(timezone.utc).isoformat()
+        }

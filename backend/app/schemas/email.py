@@ -59,3 +59,19 @@ class EmailResponseSchema(EmailBaseSchema):
 
     class Config:
         populate_by_name = True
+
+
+class ClassifyEmailRequestSchema(BaseModel):
+    """
+    Request payload schema for POST /api/classify-email.
+    """
+    subject: str = Field(default="", max_length=255, description="Email subject, max 255 chars")
+    body: str = Field(default="", description="Full or snippet of email body")
+
+    @field_validator("subject")
+    @classmethod
+    def truncate_subject(cls, v: str) -> str:
+        if v and len(v) > 255:
+            return v[:255]
+        return v or ""
+
