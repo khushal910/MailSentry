@@ -51,6 +51,13 @@ class Settings:
         RATE_LIMIT_WINDOW_MINUTES  = int(os.getenv("RATE_LIMIT_WINDOW_MINUTES", 15))
         OTP_EXPIRATION_MINUTES = int(os.getenv("OTP_EXPIRATION_MINUTES", 10))
 
+        # Gmail fetch pipeline guards
+        # Minimum seconds a user must wait between fetch calls (default 5 min)
+        FETCH_RATE_LIMIT_SECONDS = int(os.getenv("FETCH_RATE_LIMIT_SECONDS", 300))
+        # Maximum seconds a per-user concurrency lock may be held before auto-expiry
+        FETCH_LOCK_TTL_SECONDS = int(os.getenv("FETCH_LOCK_TTL_SECONDS", 60))
+
+
         # Google OAuth
         GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
         GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")

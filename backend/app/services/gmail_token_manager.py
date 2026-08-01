@@ -47,6 +47,9 @@ class GmailTokenManager:
         access_token_expiry = account_doc.get("access_token_expiry")
         now = datetime.now(timezone.utc)
 
+        if not isinstance(access_token_expiry, datetime):
+            access_token_expiry = None
+
         # Ensure datetime is timezone-aware
         if access_token_expiry and access_token_expiry.tzinfo is None:
             access_token_expiry = access_token_expiry.replace(tzinfo=timezone.utc)

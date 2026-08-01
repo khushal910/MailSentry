@@ -18,13 +18,22 @@ export interface GetEmailsResponse {
   count: number;
 }
 
+export interface FetchResult {
+  fetched: number;
+  classified: number;
+  skipped: number;
+}
+
 export const emailsApi = {
   /**
    * POST /api/gmail/fetch
-   * Triggers fetching of new emails from Gmail and stores them classified.
+   * Triggers fetching and classifying new emails from Gmail.
+   * Returns structured summary: { fetched, classified, skipped }.
+   * Throws on 403 (revoked) or 429 (rate limit / lock) — caller should handle.
    */
-  async fetchEmails(): Promise<void> {
-    await apiClient.post("/api/gmail/fetch");
+  async fetchEmails(): Promise<FetchResult> {
+    const { data } = await apiClient.post<{ data: FetchResult }>("/api/gmail/fetch");
+    return data.data ?? { fetched: 0, classified: 0, skipped: 0 };
   },
 
   /**
@@ -42,3 +51,4 @@ export const emailsApi = {
     return data.data;
   },
 };
+

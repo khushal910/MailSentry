@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { toast } from "sonner";
 import { PageTransition } from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
 import { EmailLabelBadge } from "@/components/EmailLabelBadge";
@@ -69,11 +70,25 @@ function AutoClassifierPage() {
     setIsFetching(true);
     setFetchError(null);
     try {
-      await emailsApi.fetchEmails();
+      const result = await emailsApi.fetchEmails();
+      // Inform user when Gmail had no new emails to process
+      if (result.fetched === 0) {
+        toast.info("No new emails to classify.", { duration: 4000 });
+      } else if (result.skipped > 0) {
+        toast.warning(
+          `${result.classified} email(s) classified, ${result.skipped} skipped due to errors.`,
+          { duration: 5000 },
+        );
+      }
       await loadEmails(1);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to fetch emails.";
-      setFetchError(msg);
+      // 429 rate-limit / concurrency → friendly toast, not a red banner
+      if (msg.toLowerCase().includes("wait")) {
+        toast.warning(msg, { duration: 5000 });
+      } else {
+        setFetchError(msg);
+      }
     } finally {
       setIsFetching(false);
     }

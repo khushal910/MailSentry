@@ -1,20 +1,39 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from app.dependencies.auth import get_current_user
 from app.dependencies.google_auth_deps import require_google_connected
+from app.services.gmail_fetch_service import GmailFetchService
 from app.utils.main_utile import return_response
 
 gmail_router = APIRouter()
 
 
-@gmail_router.post("/fetch", summary="Fetch emails from Gmail")
-async def fetch_emails(account: dict = Depends(require_google_connected)):
+@gmail_router.post("/fetch", summary="Fetch and classify emails from Gmail")
+async def fetch_emails(
+    current_user: dict = Depends(get_current_user),
+    account: dict = Depends(require_google_connected),
+):
     """
     POST /api/gmail/fetch
-    Verifies Gmail connection prior to fetching emails.
+    Fetches new emails from Gmail and classifies them using the ML model.
+
+    Enforces:
+    - Per-user concurrency lock (one fetch at a time)
+    - Rate limit: once every FETCH_RATE_LIMIT_SECONDS (default 5 min)
+    - Token auto-refresh; on revocation → disconnects account, returns 403
+    - Partial-failure tolerance: one bad email never aborts the batch
+
+    Returns:
+        fetched    — number of emails retrieved from Gmail
+        classified — number successfully classified and stored
+        skipped    — number that failed classification (logged individually)
     """
+    user_id = str(current_user["_id"])
+    service = GmailFetchService()
+    result = await service.run_fetch_pipeline(user_id=user_id, google_account=account)
     return return_response(
         status_code=status.HTTP_200_OK,
         message="Emails fetched successfully",
-        data={"google_email": account.get("google_email"), "emails": []}
+        data=result.to_dict(),
     )
 
 

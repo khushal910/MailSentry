@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any, Union
 from bson import ObjectId
@@ -118,6 +119,14 @@ class EmailRepository:
             logger.error(f"Error checking user access for user_id={user_id}: {str(e)}")
             return False
 
+    @staticmethod
+    def _strip_html(text: str) -> str:
+        """
+        Removes all HTML/XML tags from a string to prevent stored XSS.
+        e.g. '<b>Hello</b> world' -> 'Hello world'
+        """
+        return re.sub(r"<[^>]+>", "", text or "")
+
     def sanitize_email_data(self, email_input: Union[Dict[str, Any], EmailCreateSchema]) -> Dict[str, Any]:
         """
         Sanitizes and prepares email payload:
@@ -137,7 +146,7 @@ class EmailRepository:
         if not message_id:
             raise ValueError("message_id is required")
 
-        subject = data.get("subject") or ""
+        subject = self._strip_html(data.get("subject") or "")
         if len(subject) > 255:
             subject = subject[:255]
 
@@ -145,7 +154,7 @@ class EmailRepository:
         fetch_time = data.get("fetch_time") or now
         classified_at = data.get("classified_at") or now
 
-        snippet = data.get("snippet")
+        snippet = self._strip_html(data.get("snippet") or "") or None
         if snippet and len(snippet) > 1000:
             snippet = snippet[:1000]
 

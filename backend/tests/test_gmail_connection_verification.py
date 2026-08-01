@@ -67,19 +67,22 @@ class TestGmailConnectionVerification(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json().get("detail"), "Reconnect Gmail.")
 
+    @patch("app.services.gmail_token_manager.GmailTokenManager.get_valid_access_token", new_callable=unittest.mock.AsyncMock, return_value="mock_access_token")
     @patch("app.services.ml_model_service.MLModelService.get_model_or_raise")
-    def test_valid_connection_and_refresh_token_succeeds(self, mock_get_model):
+    def test_valid_connection_and_refresh_token_succeeds(self, mock_get_model, mock_get_token):
         """If valid google_account with refresh_token exists, operations succeed with 200 OK."""
         mock_get_model.return_value = MagicMock()
         mock_user = {"_id": self.user_id, "username": "testuser", "google_connected": True}
-        mock_repo = MagicMock()
-        mock_repo.find_by_user_id.return_value = {
+        mock_account = {
             "_id": "acc_123",
             "user_id": self.user_id,
             "google_email": "user@gmail.com",
             "refresh_token": "valid_encrypted_rt",
             "google_connected": True,
         }
+        mock_repo = MagicMock()
+        mock_repo.find_by_user_id.return_value = mock_account
+        mock_repo.find_by_email.return_value = mock_account
 
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_google_account_repository] = lambda: mock_repo
