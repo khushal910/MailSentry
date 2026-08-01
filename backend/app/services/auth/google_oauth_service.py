@@ -271,26 +271,25 @@ class GoogleOAuthService:
             except Exception:
                 pass
 
-            # Case 7 — User was deleted during OAuth flow
-            if not existing_user:
-                logger.error(f"User with user_id={current_user_id} was deleted during OAuth flow.")
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User account no longer exists."
-                )
-        else:
-            # Look up existing user by Google email when logging in via Google
+        # If current_user_id was not provided or invalid/stale, fall back to email lookup
+        if not existing_user:
             existing_user = users_col.find_one({"email": email})
+
 
         if existing_user:
             users_col.update_one(
                 {"_id": existing_user["_id"]},
                 {
-                    "$set": {"google_connected": True, "updated_at": now},
+                    "$set": {
+                        "google_connected": True,
+                        "updated_at": now,
+                        "last_login_at": now,
+                    },
                     "$addToSet": {"providers": "google"}
                 }
             )
             existing_user["google_connected"] = True
+            existing_user["last_login_at"] = now
             logger.info(f"Linked Google account ({email}) to user: {existing_user.get('_id')}")
             return existing_user
 
@@ -314,6 +313,7 @@ class GoogleOAuthService:
             "google_connected": True,
             "created_at": now,
             "updated_at": now,
+            "last_login_at": now,
         }
 
         try:
@@ -328,13 +328,19 @@ class GoogleOAuthService:
                 users_col.update_one(
                     {"_id": existing_user["_id"]},
                     {
-                        "$set": {"google_connected": True, "updated_at": now},
+                        "$set": {
+                            "google_connected": True,
+                            "updated_at": now,
+                            "last_login_at": now,
+                        },
                         "$addToSet": {"providers": "google"}
                     }
                 )
                 existing_user["google_connected"] = True
+                existing_user["last_login_at"] = now
                 return existing_user
             raise
+
 
     def persist_google_account(
         self,

@@ -195,13 +195,36 @@ class GoogleAccountRepository:
                 logger.info(f"Created new Google account in MongoDB: {email}")
                 return doc
         except DuplicateKeyError as dke:
-            logger.error(f"DuplicateKeyError in google_accounts: {str(dke)}")
+            logger.warning(f"DuplicateKeyError in google_accounts: {str(dke)}. Resolving by updating existing account.")
+            existing_doc = self.find_account(user_id=user_id, google_user_id=google_user_id, google_email=email)
+            if existing_doc:
+                update_fields = {
+                    "google_email": email,
+                    "access_token_expiry": access_token_expiry,
+                    "updated_at": now,
+                    "google_connected": True,
+                }
+                if google_user_id:
+                    update_fields["google_user_id"] = str(google_user_id)
+                if user_id:
+                    update_fields["user_id"] = str(user_id)
+                if encrypted_refresh_token and str(encrypted_refresh_token).strip():
+                    update_fields["refresh_token"] = str(encrypted_refresh_token).strip()
+
+                self.collection.update_one({"_id": existing_doc["_id"]}, {"$set": update_fields})
+                target_uid = user_id or existing_doc.get("user_id")
+                if target_uid:
+                    self.update_user_google_connected(target_uid, True, now)
+                updated = self.collection.find_one({"_id": existing_doc["_id"]})
+                return updated or existing_doc
+
             if user_id:
                 self.update_user_google_connected(user_id, False, now)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Google account is already linked to another user."
+                detail="Google account is already linked."
             )
+
         except HTTPException:
             if user_id:
                 self.update_user_google_connected(user_id, False, now)
