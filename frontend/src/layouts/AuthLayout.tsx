@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface AuthLayoutProps {
   title: string;
@@ -12,17 +13,23 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ title, subtitle, footer, children }: AuthLayoutProps) {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero px-4 py-12">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero px-4 py-12 text-foreground transition-colors duration-300">
       <div className="grid-pattern absolute inset-0 opacity-40" />
+
+      {/* Top right theme toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
+
       <div className="relative z-10 w-full max-w-md">
         <Link to="/" className="mb-8 flex justify-center">
           <BrandLogo />
         </Link>
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="glass-strong rounded-2xl p-8 shadow-elegant"
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="glass-strong rounded-2xl p-8 shadow-elegant border border-border/40 glow-card-hover"
         >
           <div className="mb-6">
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>

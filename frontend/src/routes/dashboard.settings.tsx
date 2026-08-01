@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Moon, Sun, Bell, Lock, Trash2 } from "lucide-react";
+import { Moon, Sun, Bell, Lock, Trash2, Eye, EyeOff } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -19,6 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 
 export const Route = createFileRoute("/dashboard/settings")({
   head: () => ({
@@ -31,11 +32,33 @@ export const Route = createFileRoute("/dashboard/settings")({
 });
 
 function SettingsPage() {
-  const [dark, setDark] = useState(true);
-  const [email, setEmailNotif] = useState(true);
-  const [push, setPushNotif] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const [emailNotif, setEmailNotif] = useState(true);
+  const [pushNotif, setPushNotif] = useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
+
+  // Password visibility states
+  const [showCurPass, setShowCurPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+
+  // Form input states
+  const [curPass, setCurPass] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [confirmPass, setConfirmPass] = useState("");
+
+  const handlePasswordUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPass && newPass !== confirmPass) {
+      toast.error("New passwords do not match");
+      return;
+    }
+    toast.success("Password updated successfully");
+    setCurPass("");
+    setNewPass("");
+    setConfirmPass("");
+  };
 
   return (
     <PageTransition>
@@ -55,14 +78,14 @@ function SettingsPage() {
           </div>
           <SettingsRow
             title="Dark mode"
-            description="MailSentry is optimized for dark. Light mode is coming soon."
+            description="Toggle between Light and Dark themes across MailSentry."
             right={
               <div className="flex items-center gap-2">
                 <Switch
-                  checked={dark}
+                  checked={theme === "dark"}
                   onCheckedChange={(v) => {
-                    setDark(v);
-                    toast.info(v ? "Dark mode enabled" : "Light mode coming soon");
+                    setTheme(v ? "dark" : "light");
+                    toast.success(v ? "Dark mode enabled" : "Light mode enabled");
                   }}
                 />
                 <Moon className="h-4 w-4 text-muted-foreground" />
@@ -80,12 +103,12 @@ function SettingsPage() {
           <SettingsRow
             title="Email notifications"
             description="Get an email when suspicious activity is detected."
-            right={<Switch checked={email} onCheckedChange={setEmailNotif} />}
+            right={<Switch checked={emailNotif} onCheckedChange={setEmailNotif} />}
           />
           <SettingsRow
             title="Push notifications"
             description="Real-time browser alerts for high-risk predictions."
-            right={<Switch checked={push} onCheckedChange={setPushNotif} />}
+            right={<Switch checked={pushNotif} onCheckedChange={setPushNotif} />}
           />
         </section>
 
@@ -95,22 +118,74 @@ function SettingsPage() {
             <Lock className="h-4 w-4 text-brand" />
             <h2 className="text-base font-semibold">Security</h2>
           </div>
-          <form
-            className="grid gap-3 sm:grid-cols-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              toast.success("Password updated");
-            }}
-          >
-            <div className="space-y-2">
+          <form className="grid gap-4 sm:grid-cols-2" onSubmit={handlePasswordUpdate}>
+            <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="cur">Current password</Label>
-              <Input id="cur" type="password" placeholder="••••••••" />
+              <div className="relative">
+                <Input
+                  id="cur"
+                  type={showCurPass ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={curPass}
+                  onChange={(e) => setCurPass(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurPass(!showCurPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showCurPass ? "Hide current password" : "Show current password"}
+                >
+                  {showCurPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="new">New password</Label>
-              <Input id="new" type="password" placeholder="••••••••" />
+              <div className="relative">
+                <Input
+                  id="new"
+                  type={showNewPass ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={newPass}
+                  onChange={(e) => setNewPass(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPass(!showNewPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showNewPass ? "Hide new password" : "Show new password"}
+                >
+                  {showNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
-            <div className="sm:col-span-2">
+
+            <div className="space-y-2">
+              <Label htmlFor="confirm">Confirm new password</Label>
+              <div className="relative">
+                <Input
+                  id="confirm"
+                  type={showConfirmPass ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={confirmPass}
+                  onChange={(e) => setConfirmPass(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPass(!showConfirmPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showConfirmPass ? "Hide confirm password" : "Show confirm password"}
+                >
+                  {showConfirmPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="sm:col-span-2 pt-1">
               <Button type="submit" className="bg-gradient-brand shadow-elegant">
                 Update password
               </Button>

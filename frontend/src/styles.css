@@ -51,22 +51,72 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* MailSentry — Dark, enterprise-grade design tokens */
+/* MailSentry — Light & Dark Theme System Tokens */
 :root {
   --radius: 0.85rem;
 
-  /* Base surfaces */
+  /* Default Light Theme variables */
+  --background: oklch(0.985 0.005 250);         /* ~ #F8FAFC */
+  --foreground: oklch(0.2 0.02 260);            /* ~ #0F172A */
+  --card: oklch(1 0 0 / 0.85);                   /* glass card light */
+  --card-foreground: oklch(0.2 0.02 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.02 260);
+
+  /* Brand Colors */
+  --brand: oklch(0.55 0.22 275);                /* #4F46E5 Indigo */
+  --brand-foreground: oklch(0.985 0.002 285);
+  --cyan: oklch(0.65 0.18 210);                 /* #06B6D4 Cyan */
+
+  --primary: oklch(0.55 0.22 275);
+  --primary-foreground: oklch(0.985 0.002 285);
+  --secondary: oklch(0.94 0.01 250);
+  --secondary-foreground: oklch(0.2 0.02 260);
+  --muted: oklch(0.95 0.01 250);
+  --muted-foreground: oklch(0.45 0.02 260);
+  --accent: oklch(0.93 0.02 275);
+  --accent-foreground: oklch(0.2 0.02 260);
+  --destructive: oklch(0.6 0.24 25);
+  --destructive-foreground: oklch(0.985 0.002 285);
+  --success: oklch(0.62 0.18 155);
+  --success-foreground: oklch(0.985 0.002 285);
+  --warning: oklch(0.7 0.18 80);
+  --warning-foreground: oklch(0.15 0.02 80);
+  --border: oklch(0.88 0.01 250 / 0.8);
+  --input: oklch(0.9 0.01 250 / 0.8);
+  --ring: oklch(0.55 0.22 275);
+
+  --sidebar: oklch(0.98 0.005 250 / 0.9);
+  --sidebar-foreground: oklch(0.2 0.02 260);
+  --sidebar-primary: oklch(0.55 0.22 275);
+  --sidebar-primary-foreground: oklch(0.985 0.002 285);
+  --sidebar-accent: oklch(0.93 0.02 275);
+  --sidebar-accent-foreground: oklch(0.2 0.02 260);
+  --sidebar-border: oklch(0.88 0.01 250 / 0.6);
+  --sidebar-ring: oklch(0.55 0.22 275);
+
+  /* Gradients & Shadows */
+  --gradient-brand: linear-gradient(135deg, oklch(0.55 0.22 275), oklch(0.65 0.18 210));
+  --gradient-hero: radial-gradient(60% 60% at 50% 0%, oklch(0.55 0.22 275 / 0.15), transparent 70%),
+                   radial-gradient(50% 50% at 100% 30%, oklch(0.65 0.18 210 / 0.12), transparent 70%),
+                   linear-gradient(180deg, oklch(0.985 0.005 250), oklch(0.96 0.005 250));
+  --gradient-glow: radial-gradient(400px 200px at 50% 0%, oklch(0.55 0.22 275 / 0.2), transparent 70%);
+  --shadow-elegant: 0 20px 60px -20px oklch(0.55 0.22 275 / 0.2);
+  --shadow-soft: 0 10px 40px -10px oklch(0 0 0 / 0.08);
+}
+
+/* Dark Theme Variables */
+.dark {
   --background: oklch(0.145 0.006 285);         /* ~ #09090B */
   --foreground: oklch(0.985 0.002 285);
-  --card: oklch(0.19 0.008 285 / 0.6);          /* glass card */
+  --card: oklch(0.19 0.008 285 / 0.6);          /* glass card dark */
   --card-foreground: oklch(0.985 0.002 285);
   --popover: oklch(0.17 0.008 285);
   --popover-foreground: oklch(0.985 0.002 285);
 
-  /* Brand */
-  --brand: oklch(0.55 0.22 275);                /* #4F46E5 indigo */
+  --brand: oklch(0.55 0.22 275);                /* #4F46E5 */
   --brand-foreground: oklch(0.985 0.002 285);
-  --cyan: oklch(0.75 0.14 210);                 /* #06B6D4 cyan */
+  --cyan: oklch(0.75 0.14 210);                 /* #06B6D4 */
 
   --primary: oklch(0.55 0.22 275);
   --primary-foreground: oklch(0.985 0.002 285);
@@ -95,7 +145,6 @@
   --sidebar-border: oklch(1 0 0 / 0.06);
   --sidebar-ring: oklch(0.55 0.22 275);
 
-  /* Gradients & shadows */
   --gradient-brand: linear-gradient(135deg, oklch(0.55 0.22 275), oklch(0.75 0.14 210));
   --gradient-hero: radial-gradient(60% 60% at 50% 0%, oklch(0.55 0.22 275 / 0.28), transparent 70%),
                    radial-gradient(50% 50% at 100% 30%, oklch(0.75 0.14 210 / 0.18), transparent 70%),
@@ -103,11 +152,6 @@
   --gradient-glow: radial-gradient(400px 200px at 50% 0%, oklch(0.55 0.22 275 / 0.35), transparent 70%);
   --shadow-elegant: 0 20px 60px -20px oklch(0.55 0.22 275 / 0.35);
   --shadow-soft: 0 10px 40px -10px oklch(0 0 0 / 0.5);
-}
-
-/* Force dark theme app-wide (MVP is dark-only per spec) */
-html {
-  color-scheme: dark;
 }
 
 @layer base {
@@ -122,6 +166,7 @@ html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   ::selection {
@@ -129,17 +174,17 @@ html {
   }
 }
 
-/* Reusable design tokens as utilities */
+/* Reusable Glassmorphism & Gradient Utilities */
 @utility glass {
-  background: oklch(0.2 0.01 285 / 0.5);
+  background: var(--card);
   backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid oklch(1 0 0 / 0.08);
+  border: 1px solid var(--border);
 }
 
 @utility glass-strong {
-  background: oklch(0.18 0.01 285 / 0.75);
+  background: var(--card);
   backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid oklch(1 0 0 / 0.1);
+  border: 1px solid var(--border);
 }
 
 @utility gradient-text {
@@ -170,4 +215,41 @@ html {
     linear-gradient(oklch(1 0 0 / 0.04) 1px, transparent 1px),
     linear-gradient(90deg, oklch(1 0 0 / 0.04) 1px, transparent 1px);
   background-size: 40px 40px;
+}
+
+/* Vibrant Multi-Color Gradient Utilities */
+.gradient-indigo-cyan {
+  background-image: linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%);
+}
+.gradient-purple-pink {
+  background-image: linear-gradient(135deg, #9333EA 0%, #EC4899 100%);
+}
+.gradient-blue-purple {
+  background-image: linear-gradient(135deg, #2563EB 0%, #8B5CF6 100%);
+}
+.gradient-cyan-blue {
+  background-image: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
+}
+.gradient-emerald-cyan {
+  background-image: linear-gradient(135deg, #10B981 0%, #06B6D4 100%);
+}
+
+/* Glowing Card & Vibrant Multi-Color Hover Effects */
+.glow-card-hover {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
+}
+.glow-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px -10px rgba(79, 70, 229, 0.25), 0 0 20px -2px rgba(6, 182, 212, 0.2);
+  border-color: rgba(79, 70, 229, 0.35);
+}
+
+/* Animated Gradient Button Border */
+.btn-gradient-glow {
+  position: relative;
+  transition: all 0.3s ease;
+}
+.btn-gradient-glow:hover {
+  box-shadow: 0 0 25px 2px rgba(79, 70, 229, 0.4), 0 0 15px -1px rgba(6, 182, 212, 0.3);
+  transform: scale(1.015);
 }

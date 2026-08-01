@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DashboardSidebar } from "./DashboardSidebar";
+import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
 
 export function DashboardTopbar() {
@@ -28,10 +29,10 @@ export function DashboardTopbar() {
       .toUpperCase() || "MS";
 
   return (
-    <header className="glass sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 px-4 md:px-6">
+    <header className="glass sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/60 px-4 md:px-6 transition-colors duration-300">
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger asChild>
-          <button className="rounded-md p-2 md:hidden" aria-label="Open menu">
+          <button className="rounded-lg p-2 hover:bg-accent/40 md:hidden" aria-label="Open menu">
             <Menu className="h-5 w-5" />
           </button>
         </SheetTrigger>
@@ -44,22 +45,24 @@ export function DashboardTopbar() {
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search…"
-          className="h-9 pl-9"
+          className="h-9 pl-9 bg-background/50 border-border/60 focus:border-brand"
           aria-label="Search"
         />
       </div>
       <div className="flex-1 md:hidden" />
 
-      <button className="relative rounded-md p-2 text-muted-foreground hover:text-foreground">
+      <ThemeToggle />
+
+      <button className="relative rounded-lg p-2 text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors">
         <Bell className="h-4 w-4" />
         <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-brand" />
       </button>
 
       <DropdownMenu>
         <DropdownMenuTrigger className="focus-visible:outline-none">
-          <Avatar className="h-8 w-8 border border-border/60">
+          <Avatar className="h-8 w-8 border border-border/60 hover:ring-2 hover:ring-brand/40 transition-all">
             <AvatarImage src={user?.avatarUrl} />
-            <AvatarFallback className="bg-brand/20 text-xs text-foreground">
+            <AvatarFallback className="bg-brand/20 text-xs font-semibold text-foreground">
               {initials}
             </AvatarFallback>
           </Avatar>

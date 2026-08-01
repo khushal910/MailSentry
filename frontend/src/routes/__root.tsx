@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../context/AuthContext";
 import { PredictionProvider } from "../context/PredictionContext";
+import { ThemeProvider } from "../context/ThemeContext";
 
 function NotFoundComponent() {
   return (
@@ -113,11 +114,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
         <HeadContent />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased">
+      <body className="min-h-screen bg-background text-foreground antialiased transition-colors duration-300">
         {children}
         <Scripts />
       </body>
@@ -130,12 +131,14 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <PredictionProvider>
-          <Outlet />
-          <Toaster theme="dark" position="top-right" richColors closeButton />
-        </PredictionProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <PredictionProvider>
+            <Outlet />
+            <Toaster position="top-right" richColors closeButton />
+          </PredictionProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

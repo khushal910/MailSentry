@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 import { PublicLayout } from "@/layouts/PublicLayout";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
@@ -69,49 +70,60 @@ function PricingPage() {
           </p>
         </div>
 
-        <div className="mt-14 grid gap-4 md:grid-cols-3">
-          {tiers.map((t) => (
-            <div
+        <div className="mt-14 grid gap-6 md:grid-cols-3">
+          {tiers.map((t, i) => (
+            <motion.div
               key={t.name}
-              className={`glass rounded-2xl p-6 ${
-                t.featured ? "border-brand/40 shadow-elegant" : ""
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.35, delay: i * 0.08 }}
+              className={`glass glow-card-hover rounded-2xl p-6 flex flex-col justify-between ${
+                t.featured
+                  ? "border-brand/50 bg-brand/5 shadow-elegant relative overflow-hidden"
+                  : "border-border/60"
               }`}
             >
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">{t.name}</h3>
-                {t.featured && (
-                  <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs text-brand">
-                    Popular
-                  </span>
-                )}
+              {t.featured && (
+                <div className="absolute -top-12 -right-12 h-32 w-32 bg-gradient-brand opacity-20 blur-2xl pointer-events-none" />
+              )}
+              <div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold">{t.name}</h3>
+                  {t.featured && (
+                    <span className="rounded-full bg-brand/15 border border-brand/30 px-2.5 py-0.5 text-xs font-semibold text-brand">
+                      Popular
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-sm text-muted-foreground">{t.desc}</p>
+                <div className="mt-6 flex items-baseline gap-1">
+                  <span className="text-4xl font-bold tracking-tight">{t.price}</span>
+                  <span className="text-sm text-muted-foreground">{t.period}</span>
+                </div>
+                <ul className="mt-6 space-y-2.5 text-sm">
+                  {t.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-muted-foreground">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">{t.desc}</p>
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className="text-4xl font-bold tracking-tight">{t.price}</span>
-                <span className="text-sm text-muted-foreground">{t.period}</span>
-              </div>
-              <ul className="mt-6 space-y-2 text-sm">
-                {t.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-muted-foreground">
-                    <Check className="mt-0.5 h-4 w-4 text-success" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
               <Button
                 asChild
-                className={`mt-8 w-full ${t.featured ? "bg-gradient-brand" : ""}`}
+                className={`mt-8 w-full ${t.featured ? "bg-gradient-brand shadow-elegant btn-gradient-glow" : "glass"}`}
                 variant={t.featured ? "default" : "outline"}
               >
                 <Link to="/signup">Get {t.name}</Link>
               </Button>
-            </div>
+            </motion.div>
           ))}
         </div>
 
         <div className="mx-auto mt-14 max-w-2xl text-center text-sm text-muted-foreground">
           Need something custom?{" "}
-          <Link to="/contact" className="text-brand hover:underline">
+          <Link to="/contact" className="text-brand font-medium hover:underline">
             Talk to sales
           </Link>
           .
