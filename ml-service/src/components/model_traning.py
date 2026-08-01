@@ -275,13 +275,30 @@ class ModelTrainer:
 
     def save_best_model(self, winner: _ModelEvaluation, should_save: bool) -> None:
         """
-        Save the best model to the configured production model path.
+        Save the best model to the configured production model path,
+        registering version in DB, running test mode verification, and cleaning up old versions.
         """
         try:
             if should_save:
                 logger.info("Saving best model to: %s", self.train_model_config.trained_model_file_path)
                 save_object(self.train_model_config.trained_model_file_path, winner.model)
                 save_object(self.train_model_config.trained_model_backend_path, winner.model)
+
+                # Attempt to register via MLModelService
+                try:
+                    backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "backend"))
+                    if backend_path not in sys.path:
+                        sys.path.insert(0, backend_path)
+                    from app.services.ml_model_service import MLModelService
+                    service = MLModelService()
+                    service.save_and_register_model(
+                        model_obj=winner.model,
+                        model_name=winner.name or "spam_classifier",
+                        metrics=winner.metrics
+                    )
+                    logger.info("Successfully registered model via MLModelService.")
+                except Exception as ml_err:
+                    logger.warning(f"Could not register model via MLModelService: {ml_err}")
             else:
                 logger.info("Keeping existing production model unchanged.")
         except Exception as exc:

@@ -13,9 +13,14 @@ async def lifespan(app: FastAPI):
     MongoDB.connect()
     try:
         from app.repositories.email_repository import EmailRepository
+        from app.repositories.model_repository import ModelRepository
+        from app.services.ml_model_service import MLModelService
+
         EmailRepository().ensure_indexes()
+        ModelRepository().ensure_indexes()
+        MLModelService().load_latest_model()
     except Exception as e:
-        print(f"Index creation warning: {e}")
+        print(f"Startup initialization warning: {e}")
     yield
     MongoDB.disconnect()
 

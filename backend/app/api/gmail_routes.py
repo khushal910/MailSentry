@@ -23,7 +23,13 @@ async def classify_emails(account: dict = Depends(require_google_connected)):
     """
     POST /api/gmail/classify
     Verifies Gmail connection prior to classifying emails.
+    Verifies ML model availability; returns 500 error if model file is missing or corrupted.
     """
+    from app.services.ml_model_service import MLModelService
+    model_service = MLModelService()
+    # Raises HTTPException(500, detail="ML classification model is not available") if missing/corrupted
+    model = model_service.get_model_or_raise()
+
     return return_response(
         status_code=status.HTTP_200_OK,
         message="Emails classified successfully",

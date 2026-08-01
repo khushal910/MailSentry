@@ -67,8 +67,10 @@ class TestGmailConnectionVerification(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json().get("detail"), "Reconnect Gmail.")
 
-    def test_valid_connection_and_refresh_token_succeeds(self):
+    @patch("app.services.ml_model_service.MLModelService.get_model_or_raise")
+    def test_valid_connection_and_refresh_token_succeeds(self, mock_get_model):
         """If valid google_account with refresh_token exists, operations succeed with 200 OK."""
+        mock_get_model.return_value = MagicMock()
         mock_user = {"_id": self.user_id, "username": "testuser", "google_connected": True}
         mock_repo = MagicMock()
         mock_repo.find_by_user_id.return_value = {

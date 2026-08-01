@@ -26,6 +26,11 @@ class Settings:
         DATABASE_NAME = os.getenv("DATABASE_NAME")
         USER_COLLECTION_NAME = os.getenv("USER_COLLECTION_NAME", "users")
         EMAIL_COLLECTION_NAME = os.getenv("EMAIL_COLLECTION_NAME", "emails")
+        MODEL_COLLECTION_NAME = os.getenv("MODEL_COLLECTION_NAME", "models")
+        MODELS_DIR = os.getenv(
+            "MODELS_DIR",
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
+        )
         
         PASSWORD_LENGTH = int(os.getenv("PASSWORD_LENGTH", 8))
         PASSWORD_RULE_APPLY = os.getenv("PASSWORD_RULE_APPLY") == "True"
