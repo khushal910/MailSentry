@@ -285,7 +285,10 @@ class GoogleOAuthService:
         if existing_user:
             users_col.update_one(
                 {"_id": existing_user["_id"]},
-                {"$set": {"google_connected": True, "updated_at": now}}
+                {
+                    "$set": {"google_connected": True, "updated_at": now},
+                    "$addToSet": {"providers": "google"}
+                }
             )
             existing_user["google_connected"] = True
             logger.info(f"Linked Google account ({email}) to user: {existing_user.get('_id')}")
@@ -305,6 +308,7 @@ class GoogleOAuthService:
             "username": username,
             "email": email,
             "password": None,  # OAuth login
+            "providers": ["google"],
             "role": "user",
             "is_active": True,
             "google_connected": True,
@@ -323,7 +327,10 @@ class GoogleOAuthService:
             if existing_user:
                 users_col.update_one(
                     {"_id": existing_user["_id"]},
-                    {"$set": {"google_connected": True, "updated_at": now}}
+                    {
+                        "$set": {"google_connected": True, "updated_at": now},
+                        "$addToSet": {"providers": "google"}
+                    }
                 )
                 existing_user["google_connected"] = True
                 return existing_user
