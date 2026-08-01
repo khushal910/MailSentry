@@ -5,6 +5,7 @@ export interface ClassifiedEmail {
   thread_id?: string | null;
   subject: string;
   snippet?: string | null;
+  sender?: string | null;
   predicted_label: string;
   predicted_score?: number | null;
   fetch_time?: string;

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Menu, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -15,11 +14,15 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
+import { useGlobalSearch } from "@/hooks/useGlobalSearch";
+import { GlobalSearchModal } from "@/components/search/GlobalSearchModal";
 
 export function DashboardTopbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const searchState = useGlobalSearch();
+
   const initials =
     user?.name
       ?.split(" ")
@@ -41,14 +44,28 @@ export function DashboardTopbar() {
         </SheetContent>
       </Sheet>
 
-      <div className="relative hidden max-w-md flex-1 md:block">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search…"
-          className="h-9 pl-9 bg-background/50 border-border/60 focus:border-brand"
-          aria-label="Search"
-        />
-      </div>
+      {/* Global Command Palette Trigger — Desktop */}
+      <button
+        onClick={searchState.openSearch}
+        className="relative hidden max-w-md flex-1 md:flex items-center h-9 w-full rounded-xl border border-border/60 bg-background/50 px-3 py-1.5 text-xs text-muted-foreground transition-all hover:bg-accent/40 hover:border-brand/40 focus-visible:outline-none"
+        aria-label="Global Command Palette Search"
+      >
+        <Search className="mr-2.5 h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="flex-1 text-left font-medium">Search emails, commands, settings...</span>
+        <kbd className="inline-flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+          <span className="text-xs">⌘</span>K
+        </kbd>
+      </button>
+
+      {/* Mobile Search Button */}
+      <button
+        onClick={searchState.openSearch}
+        className="rounded-lg p-2 text-muted-foreground hover:bg-accent/40 hover:text-foreground md:hidden"
+        aria-label="Open Global Search"
+      >
+        <Search className="h-5 w-5" />
+      </button>
+
       <div className="flex-1 md:hidden" />
 
       <ThemeToggle />
@@ -87,6 +104,9 @@ export function DashboardTopbar() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Global Command Palette Search Modal */}
+      <GlobalSearchModal {...searchState} />
     </header>
   );
 }
