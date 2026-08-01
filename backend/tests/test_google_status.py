@@ -193,6 +193,38 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
         data = response.json()
         self.assertTrue(data["success"])
 
+    def test_google_connect_redirect(self):
+        mock_db = MagicMock()
+        mock_col = MagicMock()
+        mock_db.__getitem__.return_value = mock_col
+
+        with patch.object(settings, "GOOGLE_CLIENT_ID", "mock_client_id"), \
+             patch("app.repositories.google_account_repository.get_database", return_value=mock_db):
+            response = self.client.get("/api/google/connect", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        location = response.headers.get("location", "")
+        self.assertTrue(location.startswith("https://accounts.google.com/o/oauth2/v2/auth"))
+        self.assertIn("access_type=offline", location)
+        self.assertIn("prompt=consent", location)
+
+    def test_google_connect_json_format(self):
+        mock_db = MagicMock()
+        mock_col = MagicMock()
+        mock_db.__getitem__.return_value = mock_col
+
+        with patch.object(settings, "GOOGLE_CLIENT_ID", "mock_client_id"), \
+             patch("app.repositories.google_account_repository.get_database", return_value=mock_db):
+            response = self.client.get("/api/google/connect?format=json")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        url = data["data"]["url"]
+        self.assertTrue(url.startswith("https://accounts.google.com/o/oauth2/v2/auth"))
+        self.assertIn("access_type=offline", url)
+        self.assertIn("prompt=consent", url)
+
 
 if __name__ == "__main__":
     unittest.main()

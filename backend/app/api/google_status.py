@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Request, Query, Depends, status
+from fastapi.responses import RedirectResponse
 from app.dependencies.auth import get_current_user
+from app.dependencies.google_auth_deps import get_google_oauth_service
+from app.services.auth.google_oauth_service import GoogleOAuthService
 from app.services.auth.google_status import (
     get_google_status_service,
     disconnect_google_service,
@@ -8,8 +11,58 @@ from app.schemas.google_auth import (
     GoogleStatusConnectedResponse,
     GoogleStatusNotConnectedResponse,
 )
+from app.utils.main_utile import return_response
 
 google_status_router = APIRouter()
+
+
+@google_status_router.get(
+    "/connect",
+    summary="Generate Google OAuth URL with prompt=consent and access_type=offline and redirect",
+)
+async def connect_google(
+    request: Request,
+    user_id: str | None = Query(None),
+    google_email: str | None = Query(None),
+    format: str | None = Query(None),
+    service: GoogleOAuthService = Depends(get_google_oauth_service),
+):
+    """
+    GET /api/google/connect
+
+    Initiates Google OAuth flow to connect or reconnect Gmail.
+    - Uses access_type=offline and prompt=consent.
+    - Performs zero database changes.
+    - If format=json, returns {"url": auth_url}.
+    - Otherwise redirects (302) to Google.
+    """
+    if not user_id:
+        token = request.cookies.get("access_token")
+        if not token:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.split(" ", 1)[1].strip()
+
+        if token:
+            try:
+                from app.utils.main_utile import decode_token
+                payload = decode_token(token)
+                user_id = payload.get("user_id") or payload.get("sub")
+            except Exception:
+                pass
+
+    state, auth_url = service.generate_connect_url_with_state(
+        user_id=user_id, google_email=google_email
+    )
+
+    if format == "json":
+        return return_response(
+            status_code=status.HTTP_200_OK,
+            message="Google connect URL generated successfully",
+            data={"url": auth_url, "state": state}
+        )
+
+    return RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
 
 
 @google_status_router.get(

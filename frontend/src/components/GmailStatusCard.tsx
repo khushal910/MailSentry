@@ -18,6 +18,7 @@ export function GmailStatusCard() {
   const [statusData, setStatusData] = useState<GoogleStatusResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState<boolean>(false);
   const [disconnecting, setDisconnecting] = useState<boolean>(false);
 
   const fetchStatus = useCallback(async () => {
@@ -37,8 +38,17 @@ export function GmailStatusCard() {
     fetchStatus();
   }, [fetchStatus]);
 
-  const handleConnect = () => {
-    googleAuthApi.initiateConnect();
+  const handleConnect = async () => {
+    setConnecting(true);
+    setError(null);
+    try {
+      await googleAuthApi.initiateConnect();
+    } catch (err: any) {
+      const msg = err?.message || "Failed to connect to Google OAuth service. Please retry.";
+      setError(msg);
+      toast.error(msg);
+      setConnecting(false);
+    }
   };
 
   const handleDisconnect = async () => {
@@ -81,7 +91,7 @@ export function GmailStatusCard() {
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-foreground text-sm">Failed to Load Status</h3>
+              <h3 className="font-semibold text-foreground text-sm">Gmail Connection Error</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{error}</p>
             </div>
           </div>
@@ -137,15 +147,16 @@ export function GmailStatusCard() {
           <div className="flex items-center gap-2.5 pt-2 sm:pt-0">
             <Button
               onClick={handleConnect}
+              disabled={connecting}
               size="sm"
               className="bg-gradient-brand shadow-elegant text-xs font-medium"
             >
-              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-              Reconnect
+              <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${connecting ? "animate-spin" : ""}`} />
+              {connecting ? "Connecting…" : "Reconnect"}
             </Button>
             <Button
               onClick={handleDisconnect}
-              disabled={disconnecting}
+              disabled={disconnecting || connecting}
               variant="outline"
               size="sm"
               className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
@@ -189,11 +200,12 @@ export function GmailStatusCard() {
         <div className="pt-2 sm:pt-0">
           <Button
             onClick={handleConnect}
+            disabled={connecting}
             size="sm"
             className="bg-gradient-brand shadow-elegant text-xs font-medium w-full sm:w-auto"
           >
-            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-            Connect Gmail
+            <ExternalLink className={`mr-1.5 h-3.5 w-3.5 ${connecting ? "animate-spin" : ""}`} />
+            {connecting ? "Connecting…" : "Connect Gmail"}
           </Button>
         </div>
       </div>

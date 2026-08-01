@@ -78,6 +78,37 @@ class GoogleOAuthService:
         auth_url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
         return state, auth_url
 
+    def generate_connect_url_with_state(
+        self, user_id: str | None = None, google_email: str | None = None
+    ) -> tuple[str, str]:
+        """
+        Generates OAuth authorization URL specifically for connecting/reconnecting Gmail.
+        Forces access_type="offline" and prompt="consent".
+        Makes NO database changes.
+        """
+        if not settings.GOOGLE_CLIENT_ID:
+            logger.error("GOOGLE_CLIENT_ID environment variable is missing.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Google Client ID is not configured on the server."
+            )
+
+        state = generate_oauth_state()
+
+        params = {
+            "client_id": settings.GOOGLE_CLIENT_ID,
+            "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+            "response_type": "code",
+            "scope": " ".join(SCOPES),
+            "access_type": "offline",
+            "prompt": "consent",
+            "state": state,
+        }
+
+        auth_url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
+        logger.info("Generated Google OAuth connect URL with access_type=offline and prompt=consent.")
+        return state, auth_url
+
     def generate_auth_url(
         self, response: Response, user_id: str | None = None, google_email: str | None = None
     ) -> str:

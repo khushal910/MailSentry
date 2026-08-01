@@ -26,6 +26,32 @@ export const googleAuthApi = {
   },
 
   /**
+   * GET /api/google/connect
+   * Generates Google OAuth connect URL with access_type=offline & prompt=consent.
+   */
+  async getConnectUrl(): Promise<string> {
+    const { data } = await apiClient.get<{
+      success: boolean;
+      data?: { url: string };
+      url?: string;
+    }>("/api/google/connect?format=json");
+
+    const url = data?.data?.url || (data as any)?.url;
+    if (!url) {
+      throw new Error("Failed to generate Google connection URL.");
+    }
+    return url;
+  },
+
+  /**
+   * Initiates Google OAuth connection by calling GET /api/google/connect and redirecting user.
+   */
+  async initiateConnect(): Promise<void> {
+    const url = await this.getConnectUrl();
+    window.location.href = url;
+  },
+
+  /**
    * POST /api/google/disconnect
    * Disconnects Google account for the authenticated user.
    */
@@ -34,16 +60,5 @@ export const googleAuthApi = {
       "/api/google/disconnect"
     );
     return data;
-  },
-
-  /**
-   * Redirects browser to backend Google OAuth login flow.
-   */
-  initiateConnect() {
-    const rawBase =
-      (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_URL) ||
-      "http://localhost:8000";
-    const backendUrl = rawBase.replace("127.0.0.1", "localhost");
-    window.location.href = `${backendUrl}/auth/google/login`;
   },
 };
