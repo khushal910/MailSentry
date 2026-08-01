@@ -39,6 +39,7 @@ export const Route = createFileRoute("/dashboard/auto-classifier")({
 });
 
 type PageState = "loading" | "gmail-not-connected" | "error" | "ready";
+const PAGE_SIZE = 10;
 
 function AutoClassifierPage() {
   const navigate = useNavigate();
@@ -48,9 +49,10 @@ function AutoClassifierPage() {
   const [isClassifying, setIsClassifying] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Search state
+  // Search & Pagination state
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
+  const [page, setPage] = useState(1);
 
   // Auto Classifier strictly represents the queue of UNCLASSIFIED emails (max 50 new)
   const [unclassifiedEmails, setUnclassifiedEmails] = useState<UnclassifiedEmail[]>([]);
@@ -65,6 +67,7 @@ function AutoClassifierPage() {
       const result = await emailsApi.fetchUnclassifiedEmails();
       const newItems = result.unclassified_emails || [];
       setUnclassifiedEmails(newItems);
+      setPage(1);
 
       if (newItems.length > 0) {
         toast.info(`Fetched ${newItems.length} unclassified email(s) from Gmail.`, {
@@ -98,6 +101,7 @@ function AutoClassifierPage() {
       // Remove classified emails from Auto Classifier page immediately after successful storage
       setUnclassifiedEmails([]);
       setSearchTerm("");
+      setPage(1);
 
       toast.success(
         `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
@@ -128,6 +132,17 @@ function AutoClassifierPage() {
       return subjectMatch || snippetMatch;
     });
   }, [unclassifiedEmails, debouncedSearch]);
+
+  // Reset page when search term changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredEmails.length / PAGE_SIZE));
+  const paginatedEmails = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredEmails.slice(start, start + PAGE_SIZE);
+  }, [filteredEmails, page]);
 
   /* ─── on mount: check Gmail status, then fetch unclassified queue ─── */
   useEffect(() => {
@@ -208,7 +223,7 @@ function AutoClassifierPage() {
               id="classify-btn"
               onClick={handleClassify}
               disabled={isClassifying || isFetching || unclassifiedEmails.length === 0}
-              className="bg-gradient-brand shadow-elegant shrink-0"
+              className="bg-gradient-brand shadow-elegant shrink-0 font-semibold"
             >
               {isClassifying ? (
                 <>
@@ -296,7 +311,7 @@ function AutoClassifierPage() {
                   size="sm"
                   onClick={handleClassify}
                   disabled={isClassifying || isFetching}
-                  className="bg-gradient-brand text-xs shadow-elegant"
+                  className="bg-gradient-brand text-xs shadow-elegant font-semibold"
                 >
                   <Wand2 className="mr-1.5 h-3.5 w-3.5" />
                   Classify All ({unclassifiedEmails.length})
@@ -345,55 +360,91 @@ function AutoClassifierPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[600px] text-sm">
-                <thead>
-                  <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-3 text-left font-medium w-[32%]">Subject</th>
-                    <th className="pb-3 text-left font-medium w-[36%]">Preview</th>
-                    <th className="pb-3 text-left font-medium w-[15%]">Status</th>
-                    <th className="pb-3 text-right font-medium w-[17%]">Email Sent Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <AnimatePresence mode="wait">
-                    {filteredEmails.map((email, i) => (
-                      <motion.tr
-                        key={email.message_id}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ delay: i * 0.02 }}
-                        className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
-                      >
-                        <td className="py-3 pr-4 font-medium">
-                          <span title={email.subject}>
-                            <HighlightText
-                              text={truncate(email.subject ?? "(no subject)", 45)}
-                              query={debouncedSearch}
-                            />
-                          </span>
-                        </td>
-                        <td className="py-3 pr-4 text-muted-foreground">
-                          <HighlightText
-                            text={truncate(email.snippet ?? "—", 60)}
-                            query={debouncedSearch}
-                          />
-                        </td>
-                        <td className="py-3 pr-4">
-                          <Badge variant="outline" className="border-brand/40 bg-brand/10 text-brand text-xs font-normal">
-                            Unclassified
-                          </Badge>
-                        </td>
-                        <td className="py-3 text-right text-muted-foreground text-xs">
-                          {email.sent_at || email.received_at ? formatDate(email.sent_at || email.received_at!) : "—"}
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className="pb-3 text-left font-medium w-[6%]">#</th>
+                      <th className="pb-3 text-left font-medium w-[30%]">Subject</th>
+                      <th className="pb-3 text-left font-medium w-[34%]">Preview</th>
+                      <th className="pb-3 text-left font-medium w-[14%]">Status</th>
+                      <th className="pb-3 text-right font-medium w-[16%]">Email Sent Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <AnimatePresence mode="wait">
+                      {paginatedEmails.map((email, index) => {
+                        const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
+                        return (
+                          <motion.tr
+                            key={email.message_id}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ delay: index * 0.02 }}
+                            className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
+                          >
+                            <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground">
+                              {rowNumber}
+                            </td>
+                            <td className="py-3 pr-4 font-medium">
+                              <span title={email.subject}>
+                                <HighlightText
+                                  text={truncate(email.subject ?? "(no subject)", 42)}
+                                  query={debouncedSearch}
+                                />
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4 text-muted-foreground">
+                              <HighlightText
+                                text={truncate(email.snippet ?? "—", 55)}
+                                query={debouncedSearch}
+                              />
+                            </td>
+                            <td className="py-3 pr-4">
+                              <Badge variant="outline" className="border-brand/40 bg-brand/10 text-brand text-xs font-normal">
+                                Unclassified
+                              </Badge>
+                            </td>
+                            <td className="py-3 text-right text-muted-foreground text-xs">
+                              {email.sent_at || email.received_at ? formatDate(email.sent_at || email.received_at!) : "—"}
+                            </td>
+                          </motion.tr>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination controls for Auto Classifier */}
+              {filteredEmails.length > PAGE_SIZE && (
+                <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground border-t border-border/40 pt-4">
+                  <span>
+                    Page {page} of {pageCount} · {filteredEmails.length} unclassified email{filteredEmails.length !== 1 ? "s" : ""}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page >= pageCount}
+                      onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

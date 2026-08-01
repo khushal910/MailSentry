@@ -8,17 +8,27 @@ export const formatNumber = (n: number | undefined | null): string => {
   return n.toLocaleString();
 };
 
-export const formatDate = (iso: string) => {
+export const formatDate = (iso: string | Date | undefined | null) => {
+  if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString(undefined, {
+    let str = typeof iso === "string" ? iso : iso.toISOString();
+    // Normalize ISO strings without timezone offsets to UTC (ending with Z)
+    if (
+      typeof str === "string" &&
+      !str.endsWith("Z") &&
+      !str.includes("+") &&
+      !/T\d{2}:\d{2}:\d{2}.*[-+]\d{2}/.test(str)
+    ) {
+      str = str + "Z";
+    }
+    return new Date(str).toLocaleString(undefined, {
       dateStyle: "medium",
       timeStyle: "short",
     });
   } catch {
-    return iso;
+    return String(iso);
   }
 };
 
 export const truncate = (s: string, n = 60) =>
   s.length > n ? `${s.slice(0, n - 1)}…` : s;
-

@@ -151,8 +151,27 @@ class EmailRepository:
             subject = subject[:255]
 
         now = datetime.now(timezone.utc)
-        fetch_time = data.get("fetch_time") or now
-        classified_at = data.get("classified_at") or now
+
+        def _parse_utc_dt(val: Any, default_dt: datetime) -> datetime:
+            if not val:
+                return default_dt
+            if isinstance(val, datetime):
+                if val.tzinfo is None:
+                    return val.replace(tzinfo=timezone.utc)
+                return val
+            if isinstance(val, str) and val.strip():
+                try:
+                    s = val.strip().replace("Z", "+00:00")
+                    dt = datetime.fromisoformat(s)
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    return dt
+                except Exception:
+                    return default_dt
+            return default_dt
+
+        fetch_time = _parse_utc_dt(data.get("fetch_time"), now)
+        classified_at = _parse_utc_dt(data.get("classified_at"), now)
 
         snippet = self._strip_html(data.get("snippet") or "") or None
         if snippet and len(snippet) > 1000:

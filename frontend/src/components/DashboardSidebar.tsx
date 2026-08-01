@@ -1,5 +1,4 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Wand2,
@@ -52,19 +51,12 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               to={l.to}
               onClick={onNavigate}
               className={cn(
-                "relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
+                "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
                 active
                   ? "bg-brand/15 text-brand shadow-soft font-semibold"
                   : "text-muted-foreground hover:bg-accent/40 hover:text-foreground"
               )}
             >
-              {active && (
-                <motion.div
-                  layoutId="activeSidebarTab"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-brand"
-                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                />
-              )}
               <l.icon className={cn("h-4 w-4 shrink-0", active ? "text-brand" : "")} />
               {l.label}
             </Link>

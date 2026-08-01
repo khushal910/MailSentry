@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { Search, History as HistoryIcon, MailX, X, SearchX } from "lucide-react";
+import { Search, MailX, X, SearchX } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { EmailLabelBadge } from "@/components/EmailLabelBadge";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,7 @@ function HistoryPage() {
             <Input
               id="history-search-input"
               placeholder="Search by subject, body, prediction, or sender…"
-              className="pl-9 pr-8"
+              className="pl-9 pr-8 bg-background/50 border-border/60 focus:border-brand"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -117,7 +117,7 @@ function HistoryPage() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-44 bg-background/50 border-border/60">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
@@ -187,45 +187,52 @@ function HistoryPage() {
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="pb-3 text-left font-medium w-[18%]">Email Sent Date</th>
-                  <th className="pb-3 text-left font-medium w-[27%]">Subject</th>
-                  <th className="pb-3 text-left font-medium w-[25%]">Snippet</th>
+                  <th className="pb-3 text-left font-medium w-[5%]">#</th>
+                  <th className="pb-3 text-left font-medium w-[17%]">Email Sent Date</th>
+                  <th className="pb-3 text-left font-medium w-[26%]">Subject</th>
+                  <th className="pb-3 text-left font-medium w-[24%]">Snippet</th>
                   <th className="pb-3 text-left font-medium w-[12%]">Category</th>
-                  <th className="pb-3 text-left font-medium w-[10%]">Score</th>
+                  <th className="pb-3 text-left font-medium w-[8%]">Score</th>
                   <th className="pb-3 text-right font-medium w-[8%]">Classified</th>
                 </tr>
               </thead>
               <tbody>
-                {emails.map((email) => (
-                  <tr key={email.message_id} className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="py-3 text-muted-foreground text-xs font-medium">
-                      {email.sent_at || email.received_at ? formatDate(email.sent_at || email.received_at!) : "—"}
-                    </td>
-                    <td className="py-3 font-medium pr-2">
-                      <HighlightText
-                        text={truncate(email.subject || "(no subject)", 40)}
-                        query={debouncedSearch}
-                      />
-                    </td>
-                    <td className="py-3 text-muted-foreground pr-2">
-                      <HighlightText
-                        text={truncate(email.snippet || "—", 45)}
-                        query={debouncedSearch}
-                      />
-                    </td>
-                    <td className="py-3 pr-2">
-                      <EmailLabelBadge label={email.predicted_label} />
-                    </td>
-                    <td className="py-3 font-medium text-xs">
-                      {typeof email.predicted_score === "number"
-                        ? formatConfidence(email.predicted_score)
-                        : "—"}
-                    </td>
-                    <td className="py-3 text-right text-muted-foreground text-xs">
-                      {email.classified_at ? formatDate(email.classified_at) : "—"}
-                    </td>
-                  </tr>
-                ))}
+                {emails.map((email, index) => {
+                  const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
+                  return (
+                    <tr key={email.message_id} className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground">
+                        {rowNumber}
+                      </td>
+                      <td className="py-3 text-muted-foreground text-xs font-medium pr-2">
+                        {email.sent_at || email.received_at ? formatDate(email.sent_at || email.received_at!) : "—"}
+                      </td>
+                      <td className="py-3 font-medium pr-2">
+                        <HighlightText
+                          text={truncate(email.subject || "(no subject)", 38)}
+                          query={debouncedSearch}
+                        />
+                      </td>
+                      <td className="py-3 text-muted-foreground pr-2">
+                        <HighlightText
+                          text={truncate(email.snippet || "—", 42)}
+                          query={debouncedSearch}
+                        />
+                      </td>
+                      <td className="py-3 pr-2">
+                        <EmailLabelBadge label={email.predicted_label} />
+                      </td>
+                      <td className="py-3 font-medium text-xs">
+                        {typeof email.predicted_score === "number"
+                          ? formatConfidence(email.predicted_score)
+                          : "—"}
+                      </td>
+                      <td className="py-3 text-right text-muted-foreground text-xs">
+                        {email.classified_at ? formatDate(email.classified_at) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

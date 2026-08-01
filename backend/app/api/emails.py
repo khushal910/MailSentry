@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from typing import Optional, List
+from datetime import datetime, timezone
 from bson import ObjectId
 
 from app.dependencies.auth import get_current_user
@@ -29,7 +30,7 @@ MAX_LIMIT = 100
 def _sanitize_email(doc: dict) -> dict:
     """
     Strips all sensitive/internal fields, returning only UI-safe fields.
-    ObjectId values are converted to strings.
+    ObjectId values are converted to strings, and datetime objects are converted to ISO 8601 UTC strings.
     """
     result = {}
     for key in _SAFE_FIELDS:
@@ -38,6 +39,13 @@ def _sanitize_email(doc: dict) -> dict:
             # Convert ObjectId to string if needed
             if isinstance(val, ObjectId):
                 val = str(val)
+            elif isinstance(val, datetime):
+                if val.tzinfo is None:
+                    val = val.replace(tzinfo=timezone.utc)
+                iso_str = val.isoformat()
+                if not iso_str.endswith("Z") and "+" not in iso_str and "-" not in iso_str[10:]:
+                    iso_str += "Z"
+                val = iso_str
             result[key] = val
     return result
 
