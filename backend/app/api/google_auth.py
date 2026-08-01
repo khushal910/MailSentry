@@ -138,9 +138,24 @@ async def google_callback(
         user_info = service.verify_id_token(id_token_str)
         logger.info("Step 3 OK: Verified Google user email=%s", user_info.get("email"))
 
-        # Step 4 — Find existing user or create new MailSentry account
+        # Step 4 — Find logged in user or match existing MailSentry user
         logger.debug("Step 4: Finding or creating MailSentry user.")
-        user_doc = service.find_or_create_user(user_info)
+        logged_in_user_id = None
+        token = request.cookies.get("access_token")
+        if not token:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.split(" ", 1)[1].strip()
+
+        if token:
+            try:
+                from app.utils.main_utile import decode_token
+                payload = decode_token(token)
+                logged_in_user_id = payload.get("user_id") or payload.get("sub")
+            except Exception:
+                pass
+
+        user_doc = service.find_or_create_user(user_info, current_user_id=logged_in_user_id)
         user_id = str(user_doc["_id"])
         username = user_doc["username"]
         logger.info("Step 4 OK: user_id=%s username=%s", user_id, username)

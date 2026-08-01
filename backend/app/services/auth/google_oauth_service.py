@@ -243,19 +243,36 @@ class GoogleOAuthService:
             "family_name": user_info.get("family_name"),
         }
 
-    def find_or_create_user(self, user_info: dict) -> dict:
+    def find_or_create_user(
+        self, user_info: dict, current_user_id: str | None = None
+    ) -> dict:
         """
-        Matches the authenticated Google email with an existing MailSentry user.
-        - If user exists: links Google account & updates google_connected=True.
-        - If user does not exist: creates a new MailSentry account using Google profile.
+        Matches the authenticated Google email or current_user_id with an existing MailSentry user.
+        - If current_user_id provided: links Google account & updates google_connected=True for that user.
+        - Else if user exists by email: links Google account & updates google_connected=True.
+        - Else: auto-creates a new MailSentry account using Google profile.
         """
         from app.db.mongodb import get_database
+        from bson import ObjectId
+
         db = get_database()
         users_col = db[settings.USER_COLLECTION_NAME]
 
         email = user_info["email"].strip().lower()
         now = datetime.now(timezone.utc)
-        existing_user = users_col.find_one({"email": email})
+
+        existing_user = None
+        if current_user_id:
+            try:
+                if ObjectId.is_valid(current_user_id):
+                    existing_user = users_col.find_one({"_id": ObjectId(current_user_id)})
+                else:
+                    existing_user = users_col.find_one({"_id": current_user_id})
+            except Exception:
+                pass
+
+        if not existing_user:
+            existing_user = users_col.find_one({"email": email})
 
         if existing_user:
             users_col.update_one(
@@ -263,7 +280,7 @@ class GoogleOAuthService:
                 {"$set": {"google_connected": True, "updated_at": now}}
             )
             existing_user["google_connected"] = True
-            logger.info(f"Linked Google account to existing user: {email}")
+            logger.info(f"Linked Google account ({email}) to user: {existing_user.get('_id')}")
             return existing_user
 
         # User does not exist — auto-create new MailSentry account
