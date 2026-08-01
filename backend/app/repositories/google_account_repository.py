@@ -93,6 +93,15 @@ class GoogleAccountRepository:
         except Exception as e:
             logger.error(f"Error updating user google_connected status: {str(e)}")
 
+    def delete_account(self, user_id: str) -> bool:
+        """
+        Deletes document from google_accounts collection for user_id.
+        """
+        query = {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]} if ObjectId.is_valid(user_id) else {"user_id": str(user_id)}
+        result = self.collection.delete_many(query)
+        deleted = getattr(result, "deleted_count", 0)
+        return (deleted > 0) if isinstance(deleted, (int, float)) else True
+
     def disconnect_account(self, user_id: str) -> bool:
         """
         Marks Google account as disconnected for the user and unsets refresh token.

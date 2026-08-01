@@ -54,31 +54,54 @@ def disconnect_google_service(
     user_id: str, repo: GoogleAccountRepository | None = None
 ) -> dict:
     """
-    Disconnects Google Account for the given user_id.
+    Disconnects Google Account for the given user_id:
+    1. Verify account status. If already disconnected, return success.
+    2. Delete document from google_accounts collection.
+    3. Update user document in users collection: google_connected=false.
+    4. On database error, rollback state and return 500 error.
     """
+    import logging
+    from fastapi import HTTPException, status
+
+    logger = logging.getLogger(__name__)
+
     if repo is None:
         repo = GoogleAccountRepository()
 
-    repo.disconnect_account(user_id)
+    account = repo.find_by_user_id(user_id)
 
-    from app.db.mongodb import get_database
-    from app.core.config import settings
-    from bson import ObjectId
+    now = datetime.now(timezone.utc)
 
-    db = get_database()
-    users_col = db[settings.USER_COLLECTION_NAME]
-    if ObjectId.is_valid(user_id):
-        users_col.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$set": {"google_connected": False, "updated_at": datetime.now(timezone.utc)}}
+    # Validation: Already disconnected -> return success
+    if not account or not account.get("google_connected", True):
+        repo.update_user_google_connected(user_id, False, now)
+        return {
+            "success": True,
+            "connected": False,
+            "message": "Gmail account already disconnected"
+        }
+
+    try:
+        # Delete document from google_accounts collection
+        repo.delete_account(user_id)
+
+        # Update user document in users collection: google_connected=false
+        repo.update_user_google_connected(user_id, False, now)
+
+        return {
+            "success": True,
+            "connected": False,
+            "message": "Gmail account disconnected successfully"
+        }
+    except HTTPException:
+        # Rollback: restore user.google_connected=True on error
+        repo.update_user_google_connected(user_id, True, now)
+        raise
+    except Exception as e:
+        logger.error(f"Database error disconnecting Google account for user_id={user_id}: {str(e)}")
+        # Rollback: restore user.google_connected=True on error
+        repo.update_user_google_connected(user_id, True, now)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error disconnecting Google account: {str(e)}"
         )
-    else:
-        users_col.update_one(
-            {"_id": user_id},
-            {"$set": {"google_connected": False, "updated_at": datetime.now(timezone.utc)}}
-        )
-
-    return {
-        "success": True,
-        "message": "Gmail account disconnected successfully"
-    }
