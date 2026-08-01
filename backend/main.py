@@ -53,12 +53,14 @@ from app.api.google_auth import google_auth_router
 from app.api.google_status import google_status_router
 from app.api.gmail_routes import gmail_router
 from app.api.classify_email import classify_router
+from app.api.emails import emails_router
 
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(google_auth_router, prefix="/auth/google", tags=["Google OAuth"])
 app.include_router(google_status_router, prefix="/api/google", tags=["Google Status"])
 app.include_router(gmail_router, prefix="/api/gmail", tags=["Gmail"])
 app.include_router(classify_router, prefix="/api", tags=["Email Classification"])
+app.include_router(emails_router, prefix="/api", tags=["Emails"])
 
 
 
