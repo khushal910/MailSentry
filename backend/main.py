@@ -41,10 +41,12 @@ app.add_middleware(
 
 from app.api.google_auth import google_auth_router
 from app.api.google_status import google_status_router
+from app.api.gmail_routes import gmail_router
 
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(google_auth_router, prefix="/auth/google", tags=["Google OAuth"])
 app.include_router(google_status_router, prefix="/api/google", tags=["Google Status"])
+app.include_router(gmail_router, prefix="/api/gmail", tags=["Gmail"])
 
 
 
