@@ -6,19 +6,21 @@ import {
   UserCircle,
   Settings,
   LogOut,
+  MailSearch,
 } from "lucide-react";
 import { BrandLogo } from "./BrandLogo";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 const links: Array<{
-  to: "/dashboard" | "/dashboard/classifier" | "/dashboard/history" | "/dashboard/profile" | "/dashboard/settings";
+  to: "/dashboard" | "/dashboard/classifier" | "/dashboard/auto-classifier" | "/dashboard/history" | "/dashboard/profile" | "/dashboard/settings";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
 }> = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/dashboard/classifier", label: "Email Classifier", icon: Wand2 },
+  { to: "/dashboard/auto-classifier", label: "Auto Classifier", icon: MailSearch },
   { to: "/dashboard/history", label: "History", icon: History },
   { to: "/dashboard/profile", label: "Profile", icon: UserCircle },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },

@@ -25,6 +25,7 @@ import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settin
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
 import { Route as DashboardHistoryRouteImport } from './routes/dashboard.history'
 import { Route as DashboardClassifierRouteImport } from './routes/dashboard.classifier'
+import { Route as DashboardAutoClassifierRouteImport } from './routes/dashboard.auto-classifier'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
@@ -107,6 +108,11 @@ const DashboardClassifierRoute = DashboardClassifierRouteImport.update({
   path: '/classifier',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAutoClassifierRoute = DashboardAutoClassifierRouteImport.update({
+  id: '/auto-classifier',
+  path: '/auto-classifier',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/dashboard/auto-classifier': typeof DashboardAutoClassifierRoute
   '/dashboard/classifier': typeof DashboardClassifierRoute
   '/dashboard/history': typeof DashboardHistoryRoute
   '/dashboard/profile': typeof DashboardProfileRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/dashboard/auto-classifier': typeof DashboardAutoClassifierRoute
   '/dashboard/classifier': typeof DashboardClassifierRoute
   '/dashboard/history': typeof DashboardHistoryRoute
   '/dashboard/profile': typeof DashboardProfileRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/dashboard/auto-classifier': typeof DashboardAutoClassifierRoute
   '/dashboard/classifier': typeof DashboardClassifierRoute
   '/dashboard/history': typeof DashboardHistoryRoute
   '/dashboard/profile': typeof DashboardProfileRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify-email'
     | '/auth/callback'
+    | '/dashboard/auto-classifier'
     | '/dashboard/classifier'
     | '/dashboard/history'
     | '/dashboard/profile'
@@ -203,6 +213,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify-email'
     | '/auth/callback'
+    | '/dashboard/auto-classifier'
     | '/dashboard/classifier'
     | '/dashboard/history'
     | '/dashboard/profile'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify-email'
     | '/auth/callback'
+    | '/dashboard/auto-classifier'
     | '/dashboard/classifier'
     | '/dashboard/history'
     | '/dashboard/profile'
@@ -358,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardClassifierRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/auto-classifier': {
+      id: '/dashboard/auto-classifier'
+      path: '/auto-classifier'
+      fullPath: '/dashboard/auto-classifier'
+      preLoaderRoute: typeof DashboardAutoClassifierRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -369,6 +388,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface DashboardRouteChildren {
+  DashboardAutoClassifierRoute: typeof DashboardAutoClassifierRoute
   DashboardClassifierRoute: typeof DashboardClassifierRoute
   DashboardHistoryRoute: typeof DashboardHistoryRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
@@ -377,6 +397,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAutoClassifierRoute: DashboardAutoClassifierRoute,
   DashboardClassifierRoute: DashboardClassifierRoute,
   DashboardHistoryRoute: DashboardHistoryRoute,
   DashboardProfileRoute: DashboardProfileRoute,
