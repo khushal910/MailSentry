@@ -106,8 +106,8 @@ class TestProfileService(unittest.IsolatedAsyncioTestCase):
         self.assertIn("email_otp_hash", update_args)
         self.assertEqual(res["pending_email"], "new_john@example.com")
 
-    def test_verify_email_otp_success_and_sync_google(self):
-        """verify_email_change_otp updates email and syncs matching Google account."""
+    def test_verify_email_otp_success_and_disconnect_google(self):
+        """verify_email_change_otp updates email and disconnects existing Google account with notice."""
         now = datetime.now(timezone.utc)
         plain_otp = "654321"
         pending_user = dict(
@@ -119,15 +119,15 @@ class TestProfileService(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch("app.services.profile_service.get_database", return_value=self.db_mock):
-            # _get_user returns pending_user, then updated user
-            updated_user = dict(pending_user, email="new_john@example.com")
+            updated_user = dict(pending_user, email="new_john@example.com", google_connected=False)
             self.mock_users_col.find_one.side_effect = [pending_user, updated_user, updated_user]
 
             res = self.service.verify_email_change_otp(self.user_id, plain_otp)
 
-        self.mock_users_col.update_one.assert_called_once()
         self.assertEqual(res["email"], "new_john@example.com")
+        self.assertIn("disconnected", res.get("notice", "").lower())
         self.mock_google_repo.collection.update_one.assert_called_once()
+
 
     def test_change_password_success(self):
         """change_password verifies current password and hashes new bcrypt password."""

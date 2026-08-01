@@ -318,39 +318,31 @@ class ProfileService:
             f"IP={client_ip} | Old Email={old_email} | New Email={new_email}"
         )
 
-        # Google Account Synchronization
-        reconnection_required = False
+        # Google Account Synchronization & Disconnection on Email Change
         google_acc = self.google_repo.find_by_user_id(user_id)
-        if google_acc:
-            g_email = google_acc.get("google_email")
-            if g_email and g_email.strip().lower() == old_email.strip().lower():
-                # Update google_email to new_email without altering refresh_token or google_user_id
+        had_google_connected = bool(user.get("google_connected") or (google_acc and google_acc.get("google_connected")))
+
+        if google_acc or had_google_connected:
+            if google_acc:
                 self.google_repo.collection.update_one(
                     {"_id": google_acc["_id"]},
-                    {"$set": {"google_email": new_email, "updated_at": now}}
+                    {"$set": {"google_email": new_email, "google_connected": False, "updated_at": now}}
                 )
-                logger.info(f"Synchronized google_accounts email to {new_email} for user {user_id}")
-            else:
-                # Connected Gmail belongs to a different Google account -> mark reconnection required
-                reconnection_required = True
-                self.google_repo.collection.update_one(
-                    {"_id": google_acc["_id"]},
-                    {"$set": {"google_connected": False, "updated_at": now}}
-                )
-                users_col.update_one(
-                    {"_id": user["_id"]},
-                    {"$set": {"google_connected": False, "updated_at": now}}
-                )
-                logger.info(
-                    f"[AUDIT] Action=Google Reconnection Required | User ID={user_id} | "
-                    f"Timestamp={now.isoformat()} | IP={client_ip}"
-                )
+            users_col.update_one(
+                {"_id": user["_id"]},
+                {"$set": {"google_connected": False, "updated_at": now}}
+            )
+            logger.info(
+                f"[AUDIT] Action=Google Account Disconnected On Email Change | User ID={user_id} | "
+                f"Timestamp={now.isoformat()} | IP={client_ip}"
+            )
 
         updated_profile = self.get_profile(user_id)
-        if reconnection_required:
-            updated_profile["notice"] = "Please reconnect your Google account to authorize Gmail for your new email address."
+        if had_google_connected:
+            updated_profile["notice"] = "Your Google account has been disconnected. Please reconnect your Google account with your new email address."
 
         return updated_profile
+
 
     def change_password(
         self, user_id: str, current_pw: str, new_pw: str, confirm_pw: str, client_ip: str = "unknown"
