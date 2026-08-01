@@ -4,7 +4,36 @@ from app.dependencies.google_auth_deps import require_google_connected
 from app.services.gmail_fetch_service import GmailFetchService
 from app.utils.main_utile import return_response
 
+from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, Field
+
+class ClassifyBatchRequest(BaseModel):
+    emails: Optional[List[Dict[str, Any]]] = Field(default=[], description="List of unclassified raw emails to classify")
+
 gmail_router = APIRouter()
+
+
+@gmail_router.post("/fetch-unclassified", summary="Fetch unclassified raw emails from Gmail")
+async def fetch_unclassified_emails(
+    current_user: dict = Depends(get_current_user),
+    account: dict = Depends(require_google_connected),
+):
+    """
+    POST /api/gmail/fetch-unclassified
+    Fetches up to 50 latest raw emails from Gmail that do NOT exist in MongoDB EmailPrediction.
+    Does NOT classify or save predictions to MongoDB yet.
+    """
+    user_id = str(current_user["_id"])
+    service = GmailFetchService()
+    unclassified = await service.fetch_unclassified_raw_emails(user_id=user_id, google_account=account)
+    return return_response(
+        status_code=status.HTTP_200_OK,
+        message="Unclassified emails fetched successfully",
+        data={
+            "fetched": len(unclassified),
+            "unclassified_emails": unclassified
+        }
+    )
 
 
 @gmail_router.post("/fetch", summary="Fetch and classify emails from Gmail")
@@ -15,17 +44,6 @@ async def fetch_emails(
     """
     POST /api/gmail/fetch
     Fetches new emails from Gmail and classifies them using the ML model.
-
-    Enforces:
-    - Per-user concurrency lock (one fetch at a time)
-    - Rate limit: once every FETCH_RATE_LIMIT_SECONDS (default 5 min)
-    - Token auto-refresh; on revocation → disconnects account, returns 403
-    - Partial-failure tolerance: one bad email never aborts the batch
-
-    Returns:
-        fetched    — number of emails retrieved from Gmail
-        classified — number successfully classified and stored
-        skipped    — number that failed classification (logged individually)
     """
     user_id = str(current_user["_id"])
     service = GmailFetchService()
@@ -37,22 +55,36 @@ async def fetch_emails(
     )
 
 
-@gmail_router.post("/classify", summary="Classify emails")
-async def classify_emails(account: dict = Depends(require_google_connected)):
+@gmail_router.post("/classify", summary="Classify provided unclassified emails")
+async def classify_emails(
+    payload: Optional[ClassifyBatchRequest] = None,
+    current_user: dict = Depends(get_current_user),
+    account: dict = Depends(require_google_connected),
+):
     """
     POST /api/gmail/classify
-    Verifies Gmail connection prior to classifying emails.
-    Verifies ML model availability; returns 500 error if model file is missing or corrupted.
+    Runs ML model classification on provided unclassified emails (or pending Gmail queue),
+    saves prediction records to MongoDB with full metadata, and returns classified results.
     """
     from app.services.ml_model_service import MLModelService
     model_service = MLModelService()
-    # Raises HTTPException(500, detail="ML classification model is not available") if missing/corrupted
-    model = model_service.get_model_or_raise()
+    model_service.get_model_or_raise()
+
+    user_id = str(current_user["_id"])
+    service = GmailFetchService(model_service=model_service)
+
+    emails_to_process = payload.emails if (payload and payload.emails) else []
+
+    if not emails_to_process:
+        # Fallback: fetch unclassified emails from Gmail directly
+        emails_to_process = await service.fetch_unclassified_raw_emails(user_id=user_id, google_account=account)
+
+    result = service.classify_and_save_batch(user_id=user_id, emails_to_classify=emails_to_process)
 
     return return_response(
         status_code=status.HTTP_200_OK,
-        message="Emails classified successfully",
-        data={"google_email": account.get("google_email"), "classifications": []}
+        message="Emails classified and stored successfully",
+        data=result
     )
 
 

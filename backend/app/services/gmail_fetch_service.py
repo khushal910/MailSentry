@@ -284,6 +284,85 @@ class GmailFetchService:
         )
         return result
 
+    async def fetch_unclassified_raw_emails(
+        self, user_id: str, google_account: Dict[str, Any]
+    ) -> list:
+        """
+        Fetches up to 50 latest raw emails from Gmail whose message_id does NOT exist in MongoDB EmailPrediction.
+        Does NOT run ML classification or save predictions to MongoDB yet.
+        """
+        google_email = google_account.get("google_email", "")
+        access_token = await self.token_manager.get_valid_access_token(google_email)
+        raw_emails = await self._fetch_from_gmail(
+            user_id=user_id,
+            google_email=google_email,
+            access_token=access_token,
+        )
+        return raw_emails
+
+    def classify_and_save_batch(
+        self, user_id: str, emails_to_classify: list
+    ) -> Dict[str, Any]:
+        """
+        Classifies specified unclassified emails using ML model, saves records to MongoDB,
+        and returns saved classified email documents with all required metadata.
+        """
+        classified_count = 0
+        skipped_count = 0
+        saved_records = []
+
+        for raw in emails_to_classify:
+            try:
+                classified = self._classify_one(raw)
+                message_id = raw.get("message_id") or raw.get("gmail_message_id")
+                if not message_id:
+                    continue
+
+                now = datetime.now(timezone.utc)
+                email_doc = {
+                    "user_id": user_id,
+                    "message_id": message_id,
+                    "gmail_message_id": message_id,
+                    "thread_id": raw.get("thread_id"),
+                    "subject": raw.get("subject", ""),
+                    "snippet": raw.get("snippet", ""),
+                    "sender": raw.get("sender") or raw.get("from") or raw.get("received_at"),
+                    "predicted_label": classified["predicted_label"],
+                    "prediction": classified["predicted_label"],
+                    "predicted_score": classified["predicted_score"],
+                    "confidence": classified["predicted_score"],
+                    "fetch_time": now,
+                    "classified_at": datetime.fromisoformat(classified["classified_at"]),
+                    "created_at": now,
+                    "received_at": raw.get("received_at") or raw.get("sent_at"),
+                    "sent_at": raw.get("sent_at") or raw.get("received_at"),
+                }
+                self.email_repo.save_email(email_doc, check_access=False)
+                classified_count += 1
+                saved_records.append({
+                    "message_id": message_id,
+                    "gmail_message_id": message_id,
+                    "thread_id": raw.get("thread_id"),
+                    "subject": raw.get("subject", ""),
+                    "snippet": raw.get("snippet", ""),
+                    "predicted_label": classified["predicted_label"],
+                    "prediction": classified["predicted_label"],
+                    "predicted_score": classified["predicted_score"],
+                    "confidence": classified["predicted_score"],
+                    "classified_at": classified["classified_at"],
+                    "created_at": now.isoformat(),
+                    "sent_at": raw.get("sent_at") or raw.get("received_at"),
+                })
+            except Exception as err:
+                skipped_count += 1
+                logger.error(f"[ClassifyBatch] user_id={user_id} error classifying email: {err}")
+
+        return {
+            "classified": classified_count,
+            "skipped": skipped_count,
+            "classified_emails": saved_records
+        }
+
     # ── helpers ───────────────────────────────────────────────────────────────
 
     def _disconnect_revoked_account(self, user_id: str, google_email: str) -> None:

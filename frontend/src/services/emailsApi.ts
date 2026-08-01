@@ -31,12 +31,50 @@ export interface FetchResult {
 }
 
 
+export interface UnclassifiedEmail {
+  message_id: string;
+  gmail_message_id?: string;
+  thread_id?: string | null;
+  subject: string;
+  snippet?: string | null;
+  received_at?: string | null;
+  sent_at?: string | null;
+}
+
+export interface FetchUnclassifiedResult {
+  fetched: number;
+  unclassified_emails: UnclassifiedEmail[];
+}
+
+export interface ClassifyBatchResult {
+  classified: number;
+  skipped: number;
+  classified_emails: ClassifiedEmail[];
+}
+
+
 export const emailsApi = {
+  /**
+   * POST /api/gmail/fetch-unclassified
+   * Fetches unclassified raw emails from Gmail (emails not yet in MongoDB).
+   */
+  async fetchUnclassifiedEmails(): Promise<FetchUnclassifiedResult> {
+    const { data } = await apiClient.post<{ data: FetchUnclassifiedResult }>("/api/gmail/fetch-unclassified");
+    return data.data ?? { fetched: 0, unclassified_emails: [] };
+  },
+
+  /**
+   * POST /api/gmail/classify
+   * Classifies specified unclassified emails using ML model, saves predictions to MongoDB, and returns classified records.
+   */
+  async classifyEmails(emails: UnclassifiedEmail[]): Promise<ClassifyBatchResult> {
+    const { data } = await apiClient.post<{ data: ClassifyBatchResult }>("/api/gmail/classify", { emails });
+    return data.data ?? { classified: 0, skipped: 0, classified_emails: [] };
+  },
+
   /**
    * POST /api/gmail/fetch
    * Triggers fetching and classifying new emails from Gmail.
-   * Returns structured summary: { fetched, classified, skipped }.
-   * Throws on 403 (revoked) or 429 (rate limit / lock) — caller should handle.
    */
   async fetchEmails(): Promise<FetchResult> {
     const { data } = await apiClient.post<{ data: FetchResult }>("/api/gmail/fetch");
