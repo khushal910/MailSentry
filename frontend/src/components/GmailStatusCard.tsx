@@ -111,10 +111,26 @@ export function GmailStatusCard() {
 
   const isConnected = statusData?.connected === true;
 
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "N/A";
+    try {
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   // Connected state (connected = true)
   if (isConnected && statusData) {
     return (
-      <div className="glass rounded-xl p-5 border border-emerald-500/20 bg-emerald-500/5 shadow-sm transition-all">
+      <div className="glass rounded-xl p-5 border border-emerald-500/20 bg-emerald-500/5 shadow-sm transition-all space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2.5">
@@ -124,7 +140,7 @@ export function GmailStatusCard() {
               <div>
                 <h2 className="text-base font-semibold text-foreground">Gmail Connected</h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground font-medium">Status:</span>
+                  <span className="text-xs text-muted-foreground font-medium">Gmail Status:</span>
                   <Badge
                     variant="outline"
                     className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs font-semibold px-2.5 py-0.5"
@@ -134,13 +150,6 @@ export function GmailStatusCard() {
                   </Badge>
                 </div>
               </div>
-            </div>
-
-            <div className="pt-2 text-xs text-muted-foreground flex flex-wrap items-center gap-1.5">
-              <span className="font-medium text-foreground">Connected Email:</span>
-              <span className="font-mono text-emerald-600 dark:text-emerald-400 font-medium">
-                {statusData.google_email}
-              </span>
             </div>
           </div>
 
@@ -164,6 +173,28 @@ export function GmailStatusCard() {
               <Unlink className="mr-1.5 h-3.5 w-3.5" />
               {disconnecting ? "Disconnecting…" : "Disconnect"}
             </Button>
+          </div>
+        </div>
+
+        {/* Details Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-emerald-500/10 text-xs">
+          <div>
+            <span className="text-muted-foreground font-medium block">Connected Email:</span>
+            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold text-xs truncate block mt-0.5">
+              {statusData.google_email}
+            </span>
+          </div>
+          <div>
+            <span className="text-muted-foreground font-medium block">Connected Since:</span>
+            <span className="text-foreground font-medium mt-0.5 block">
+              {formatDate(statusData.connected_at)}
+            </span>
+          </div>
+          <div>
+            <span className="text-muted-foreground font-medium block">Last Updated:</span>
+            <span className="text-foreground font-medium mt-0.5 block">
+              {formatDate(statusData.last_updated)}
+            </span>
           </div>
         </div>
       </div>

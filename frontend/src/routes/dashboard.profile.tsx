@@ -18,11 +18,13 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 
+import { GmailStatusCard } from "@/components/GmailStatusCard";
+
 export const Route = createFileRoute("/dashboard/profile")({
   head: () => ({
     meta: [
       { title: "Profile — MailSentry" },
-      { name: "description", content: "Manage your MailSentry profile." },
+      { name: "description", content: "Manage your MailSentry profile and Gmail connection." },
     ],
   }),
   component: ProfilePage,
@@ -64,13 +66,15 @@ function ProfilePage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your account details and role.
-        </p>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your account details, integrations, and role.
+          </p>
+        </div>
 
-        <div className="glass-strong mt-6 rounded-2xl p-6 shadow-soft">
+        <div className="glass-strong rounded-2xl p-6 shadow-soft">
           <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
             <Avatar className="h-20 w-20 border border-border/60">
               <AvatarImage src={displayUser.avatarUrl} />
@@ -96,6 +100,14 @@ function ProfilePage() {
               <Pencil className="mr-2 h-4 w-4" /> Edit profile
             </Button>
           </div>
+        </div>
+
+        {/* Gmail Integration Section */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+            Email Integrations
+          </h3>
+          <GmailStatusCard />
         </div>
 
         <div className="glass mt-4 rounded-2xl p-6">
