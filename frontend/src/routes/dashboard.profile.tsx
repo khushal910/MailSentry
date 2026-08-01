@@ -28,6 +28,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+
 import { useAuth } from "@/context/AuthContext";
 import { GmailStatusCard } from "@/components/GmailStatusCard";
 import { profileApi, type UserProfile } from "@/services/profileApi";
@@ -192,7 +198,20 @@ function ProfilePage() {
     }
   };
 
+  // Resend OTP for Email Change
+  const handleResendEmailOtp = async () => {
+    if (!pendingEmail) return;
+    try {
+      const res = await profileApi.requestEmailChange(pendingEmail);
+      toast.success(res.message || "A new OTP code has been sent to your email.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to resend OTP.");
+    }
+  };
+
+
   // Submit Change Password Form
+
   const onChangePassword = async (values: ChangePasswordForm) => {
     try {
       const res = await profileApi.changePassword({
@@ -430,25 +449,42 @@ function ProfilePage() {
       <Dialog open={isOtpOpen} onOpenChange={setIsOtpOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Verify Email Change</DialogTitle>
+            <DialogTitle>Enter OTP Code</DialogTitle>
             <DialogDescription>
-              We sent a 6-digit verification OTP to <strong className="text-foreground">{pendingEmail}</strong>. Please enter the code below to complete your email change.
+              We sent a 6-digit code to <strong className="text-foreground">{pendingEmail}</strong>.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={onVerifyOtp} className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="otp-input">6-Digit Verification Code</Label>
-              <Input
-                id="otp-input"
+          <form onSubmit={onVerifyOtp} className="space-y-6 py-2">
+            <div className="flex flex-col items-center justify-center space-y-3">
+              <Label className="text-center text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                6-Digit Verification Code
+              </Label>
+
+              <InputOTP
                 maxLength={6}
-                placeholder="123456"
-                className="text-center text-lg tracking-widest font-mono"
                 value={otpInput}
-                onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              />
-              <p className="text-xs text-muted-foreground">
-                OTP expires in 5 minutes. Max 5 verification attempts.
-              </p>
+                onChange={(v) => setOtpInput(v)}
+              >
+                <InputOTPGroup className="gap-2">
+                  <InputOTPSlot index={0} className="w-11 h-12 text-lg font-semibold border-brand/20" />
+                  <InputOTPSlot index={1} className="w-11 h-12 text-lg font-semibold border-brand/20" />
+                  <InputOTPSlot index={2} className="w-11 h-12 text-lg font-semibold border-brand/20" />
+                  <InputOTPSlot index={3} className="w-11 h-12 text-lg font-semibold border-brand/20" />
+                  <InputOTPSlot index={4} className="w-11 h-12 text-lg font-semibold border-brand/20" />
+                  <InputOTPSlot index={5} className="w-11 h-12 text-lg font-semibold border-brand/20" />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40">
+              <span className="text-muted-foreground">Didn't receive the code?</span>
+              <button
+                type="button"
+                onClick={handleResendEmailOtp}
+                className="text-brand hover:underline font-medium"
+              >
+                Resend OTP
+              </button>
             </div>
 
             <DialogFooter className="pt-2">
@@ -457,8 +493,8 @@ function ProfilePage() {
               </Button>
               <Button
                 type="submit"
-                disabled={isVerifyingOtp || otpInput.length !== 6}
-                className="bg-gradient-brand shadow-elegant"
+                disabled={isVerifyingOtp || otpInput.length < 6}
+                className="bg-gradient-brand shadow-elegant font-medium"
               >
                 {isVerifyingOtp ? (
                   <>
