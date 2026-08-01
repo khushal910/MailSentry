@@ -69,6 +69,10 @@ async def get_user_emails(
         limit=limit,
         skip=skip
     )
+    total_count = repo.count_user_emails(
+        user_id=user_id,
+        predicted_label=label or None
+    )
 
     emails = [_sanitize_email(doc) for doc in raw_emails]
 
@@ -79,6 +83,8 @@ async def get_user_emails(
             "emails": emails,
             "page": page,
             "limit": limit,
-            "count": len(emails)
+            "count": len(emails),
+            "total_count": total_count,
+            "total": total_count
         }
     )

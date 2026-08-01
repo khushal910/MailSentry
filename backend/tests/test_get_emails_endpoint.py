@@ -167,5 +167,23 @@ class TestGetEmailsEndpoint(unittest.TestCase):
         )
 
 
+    @patch("app.api.emails.EmailRepository")
+    def test_get_emails_returns_total_count(self, MockRepo):
+        """Verifies total_count is returned in response data for correct multi-page pagination."""
+        app.dependency_overrides[get_current_user] = lambda: self.mock_user
+        MockRepo.return_value.get_user_emails.return_value = [MOCK_EMAILS[0]]
+        MockRepo.return_value.count_user_emails.return_value = 50
+
+        response = self.client.get(
+            "/api/emails?limit=10&page=1",
+            headers={"Authorization": f"Bearer {self.token}"}
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()["data"]
+        self.assertEqual(data["count"], 1)
+        self.assertEqual(data["total_count"], 50)
+        self.assertEqual(data["total"], 50)
+
+
 if __name__ == "__main__":
     unittest.main()

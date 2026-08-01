@@ -251,7 +251,11 @@ class EmailRepository:
         """
         Fetches classified emails for a specific user with optional label filter and pagination.
         """
-        query: Dict[str, Any] = {"user_id": str(user_id)}
+        query: Dict[str, Any] = (
+            {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]}
+            if ObjectId.is_valid(user_id)
+            else {"user_id": str(user_id)}
+        )
         if predicted_label:
             query["predicted_label"] = predicted_label
 
@@ -262,6 +266,28 @@ class EmailRepository:
             .limit(limit)
         )
         return list(cursor)
+
+    def count_user_emails(
+        self,
+        user_id: str,
+        predicted_label: Optional[str] = None
+    ) -> int:
+        """
+        Counts total classified emails stored for a user, optionally filtered by predicted_label.
+        """
+        query: Dict[str, Any] = (
+            {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]}
+            if ObjectId.is_valid(user_id)
+            else {"user_id": str(user_id)}
+        )
+        if predicted_label:
+            query["predicted_label"] = predicted_label
+
+        try:
+            return self.collection.count_documents(query)
+        except Exception as e:
+            logger.error(f"Error counting emails for user_id={user_id}: {e}")
+            return 0
 
     def delete_user_emails(self, user_id: str) -> int:
         """

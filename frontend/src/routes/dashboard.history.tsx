@@ -44,7 +44,7 @@ function HistoryPage() {
       const labelParam = labelFilter !== "all" ? labelFilter : undefined;
       const res = await emailsApi.getEmails({ page: pg, limit: PAGE_SIZE, label: labelParam });
       setEmails(res.emails);
-      setTotalCount(res.count);
+      setTotalCount(res.total_count ?? res.total ?? res.count);
       setPage(pg);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load prediction history.");

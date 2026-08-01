@@ -19,6 +19,8 @@ export interface GetEmailsResponse {
   page: number;
   limit: number;
   count: number;
+  total_count?: number;
+  total?: number;
 }
 
 export interface FetchResult {

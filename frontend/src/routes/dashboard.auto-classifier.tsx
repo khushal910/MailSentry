@@ -59,7 +59,7 @@ function AutoClassifierPage() {
     try {
       const res = await emailsApi.getEmails({ limit: PAGE_SIZE, page: pg });
       setEmails(res.emails);
-      setTotalCount(res.count);
+      setTotalCount(res.total_count ?? res.total ?? res.count);
       setPage(pg);
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : "Failed to load emails.");
