@@ -1,3 +1,4 @@
+import { useEffect, useState, useCallback } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ShieldCheck,
@@ -7,14 +8,18 @@ import {
   Wand2,
   History as HistoryIcon,
   ArrowRight,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { StatsCard } from "@/components/StatsCard";
 import { PredictionBadge } from "@/components/PredictionBadge";
 import { Button } from "@/components/ui/button";
-import { formatConfidence, formatDate, truncate } from "@/utils/format";
+import { formatConfidence, formatDate, formatNumber, truncate } from "@/utils/format";
 import { PageTransition } from "@/components/PageTransition";
 import { useAuth } from "@/context/AuthContext";
 import { GmailStatusCard } from "@/components/GmailStatusCard";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { emailsApi, type ClassifiedEmail } from "@/services/emailsApi";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({
@@ -26,39 +31,59 @@ export const Route = createFileRoute("/dashboard/")({
   component: DashboardHome,
 });
 
-const recent = [
-  {
-    id: "1",
-    date: new Date(Date.now() - 3600e3).toISOString(),
-    subject: "Reset your Netflix password immediately",
-    prediction: "Spam" as const,
-    confidence: 98.34,
-  },
-  {
-    id: "2",
-    date: new Date(Date.now() - 7200e3).toISOString(),
-    subject: "Q3 board deck — draft for review",
-    prediction: "Ham" as const,
-    confidence: 96.1,
-  },
-  {
-    id: "3",
-    date: new Date(Date.now() - 86400e3).toISOString(),
-    subject: "You WON a $500 Amazon gift card!!!",
-    prediction: "Spam" as const,
-    confidence: 99.7,
-  },
-  {
-    id: "4",
-    date: new Date(Date.now() - 172800e3).toISOString(),
-    subject: "Design review notes — Wed 3pm",
-    prediction: "Ham" as const,
-    confidence: 92.4,
-  },
-];
+function StatsSkeleton() {
+  return (
+    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className="glass rounded-xl p-5 shadow-soft animate-pulse flex items-start justify-between gap-3 h-[104px]"
+        >
+          <div className="space-y-2 flex-1">
+            <div className="h-3 w-24 bg-muted/60 rounded" />
+            <div className="h-7 w-16 bg-muted/80 rounded" />
+            <div className="h-3 w-28 bg-muted/40 rounded" />
+          </div>
+          <div className="h-9 w-9 bg-muted/60 rounded-lg" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function DashboardHome() {
   const { user } = useAuth();
+  const { stats, isLoading, isError, error, refetch } = useDashboardStats();
+
+  const [recentEmails, setRecentEmails] = useState<ClassifiedEmail[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(true);
+
+  const fetchRecent = useCallback(async () => {
+    setLoadingRecent(true);
+    try {
+      const res = await emailsApi.getEmails({ page: 1, limit: 5 });
+      setRecentEmails(res.emails || []);
+    } catch {
+      setRecentEmails([]);
+    } finally {
+      setLoadingRecent(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRecent();
+  }, [fetchRecent]);
+
+  // Helper for Total Predictions Trend
+  const getTotalTrend = () => {
+    if (!stats || stats.total_predictions === 0) return "No predictions yet";
+    if (stats.last_week_predictions === 0) return "New";
+    if (stats.growth_percentage === null || stats.growth_percentage === undefined) return "New";
+    if (stats.growth_percentage > 0) return `+${stats.growth_percentage.toFixed(1)}% vs last week`;
+    if (stats.growth_percentage < 0) return `${stats.growth_percentage.toFixed(1)}% vs last week`;
+    return "0.0% vs last week";
+  };
+
   return (
     <PageTransition>
       <div className="flex items-end justify-between gap-4">
@@ -81,12 +106,67 @@ function DashboardHome() {
         <GmailStatusCard />
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard label="Total predictions" value="1,284" icon={Inbox} trend="+12.4% vs last week" accent="brand" />
-        <StatsCard label="Spam emails" value="317" icon={ShieldAlert} trend="24.7% of all" accent="destructive" />
-        <StatsCard label="Safe emails" value="967" icon={ShieldCheck} trend="75.3% of all" accent="success" />
-        <StatsCard label="Accuracy" value="98.4%" icon={Target} trend="↑ 0.2% this week" accent="cyan" />
-      </div>
+      {isLoading ? (
+        <StatsSkeleton />
+      ) : isError ? (
+        <div className="mt-6 glass rounded-xl p-5 text-center border-destructive/30">
+          <div className="flex items-center justify-center gap-2 text-destructive font-medium">
+            <AlertCircle className="h-5 w-5" />
+            <span>Failed to load dashboard statistics</span>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">{error || "Could not retrieve data from server."}</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-3">
+            <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatsCard
+            label="Total predictions"
+            value={formatNumber(stats?.total_predictions)}
+            icon={Inbox}
+            trend={getTotalTrend()}
+            accent="brand"
+          />
+          <StatsCard
+            label="Spam emails"
+            value={formatNumber(stats?.spam_emails)}
+            icon={ShieldAlert}
+            trend={
+              !stats || stats.total_predictions === 0
+                ? "No predictions yet"
+                : `${(stats.spam_percentage ?? 0).toFixed(1)}% of all`
+            }
+            accent="destructive"
+          />
+          <StatsCard
+            label="Safe emails"
+            value={formatNumber(stats?.safe_emails)}
+            icon={ShieldCheck}
+            trend={
+              !stats || stats.total_predictions === 0
+                ? "No predictions yet"
+                : `${(stats.safe_percentage ?? 0).toFixed(1)}% of all`
+            }
+            accent="success"
+          />
+          <StatsCard
+            label="Average Confidence"
+            value={
+              !stats || stats.total_predictions === 0
+                ? "0.0%"
+                : `${(stats.average_confidence ?? 0).toFixed(1)}%`
+            }
+            icon={Target}
+            trend={
+              !stats || stats.total_predictions === 0
+                ? "No predictions yet"
+                : "Average model confidence"
+            }
+            accent="cyan"
+          />
+        </div>
+      )}
 
       <div className="mt-8 grid gap-4 lg:grid-cols-3">
         <div className="glass rounded-xl p-5 lg:col-span-2">
@@ -100,30 +180,44 @@ function DashboardHome() {
             </Link>
           </div>
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="pb-3 text-left font-medium">Date</th>
-                  <th className="pb-3 text-left font-medium">Subject</th>
-                  <th className="pb-3 text-left font-medium">Prediction</th>
-                  <th className="pb-3 text-right font-medium">Confidence</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((r) => (
-                  <tr key={r.id} className="border-b border-border/40 last:border-0">
-                    <td className="py-3 text-muted-foreground">{formatDate(r.date)}</td>
-                    <td className="py-3">{truncate(r.subject, 45)}</td>
-                    <td className="py-3">
-                      <PredictionBadge prediction={r.prediction} />
-                    </td>
-                    <td className="py-3 text-right font-medium">
-                      {formatConfidence(r.confidence)}
-                    </td>
+            {loadingRecent ? (
+              <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">
+                Loading recent predictions…
+              </div>
+            ) : recentEmails.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted-foreground">
+                No predictions recorded yet. Run the classifier or sync Gmail to get started!
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="pb-3 text-left font-medium">Date</th>
+                    <th className="pb-3 text-left font-medium">Subject</th>
+                    <th className="pb-3 text-left font-medium">Prediction</th>
+                    <th className="pb-3 text-right font-medium">Confidence</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recentEmails.map((r) => (
+                    <tr key={r.message_id} className="border-b border-border/40 last:border-0">
+                      <td className="py-3 text-muted-foreground">
+                        {formatDate(r.classified_at || r.fetch_time || new Date().toISOString())}
+                      </td>
+                      <td className="py-3">{truncate(r.subject || "(No Subject)", 45)}</td>
+                      <td className="py-3">
+                        <PredictionBadge prediction={r.predicted_label === "spam" ? "Spam" : "Ham"} />
+                      </td>
+                      <td className="py-3 text-right font-medium">
+                        {r.predicted_score !== undefined && r.predicted_score !== null
+                          ? formatConfidence(r.predicted_score)
+                          : "N/A"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
