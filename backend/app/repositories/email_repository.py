@@ -164,6 +164,9 @@ class EmailRepository:
             if predicted_score < 0.0 or predicted_score > 1.0:
                 predicted_score = max(0.0, min(1.0, predicted_score))
 
+        sent_at = data.get("sent_at") or data.get("received_at")
+        received_at = data.get("received_at") or data.get("sent_at")
+
         sanitized = {
             "user_id": user_id,
             "message_id": message_id,
@@ -174,6 +177,8 @@ class EmailRepository:
             "predicted_score": predicted_score,
             "fetch_time": fetch_time,
             "classified_at": classified_at,
+            "received_at": received_at,
+            "sent_at": sent_at,
         }
 
         return sanitized
