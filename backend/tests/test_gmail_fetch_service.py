@@ -81,9 +81,10 @@ def _make_service(
 
     # Inject stub emails into _fetch_from_gmail
     raw = emails if emails is not None else []
-    svc._fetch_from_gmail = staticmethod(lambda **kwargs: raw)
+    svc._fetch_from_gmail = AsyncMock(return_value=raw)
 
     return svc
+
 
 
 class TestGmailFetchServiceRateLimit(unittest.TestCase):
@@ -195,7 +196,7 @@ class TestGmailFetchServiceZeroEmails(unittest.TestCase):
     def test_zero_emails_to_dict(self):
         svc = _make_service(emails=[])
         result = run(svc.run_fetch_pipeline(USER_ID, GOOGLE_ACCOUNT))
-        self.assertEqual(result.to_dict(), {"fetched": 0, "classified": 0, "skipped": 0})
+        self.assertEqual(result.to_dict(), {"fetched": 0, "classified": 0, "skipped": 0, "new_emails": []})
 
 
 class TestGmailFetchServicePartialFailure(unittest.TestCase):
@@ -282,11 +283,12 @@ class TestFetchResultToDict(unittest.TestCase):
 
     def test_to_dict(self):
         r = FetchResult(fetched=5, classified=4, skipped=1)
-        self.assertEqual(r.to_dict(), {"fetched": 5, "classified": 4, "skipped": 1})
+        self.assertEqual(r.to_dict(), {"fetched": 5, "classified": 4, "skipped": 1, "new_emails": []})
 
     def test_defaults(self):
         r = FetchResult()
-        self.assertEqual(r.to_dict(), {"fetched": 0, "classified": 0, "skipped": 0})
+        self.assertEqual(r.to_dict(), {"fetched": 0, "classified": 0, "skipped": 0, "new_emails": []})
+
 
 
 if __name__ == "__main__":

@@ -9,7 +9,10 @@ export interface ClassifiedEmail {
   predicted_score?: number | null;
   fetch_time?: string;
   classified_at?: string;
+  received_at?: string | null;
+  sent_at?: string | null;
 }
+
 
 export interface GetEmailsResponse {
   emails: ClassifiedEmail[];
@@ -22,7 +25,9 @@ export interface FetchResult {
   fetched: number;
   classified: number;
   skipped: number;
+  new_emails?: ClassifiedEmail[];
 }
+
 
 export const emailsApi = {
   /**

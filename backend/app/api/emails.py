@@ -9,7 +9,19 @@ from app.utils.main_utile import return_response
 emails_router = APIRouter()
 
 # Safe fields to expose to the frontend (no tokens, no raw body, no sensitive IDs)
-_SAFE_FIELDS = {"message_id", "thread_id", "subject", "snippet", "predicted_label", "predicted_score", "fetch_time", "classified_at"}
+_SAFE_FIELDS = {
+    "message_id",
+    "thread_id",
+    "subject",
+    "snippet",
+    "predicted_label",
+    "predicted_score",
+    "fetch_time",
+    "classified_at",
+    "received_at",
+    "sent_at",
+}
+
 
 MAX_LIMIT = 100
 

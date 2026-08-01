@@ -59,6 +59,9 @@ class Settings:
         ).lower() in ("true", "1", "t")
         # Maximum seconds a per-user concurrency lock may be held before auto-expiry
         FETCH_LOCK_TTL_SECONDS = int(os.getenv("FETCH_LOCK_TTL_SECONDS", 60))
+        # Max emails to fetch from Gmail API per fetch operation (default 50)
+        FETCH_MAX_RESULTS = int(os.getenv("FETCH_MAX_RESULTS", 50))
+
 
         # Google OAuth
         GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")

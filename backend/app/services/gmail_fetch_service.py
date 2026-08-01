@@ -91,18 +91,29 @@ def _seconds_until_allowed(user_id: str) -> int:
 # Fetch result type
 # ──────────────────────────────────────────────────────────────────────────────
 
+import httpx
+
 class FetchResult:
-    def __init__(self, fetched: int = 0, classified: int = 0, skipped: int = 0):
+    def __init__(
+        self,
+        fetched: int = 0,
+        classified: int = 0,
+        skipped: int = 0,
+        new_emails: Optional[list] = None,
+    ):
         self.fetched = fetched
         self.classified = classified
         self.skipped = skipped
+        self.new_emails = new_emails or []
 
-    def to_dict(self) -> Dict[str, int]:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "fetched": self.fetched,
             "classified": self.classified,
             "skipped": self.skipped,
+            "new_emails": self.new_emails,
         }
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -205,8 +216,8 @@ class GmailFetchService:
                 ) from exc
             raise
 
-        # Step 2: Fetch emails from Gmail (stub — replace with real API call)
-        raw_emails = self._fetch_from_gmail(
+        # Step 2: Fetch unclassified emails from Gmail API
+        raw_emails = await self._fetch_from_gmail(
             user_id=user_id,
             google_email=google_email,
             access_token=access_token,
@@ -237,9 +248,27 @@ class GmailFetchService:
                     "classified_at": datetime.fromisoformat(
                         classified["classified_at"]
                     ),
+                    "received_at": raw.get("received_at") or raw.get("sent_at"),
+                    "sent_at": raw.get("sent_at") or raw.get("received_at"),
                 }
-                self.email_repo.save_email(email_doc, check_access=False)
+                saved_doc = self.email_repo.save_email(email_doc, check_access=False)
                 result.classified += 1
+
+                # Format for API response
+                ui_doc = {
+                    "message_id": raw["message_id"],
+                    "thread_id": raw.get("thread_id"),
+                    "subject": raw.get("subject", ""),
+                    "snippet": raw.get("snippet", ""),
+                    "predicted_label": classified["predicted_label"],
+                    "predicted_score": classified["predicted_score"],
+                    "fetch_time": email_doc["fetch_time"].isoformat(),
+                    "classified_at": classified["classified_at"],
+                    "received_at": raw.get("received_at") or raw.get("sent_at"),
+                    "sent_at": raw.get("sent_at") or raw.get("received_at"),
+                }
+                result.new_emails.append(ui_doc)
+
             except Exception as err:
                 result.skipped += 1
                 logger.error(
@@ -280,29 +309,92 @@ class GmailFetchService:
         snippet = raw_email.get("snippet", "") or raw_email.get("body", "")
         return self.model_service.classify_text(subject=subject, body=snippet)
 
-    @staticmethod
-    def _fetch_from_gmail(
-        user_id: str, google_email: str, access_token: str
+    async def _fetch_from_gmail(
+        self, user_id: str, google_email: str, access_token: str
     ) -> list:
         """
-        Stub: Returns mock email data.
-        ─────────────────────────────────────────────────────────────────────
-        REPLACE THIS METHOD with the real Gmail API call, e.g.:
-            from googleapiclient.discovery import build
-            from google.oauth2.credentials import Credentials
-
-            creds = Credentials(token=access_token)
-            service = build("gmail", "v1", credentials=creds)
-            results = service.users().messages().list(
-                userId="me", labelIds=["INBOX"], maxResults=50
-            ).execute()
-            messages = results.get("messages", [])
-            ...
-        ─────────────────────────────────────────────────────────────────────
+        Fetches unclassified messages from Gmail REST API v1 using access_token.
+        Fetches up to FETCH_MAX_RESULTS (default 50) messages per batch.
+        Filters out messages that are already present in MongoDB.
         """
-        logger.debug(
-            f"[Fetch] _fetch_from_gmail stub called for "
-            f"user_id={user_id} email={google_email}"
-        )
-        # Return an empty list until real API is integrated
-        return []
+        headers = {"Authorization": f"Bearer {access_token}"}
+        max_results = int(getattr(settings, "FETCH_MAX_RESULTS", 50))
+        url_list = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults={max_results}"
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(url_list, headers=headers)
+                if resp.status_code != 200:
+                    logger.warning(
+                        f"[GmailAPI] List messages status {resp.status_code} for user_id={user_id}"
+                    )
+                    return []
+
+                data = resp.json()
+                message_summaries = data.get("messages", [])
+                if not message_summaries:
+                    return []
+
+                new_raw_emails = []
+                for item in message_summaries:
+                    msg_id = item.get("id")
+                    if not msg_id:
+                        continue
+
+                    # Skip messages that have already been classified and stored
+                    if self.email_repo.find_by_message_id(user_id, msg_id):
+                        continue
+
+                    url_msg = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}?format=full"
+                    msg_resp = await client.get(url_msg, headers=headers)
+                    if msg_resp.status_code != 200:
+                        continue
+
+                    msg_data = msg_resp.json()
+                    payload = msg_data.get("payload", {})
+                    headers_list = payload.get("headers", [])
+
+                    subject = "No Subject"
+                    date_header = None
+                    for h in headers_list:
+                        h_name = h.get("name", "").lower()
+                        if h_name == "subject":
+                            subject = h.get("value", "No Subject")
+                        elif h_name == "date":
+                            date_header = h.get("value")
+
+                    # Extract sent / received timestamp from internalDate if available
+                    internal_date_ms = msg_data.get("internalDate")
+                    sent_at = None
+                    if internal_date_ms:
+                        try:
+                            dt = datetime.fromtimestamp(
+                                int(internal_date_ms) / 1000.0, tz=timezone.utc
+                            )
+                            sent_at = dt.isoformat()
+                        except Exception:
+                            pass
+
+                    if not sent_at and date_header:
+                        sent_at = date_header
+
+                    snippet = msg_data.get("snippet", "")
+                    thread_id = msg_data.get("threadId")
+
+                    new_raw_emails.append(
+                        {
+                            "message_id": msg_id,
+                            "thread_id": thread_id,
+                            "subject": subject,
+                            "snippet": snippet,
+                            "received_at": sent_at,
+                            "sent_at": sent_at,
+                        }
+                    )
+
+                return new_raw_emails
+        except Exception as err:
+            logger.error(f"[GmailAPI] Error querying Gmail API for user_id={user_id}: {err}")
+            return []
+
+
