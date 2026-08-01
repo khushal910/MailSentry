@@ -55,29 +55,36 @@ def _is_lock_expired(user_id: str) -> bool:
     if not acquired_at:
         return False
     elapsed = (datetime.now(timezone.utc) - acquired_at).total_seconds()
-    ttl = getattr(settings, "FETCH_LOCK_TTL_SECONDS", 60)
+    ttl = int(getattr(settings, "FETCH_LOCK_TTL_SECONDS", 60))
     return elapsed > ttl
 
 
 def _is_rate_limited(user_id: str) -> bool:
     """Returns True if this user's last fetch was less than FETCH_RATE_LIMIT_SECONDS ago."""
+    if not getattr(settings, "FETCH_RATE_LIMIT_SECONDS_APPLY", True):
+        return False
+
     last = _LAST_FETCH_AT.get(user_id)
     if not last:
         return False
     elapsed = (datetime.now(timezone.utc) - last).total_seconds()
-    window = getattr(settings, "FETCH_RATE_LIMIT_SECONDS", 300)
+    window = int(getattr(settings, "FETCH_RATE_LIMIT_SECONDS", 300))
     return elapsed < window
 
 
 def _seconds_until_allowed(user_id: str) -> int:
     """Returns the number of seconds the user must wait before the next fetch."""
+    if not getattr(settings, "FETCH_RATE_LIMIT_SECONDS_APPLY", True):
+        return 0
+
     last = _LAST_FETCH_AT.get(user_id)
     if not last:
         return 0
-    window = getattr(settings, "FETCH_RATE_LIMIT_SECONDS", 300)
+    window = int(getattr(settings, "FETCH_RATE_LIMIT_SECONDS", 300))
     elapsed = (datetime.now(timezone.utc) - last).total_seconds()
     remaining = int(window - elapsed)
     return max(remaining, 0)
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────

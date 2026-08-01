@@ -4,6 +4,8 @@ from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import HTTPException
+from app.core.config import settings
+
 
 # Module under test
 from app.services.gmail_fetch_service import (
@@ -91,6 +93,12 @@ class TestGmailFetchServiceRateLimit(unittest.TestCase):
         _LAST_FETCH_AT.clear()
         _USER_LOCKS.clear()
         _LOCK_ACQUIRED_AT.clear()
+        self.patcher = patch.object(settings, "FETCH_RATE_LIMIT_SECONDS_APPLY", True)
+        self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
+
 
     def test_first_call_is_allowed(self):
         svc = _make_service()
