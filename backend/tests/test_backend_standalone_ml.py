@@ -1,7 +1,14 @@
+import sys
+import os
 import unittest
 from unittest.mock import MagicMock
+
+# Ensure backend root directory is in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from app.services.ml_preprocessing import MLPreprocessing
 from app.services.ml_model_service import MLModelService
+
 
 
 class TestBackendStandaloneML(unittest.TestCase):

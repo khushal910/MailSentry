@@ -63,10 +63,12 @@ class EmailResponseSchema(EmailBaseSchema):
 
 class ClassifyEmailRequestSchema(BaseModel):
     """
-    Request payload schema for POST /api/classify-email.
+    Request payload schema for email classification.
+    Accepts subject and body (or message as alias).
     """
     subject: str = Field(default="", max_length=255, description="Email subject, max 255 chars")
-    body: str = Field(default="", description="Full or snippet of email body")
+    body: Optional[str] = Field(default="", description="Full or snippet of email body")
+    message: Optional[str] = Field(default=None, description="Alias for body")
 
     @field_validator("subject")
     @classmethod
@@ -74,4 +76,9 @@ class ClassifyEmailRequestSchema(BaseModel):
         if v and len(v) > 255:
             return v[:255]
         return v or ""
+
+    @property
+    def email_body(self) -> str:
+        return (self.body or self.message or "").strip()
+
 
