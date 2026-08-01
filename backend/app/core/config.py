@@ -25,6 +25,7 @@ class Settings:
         MONGO_URI = os.getenv("MONGO_URI")
         DATABASE_NAME = os.getenv("DATABASE_NAME")
         USER_COLLECTION_NAME = os.getenv("USER_COLLECTION_NAME", "users")
+        EMAIL_COLLECTION_NAME = os.getenv("EMAIL_COLLECTION_NAME", "emails")
         
         PASSWORD_LENGTH = int(os.getenv("PASSWORD_LENGTH", 8))
         PASSWORD_RULE_APPLY = os.getenv("PASSWORD_RULE_APPLY") == "True"

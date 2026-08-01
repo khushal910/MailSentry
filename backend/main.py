@@ -11,6 +11,11 @@ from app.db.mongodb import MongoDB
 async def lifespan(app: FastAPI):
 
     MongoDB.connect()
+    try:
+        from app.repositories.email_repository import EmailRepository
+        EmailRepository().ensure_indexes()
+    except Exception as e:
+        print(f"Index creation warning: {e}")
     yield
     MongoDB.disconnect()
 
