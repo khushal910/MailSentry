@@ -316,7 +316,7 @@ class DataTransformation:
                 self.data_transformation_config.transform_test_file, index=False
             )
 
-            # Save preprocessor and label encoder
+            # Save preprocessor and label encoder locally to ml-service artifact directory
             logger.info(
                 f"Saving preprocessor to {self.data_transformation_config.preprocessor_file}"
             )
@@ -331,6 +331,22 @@ class DataTransformation:
                 label_encoder,
                 self.data_transformation_config.label_encoder_file_path,
             )
+
+            # Copy/Save preprocessor and label encoder into backend/models for standalone backend deployment
+            try:
+                backend_models_dir = os.path.abspath(
+                    os.path.join(os.path.dirname(__file__), "..", "..", "..", "backend", "models")
+                )
+                os.makedirs(backend_models_dir, exist_ok=True)
+                
+                backend_preprocessor_path = os.path.join(backend_models_dir, "preprocessing.pkl")
+                backend_label_encoder_path = os.path.join(backend_models_dir, "label_encoder.pkl")
+
+                joblib.dump(preprocessor, backend_preprocessor_path)
+                joblib.dump(label_encoder, backend_label_encoder_path)
+                logger.info(f"Successfully copied preprocessor and label encoder to backend: {backend_models_dir}")
+            except Exception as copy_err:
+                logger.warning(f"Could not copy preprocessor/label_encoder to backend: {copy_err}")
 
             logger.info("All transformed files stored successfully.")
             logger.info("Exited store_transformed_data method")

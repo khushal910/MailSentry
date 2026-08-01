@@ -32,7 +32,7 @@ SCHEMA_FILE_PATH = os.path.join("config", "schema.yaml")
 
 # Backend configuration
 BACKEND_DIR_NAME = "backend"
-BACKEND_MODEL_PATH_DIR_NAME = "model"
+BACKEND_MODEL_PATH_DIR_NAME = "models"
 
 # Data Transformation related constants
 DATA_TRANSFORMATION_DIR_NAME = "data_transformation"
