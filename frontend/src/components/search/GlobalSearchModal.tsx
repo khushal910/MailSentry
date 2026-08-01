@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, X, Loader2, SearchX, Command } from "lucide-react";
+import { Search, X, Loader2, SearchX, Command, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SearchResultItem } from "./SearchResultItem";
 import { RecentSearches } from "./RecentSearches";
@@ -13,6 +14,7 @@ export function GlobalSearchModal({
   closeSearch,
   query,
   setQuery,
+  suggestions,
   groups,
   flatItems,
   isLoading,
@@ -36,10 +38,10 @@ export function GlobalSearchModal({
 
   let cumulativeIndex = 0;
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-md p-4 pt-16 md:pt-24 overflow-y-auto"
+        className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/75 backdrop-blur-md p-4 pt-12 md:pt-20 overflow-y-auto"
         onClick={(e) => {
           if (e.target === e.currentTarget) closeSearch();
         }}
@@ -50,7 +52,7 @@ export function GlobalSearchModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: -12 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="relative w-full max-w-[700px] overflow-hidden rounded-3xl border border-border/60 bg-card/90 shadow-2xl backdrop-blur-2xl transition-colors duration-300"
+          className="relative w-full max-w-[700px] overflow-hidden rounded-3xl border border-border/70 bg-card/95 shadow-2xl backdrop-blur-2xl transition-colors duration-300"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Top Search Input Bar */}
@@ -82,6 +84,31 @@ export function GlobalSearchModal({
               ESC
             </kbd>
           </div>
+
+          {/* Real-Time Search Suggestions Bar */}
+          {suggestions && suggestions.length > 0 && (
+            <div className="flex items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2 text-xs overflow-x-auto scrollbar-none">
+              <span className="flex items-center gap-1 font-semibold text-muted-foreground shrink-0 text-[10px] uppercase tracking-wider">
+                <Sparkles className="h-3 w-3 text-brand" /> Suggestions:
+              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {suggestions.map((s) => {
+                  const cleanTerm = s.startsWith('Search "')
+                    ? s.replace(/^Search "(.*)" in .*$/, "$1")
+                    : s;
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setQuery(cleanTerm)}
+                      className="rounded-lg border border-border/50 bg-background/60 px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-brand/15 hover:border-brand/40 hover:text-brand transition-all"
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Body Content */}
           <div className="max-h-[60vh] overflow-y-auto p-2">
@@ -184,4 +211,8 @@ export function GlobalSearchModal({
       </div>
     </AnimatePresence>
   );
+
+  return typeof document !== "undefined"
+    ? createPortal(modalContent, document.body)
+    : null;
 }

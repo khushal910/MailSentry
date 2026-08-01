@@ -1,4 +1,4 @@
-import { Clock, Trash2, Search, Wand2, Mail, Settings } from "lucide-react";
+import { Clock, Trash2, Search, Wand2, Mail, Settings, Sparkles, User, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface RecentSearchesProps {
@@ -13,18 +13,20 @@ export function RecentSearches({
   onClear,
 }: RecentSearchesProps) {
   const suggestions = [
-    { label: "Search Subject", term: "Invoice", icon: Mail },
-    { label: "Search Sender", term: "Amazon", icon: Search },
-    { label: "Search Spam", term: "Spam", icon: Wand2 },
-    { label: "Search Settings", term: "Password", icon: Settings },
+    { label: "Search Subject", term: "Invoice", icon: Mail, subtitle: 'Find emails with subject "Invoice"' },
+    { label: "Search Sender", term: "Amazon", icon: Search, subtitle: 'Find emails from "Amazon"' },
+    { label: "Filter Spam", term: "Spam", icon: Wand2, subtitle: 'Filter spam predicted emails' },
+    { label: "Security & Passwords", term: "Password", icon: Shield, subtitle: 'Change password or security' },
+    { label: "User Settings", term: "Settings", icon: Settings, subtitle: 'Appearance & dark mode' },
+    { label: "User Profile", term: "Profile", icon: User, subtitle: 'Account info & avatar' },
   ];
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-5">
       {searches.length > 0 && (
         <div>
           <div className="flex items-center justify-between px-2 pb-2">
-            <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               <Clock className="h-3.5 w-3.5 text-brand" />
               Recent Searches
             </span>
@@ -38,12 +40,12 @@ export function RecentSearches({
               Clear
             </Button>
           </div>
-          <div className="flex flex-wrap gap-1.5 px-1">
+          <div className="flex flex-wrap gap-2 px-1">
             {searches.map((s) => (
               <button
                 key={s}
                 onClick={() => onSelectSearch(s)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-border/50 bg-background/50 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-brand/10 hover:border-brand/40 hover:text-brand transition-all"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-brand/15 hover:border-brand/40 hover:text-brand transition-all shadow-sm"
               >
                 <Search className="h-3 w-3 text-muted-foreground" />
                 {s}
@@ -54,22 +56,27 @@ export function RecentSearches({
       )}
 
       <div>
-        <span className="block px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Quick Suggestions
-        </span>
-        <div className="grid grid-cols-2 gap-2 px-1">
+        <div className="flex items-center gap-1.5 px-2 pb-2">
+          <Sparkles className="h-3.5 w-3.5 text-brand" />
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Search Suggestions
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 px-1">
           {suggestions.map((item) => (
             <button
               key={item.label}
               onClick={() => onSelectSearch(item.term)}
-              className="flex items-center gap-2.5 rounded-xl border border-border/40 bg-card/40 p-2.5 text-left text-xs font-medium transition-all hover:bg-brand/10 hover:border-brand/30 hover:text-brand"
+              className="group flex items-center gap-3 rounded-2xl border border-border/50 bg-card/60 p-3 text-left transition-all hover:bg-brand/10 hover:border-brand/40 hover:shadow-sm"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-brand">
-                <item.icon className="h-3.5 w-3.5" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand group-hover:bg-brand group-hover:text-white transition-colors">
+                <item.icon className="h-4 w-4" />
               </div>
-              <div>
-                <p className="font-semibold text-foreground">{item.label}</p>
-                <p className="text-[11px] text-muted-foreground">e.g. "{item.term}"</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-foreground group-hover:text-brand transition-colors">
+                  {item.label}
+                </p>
+                <p className="text-[11px] text-muted-foreground truncate">{item.subtitle}</p>
               </div>
             </button>
           ))}

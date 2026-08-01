@@ -1,6 +1,7 @@
 import type { ElementType } from "react";
 
 export type SearchCategory =
+  | "Suggestions"
   | "Emails"
   | "Auto Classifier"
   | "Dashboard"

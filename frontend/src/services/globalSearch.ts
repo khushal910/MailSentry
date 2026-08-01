@@ -6,15 +6,15 @@ import {
   UserCircle,
   Settings as SettingsIcon,
   LogOut,
-  RefreshCw,
   Sun,
   Moon,
   Shield,
   Bell,
   Mail,
-  Zap,
   BarChart3,
   CheckCircle2,
+  Sparkles,
+  Search,
 } from "lucide-react";
 import type { SearchResultItem, SearchGroup } from "@/types/search";
 import { emailsApi } from "@/services/emailsApi";
@@ -27,6 +27,47 @@ export interface GlobalSearchContext {
 }
 
 /**
+ * Returns real-time search suggestions based on the user's current query input.
+ */
+export function getRealtimeSuggestions(query: string): string[] {
+  const q = query.toLowerCase().trim();
+  const dictionary = [
+    "Invoice",
+    "Amazon",
+    "Spam",
+    "Safe Emails",
+    "Settings",
+    "Password",
+    "Theme Mode",
+    "Auto Classifier",
+    "Prediction History",
+    "Email Classifier",
+    "User Profile",
+    "Notifications",
+    "Threat Statistics",
+    "Security",
+  ];
+
+  if (!q) {
+    return ["Invoice", "Amazon", "Spam", "Password", "Settings"];
+  }
+
+  const matches = dictionary.filter(
+    (item) => item.toLowerCase().includes(q) && item.toLowerCase() !== q
+  );
+
+  if (matches.length > 0) {
+    return matches.slice(0, 5);
+  }
+
+  return [
+    `Search "${query}" in Emails`,
+    `Search "${query}" in Settings`,
+    `Search "${query}" in History`,
+  ];
+}
+
+/**
  * Global Search Service — Modular architecture supporting keyword, category & future AI search.
  */
 export async function executeGlobalSearch(
@@ -34,11 +75,30 @@ export async function executeGlobalSearch(
   ctx: GlobalSearchContext
 ): Promise<SearchGroup[]> {
   const q = query.toLowerCase().trim();
-  if (!q) return [];
-
   const results: SearchResultItem[] = [];
 
-  // 1. Quick Actions & Keywords
+  // 1. Suggestions Category (Always top priority)
+  if (q) {
+    const matchingSuggestions = getRealtimeSuggestions(q);
+    matchingSuggestions.forEach((sugg, i) => {
+      const clean = sugg.startsWith('Search "')
+        ? sugg.replace(/^Search "(.*)" in .*$/, "$1")
+        : sugg;
+
+      results.push({
+        id: `sugg-${i}-${clean}`,
+        title: `Search for "${clean}"`,
+        description: `Filter emails, subjects & settings for "${clean}"`,
+        category: "Suggestions",
+        icon: Sparkles,
+        badge: "SUGGESTION",
+        action: () => ctx.navigate({ to: "/dashboard/history" }),
+        score: 200 - i * 10,
+      });
+    });
+  }
+
+  // 2. Quick Actions & Keywords
   const quickActions: SearchResultItem[] = [
     {
       id: "qa-auto-classifier",
@@ -110,7 +170,7 @@ export async function executeGlobalSearch(
 
   results.push(...quickActions.filter((item) => (item.score || 0) > 0));
 
-  // 2. Navigation items
+  // 3. Navigation items
   const navItems: SearchResultItem[] = [
     {
       id: "nav-dashboard",
@@ -170,7 +230,7 @@ export async function executeGlobalSearch(
 
   results.push(...navItems.filter((item) => (item.score || 0) > 0));
 
-  // 3. Settings & Security sub-actions
+  // 4. Settings & Security sub-actions
   const settingsSubItems: SearchResultItem[] = [
     {
       id: "set-password",
@@ -203,7 +263,7 @@ export async function executeGlobalSearch(
 
   results.push(...settingsSubItems.filter((item) => (item.score || 0) > 0));
 
-  // 4. Dashboard Stats sub-items
+  // 5. Dashboard Stats sub-items
   const dashboardItems: SearchResultItem[] = [
     {
       id: "dash-spam-stats",
@@ -227,38 +287,40 @@ export async function executeGlobalSearch(
 
   results.push(...dashboardItems.filter((item) => (item.score || 0) > 0));
 
-  // 5. Backend Search for Classified Emails (MongoDB)
-  try {
-    const emailRes = await emailsApi.getEmails({
-      search: q,
-      limit: 6,
-    });
-    if (emailRes.emails && emailRes.emails.length > 0) {
-      emailRes.emails.forEach((email) => {
-        const subject = email.subject || "(no subject)";
-        const snippet = email.snippet || "";
-        const label = email.predicted_label || "inbox";
-
-        let score = 110;
-        if (subject.toLowerCase() === q) score = 150; // Exact subject match
-        else if (subject.toLowerCase().includes(q)) score = 130; // Partial subject match
-        else if ((email.sender || "").toLowerCase().includes(q)) score = 120;
-
-        results.push({
-          id: `email-${email.message_id}`,
-          title: subject,
-          description: snippet || `Prediction: ${label}`,
-          category: "Emails",
-          icon: Mail,
-          badge: label.toUpperCase(),
-          action: () => ctx.navigate({ to: "/dashboard/history" }),
-          score: score,
-          snippet: snippet,
-        });
+  // 6. Backend Search for Classified Emails (MongoDB)
+  if (q) {
+    try {
+      const emailRes = await emailsApi.getEmails({
+        search: q,
+        limit: 6,
       });
+      if (emailRes.emails && emailRes.emails.length > 0) {
+        emailRes.emails.forEach((email) => {
+          const subject = email.subject || "(no subject)";
+          const snippet = email.snippet || "";
+          const label = email.predicted_label || "inbox";
+
+          let score = 110;
+          if (subject.toLowerCase() === q) score = 150; // Exact subject match
+          else if (subject.toLowerCase().includes(q)) score = 130; // Partial subject match
+          else if ((email.sender || "").toLowerCase().includes(q)) score = 120;
+
+          results.push({
+            id: `email-${email.message_id}`,
+            title: subject,
+            description: snippet || `Prediction: ${label}`,
+            category: "Emails",
+            icon: Mail,
+            badge: label.toUpperCase(),
+            action: () => ctx.navigate({ to: "/dashboard/history" }),
+            score: score,
+            snippet: snippet,
+          });
+        });
+      }
+    } catch (err) {
+      console.error("Global search API error:", err);
     }
-  } catch (err) {
-    console.error("Global search API error:", err);
   }
 
   // Sort by score descending
@@ -266,6 +328,7 @@ export async function executeGlobalSearch(
 
   // Group by Category preserving priority order
   const categoryOrder: SearchGroup["category"][] = [
+    "Suggestions",
     "Emails",
     "Auto Classifier",
     "Dashboard",
@@ -296,6 +359,7 @@ export async function executeGlobalSearch(
 }
 
 function getScore(text: string, query: string, baseScore: number): number {
+  if (!query) return baseScore;
   const t = text.toLowerCase();
   if (t === query) return baseScore + 40;
   if (t.includes(query)) return baseScore + 20;

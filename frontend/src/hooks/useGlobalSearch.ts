@@ -4,7 +4,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import type { SearchGroup, SearchResultItem } from "@/types/search";
-import { executeGlobalSearch } from "@/services/globalSearch";
+import { executeGlobalSearch, getRealtimeSuggestions } from "@/services/globalSearch";
 
 const RECENT_SEARCHES_KEY = "mailsentry_recent_searches";
 const MAX_RECENT_SEARCHES = 10;
@@ -36,6 +36,11 @@ export function useGlobalSearch() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+
+  // Compute real-time suggestions based on current query
+  const suggestions = useMemo(() => {
+    return getRealtimeSuggestions(query);
+  }, [query]);
 
   // Save recent searches to localStorage
   const saveRecentSearches = useCallback((searches: string[]) => {
@@ -192,6 +197,7 @@ export function useGlobalSearch() {
     toggleSearch,
     query,
     setQuery,
+    suggestions,
     groups,
     flatItems,
     isLoading,
