@@ -278,6 +278,9 @@ class GoogleOAuthService:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="User account no longer exists."
                 )
+        else:
+            # Look up existing user by Google email when logging in via Google
+            existing_user = users_col.find_one({"email": email})
 
         if existing_user:
             users_col.update_one(
@@ -309,10 +312,22 @@ class GoogleOAuthService:
             "updated_at": now,
         }
 
-        result = users_col.insert_one(new_user)
-        new_user["_id"] = result.inserted_id
-        logger.info(f"Auto-created new MailSentry user via Google OAuth: {email} (username: {username})")
-        return new_user
+        try:
+            result = users_col.insert_one(new_user)
+            new_user["_id"] = result.inserted_id
+            logger.info(f"Auto-created new MailSentry user via Google OAuth: {email} (username: {username})")
+            return new_user
+        except Exception:
+            # Fallback check if user was inserted concurrently
+            existing_user = users_col.find_one({"email": email})
+            if existing_user:
+                users_col.update_one(
+                    {"_id": existing_user["_id"]},
+                    {"$set": {"google_connected": True, "updated_at": now}}
+                )
+                existing_user["google_connected"] = True
+                return existing_user
+            raise
 
     def persist_google_account(
         self,
