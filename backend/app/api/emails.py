@@ -47,6 +47,7 @@ async def get_user_emails(
     limit: int = Query(default=20, ge=1, le=MAX_LIMIT, description="Number of emails per page (max 100)"),
     page: int = Query(default=1, ge=1, description="Page number (starts at 1)"),
     label: Optional[str] = Query(default=None, description="Filter by predicted label (e.g. 'spam', 'important')"),
+    search: Optional[str] = Query(default=None, description="Search query string for subject, snippet, label, or sender"),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -58,21 +59,28 @@ async def get_user_emails(
     - limit: how many emails to return per page (1-100, default 20)
     - page: page number starting from 1 (default 1)
     - label: optional filter by predicted_label
+    - search: optional search query string
     """
     user_id = str(current_user["_id"])
     skip = (page - 1) * limit
 
+    repo_kwargs = {
+        "user_id": user_id,
+        "predicted_label": label or None,
+        "limit": limit,
+        "skip": skip,
+    }
+    count_kwargs = {
+        "user_id": user_id,
+        "predicted_label": label or None,
+    }
+    if search and search.strip():
+        repo_kwargs["search"] = search.strip()
+        count_kwargs["search"] = search.strip()
+
     repo = EmailRepository()
-    raw_emails = repo.get_user_emails(
-        user_id=user_id,
-        predicted_label=label or None,
-        limit=limit,
-        skip=skip
-    )
-    total_count = repo.count_user_emails(
-        user_id=user_id,
-        predicted_label=label or None
-    )
+    raw_emails = repo.get_user_emails(**repo_kwargs)
+    total_count = repo.count_user_emails(**count_kwargs)
 
     emails = [_sanitize_email(doc) for doc in raw_emails]
 

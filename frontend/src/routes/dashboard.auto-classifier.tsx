@@ -1,24 +1,29 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   RefreshCw,
   Mail,
-  MailX,
   AlertTriangle,
   Plug,
   Sparkles,
   History as HistoryIcon,
   Wand2,
   CheckCircle2,
+  Search,
+  X,
+  SearchX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { emailsApi, type UnclassifiedEmail } from "@/services/emailsApi";
 import { googleAuthApi } from "@/services/googleAuthApi";
 import { formatDate, truncate } from "@/utils/format";
+import { useDebounce } from "@/hooks/useDebounce";
+import { HighlightText } from "@/components/HighlightText";
 
 export const Route = createFileRoute("/dashboard/auto-classifier")({
   head: () => ({
@@ -42,6 +47,10 @@ function AutoClassifierPage() {
   const [isFetching, setIsFetching] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Auto Classifier strictly represents the queue of UNCLASSIFIED emails (max 50 new)
   const [unclassifiedEmails, setUnclassifiedEmails] = useState<UnclassifiedEmail[]>([]);
@@ -88,6 +97,7 @@ function AutoClassifierPage() {
 
       // Remove classified emails from Auto Classifier page immediately after successful storage
       setUnclassifiedEmails([]);
+      setSearchTerm("");
 
       toast.success(
         `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
@@ -107,6 +117,17 @@ function AutoClassifierPage() {
       setIsClassifying(false);
     }
   };
+
+  /* ─── Real-time frontend search filtering ─── */
+  const filteredEmails = useMemo(() => {
+    if (!debouncedSearch.trim()) return unclassifiedEmails;
+    const q = debouncedSearch.toLowerCase().trim();
+    return unclassifiedEmails.filter((email) => {
+      const subjectMatch = (email.subject || "").toLowerCase().includes(q);
+      const snippetMatch = (email.snippet || "").toLowerCase().includes(q);
+      return subjectMatch || snippetMatch;
+    });
+  }, [unclassifiedEmails, debouncedSearch]);
 
   /* ─── on mount: check Gmail status, then fetch unclassified queue ─── */
   useEffect(() => {
@@ -232,7 +253,10 @@ function AutoClassifierPage() {
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/20 bg-brand/5 p-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-2 font-medium text-foreground">
             <Sparkles className="h-4 w-4 text-brand" />
-            <span>Unclassified Email Queue ({unclassifiedEmails.length} pending, max 50)</span>
+            <span>
+              Unclassified Email Queue ({filteredEmails.length}
+              {unclassifiedEmails.length !== filteredEmails.length ? ` of ${unclassifiedEmails.length}` : ""} pending, max 50)
+            </span>
           </div>
           <span className="text-xs">
             Classified emails are saved directly to{" "}
@@ -242,8 +266,45 @@ function AutoClassifierPage() {
           </span>
         </div>
 
-        {/* Email table */}
+        {/* Email table container */}
         <div className="glass mt-4 rounded-2xl p-4 md:p-6">
+          {/* Search bar & Action bar */}
+          {unclassifiedEmails.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-4">
+              <div className="relative flex-1 min-w-[240px] max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="auto-classifier-search"
+                  type="text"
+                  placeholder="Search unclassified emails by subject or body..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 pr-8 text-xs sm:text-sm bg-background/50 border-border/60 focus:border-brand"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleClassify}
+                  disabled={isClassifying || isFetching}
+                  className="bg-gradient-brand text-xs shadow-elegant"
+                >
+                  <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+                  Classify All ({unclassifiedEmails.length})
+                </Button>
+              </div>
+            </div>
+          )}
+
           {isFetching && unclassifiedEmails.length === 0 ? (
             <LoadingState message="Fetching unclassified Gmail queue…" compact />
           ) : unclassifiedEmails.length === 0 ? (
@@ -268,34 +329,35 @@ function AutoClassifierPage() {
                 </Button>
               </div>
             </div>
+          ) : filteredEmails.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/40 text-muted-foreground">
+                <SearchX className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">No matching emails found</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  No unclassified email matches "<span className="font-medium text-foreground">{searchTerm}</span>".
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setSearchTerm("")} className="mt-2 text-xs">
+                Clear Search
+              </Button>
+            </div>
           ) : (
             <div className="overflow-x-auto">
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Click <span className="font-semibold text-foreground">Classify</span> to run ML predictions and save all pending emails below to MongoDB.
-                </p>
-                <Button
-                  size="sm"
-                  onClick={handleClassify}
-                  disabled={isClassifying || isFetching}
-                  className="bg-gradient-brand text-xs shadow-elegant"
-                >
-                  <Wand2 className="mr-1.5 h-3.5 w-3.5" />
-                  Classify All ({unclassifiedEmails.length})
-                </Button>
-              </div>
               <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-3 text-left font-medium w-[30%]">Subject</th>
-                    <th className="pb-3 text-left font-medium w-[35%]">Preview</th>
-                    <th className="pb-3 text-left font-medium w-[18%]">Status</th>
+                    <th className="pb-3 text-left font-medium w-[32%]">Subject</th>
+                    <th className="pb-3 text-left font-medium w-[36%]">Preview</th>
+                    <th className="pb-3 text-left font-medium w-[15%]">Status</th>
                     <th className="pb-3 text-right font-medium w-[17%]">Email Sent Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   <AnimatePresence mode="wait">
-                    {unclassifiedEmails.map((email, i) => (
+                    {filteredEmails.map((email, i) => (
                       <motion.tr
                         key={email.message_id}
                         initial={{ opacity: 0, y: 6 }}
@@ -306,11 +368,17 @@ function AutoClassifierPage() {
                       >
                         <td className="py-3 pr-4 font-medium">
                           <span title={email.subject}>
-                            {truncate(email.subject ?? "(no subject)", 45)}
+                            <HighlightText
+                              text={truncate(email.subject ?? "(no subject)", 45)}
+                              query={debouncedSearch}
+                            />
                           </span>
                         </td>
                         <td className="py-3 pr-4 text-muted-foreground">
-                          {truncate(email.snippet ?? "—", 60)}
+                          <HighlightText
+                            text={truncate(email.snippet ?? "—", 60)}
+                            query={debouncedSearch}
+                          />
                         </td>
                         <td className="py-3 pr-4">
                           <Badge variant="outline" className="border-brand/40 bg-brand/10 text-brand text-xs font-normal">

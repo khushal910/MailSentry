@@ -184,6 +184,31 @@ class TestGetEmailsEndpoint(unittest.TestCase):
         self.assertEqual(data["total_count"], 50)
         self.assertEqual(data["total"], 50)
 
+    @patch("app.api.emails.EmailRepository")
+    def test_get_emails_search_parameter_forwarded(self, MockRepo):
+        """Verifies search parameter is forwarded to repository."""
+        app.dependency_overrides[get_current_user] = lambda: self.mock_user
+        MockRepo.return_value.get_user_emails.return_value = [MOCK_EMAILS[0]]
+        MockRepo.return_value.count_user_emails.return_value = 1
+
+        response = self.client.get(
+            "/api/emails?search=khushal",
+            headers={"Authorization": f"Bearer {self.token}"}
+        )
+        self.assertEqual(response.status_code, 200)
+        MockRepo.return_value.get_user_emails.assert_called_once_with(
+            user_id=USER_ID,
+            predicted_label=None,
+            search="khushal",
+            limit=20,
+            skip=0
+        )
+        MockRepo.return_value.count_user_emails.assert_called_once_with(
+            user_id=USER_ID,
+            predicted_label=None,
+            search="khushal"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

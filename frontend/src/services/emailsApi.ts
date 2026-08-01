@@ -83,14 +83,15 @@ export const emailsApi = {
 
   /**
    * GET /api/emails
-   * Returns paginated list of classified emails for the authenticated user.
+   * Returns paginated list of classified emails for the authenticated user with optional search query.
    */
-  async getEmails(params?: { limit?: number; page?: number; label?: string }): Promise<GetEmailsResponse> {
+  async getEmails(params?: { limit?: number; page?: number; label?: string; search?: string }): Promise<GetEmailsResponse> {
     const { data } = await apiClient.get<{ data: GetEmailsResponse }>("/api/emails", {
       params: {
         limit: params?.limit ?? 20,
         page: params?.page ?? 1,
         ...(params?.label ? { label: params.label } : {}),
+        ...(params?.search ? { search: params.search } : {}),
       },
     });
     return data.data;

@@ -250,11 +250,12 @@ class EmailRepository:
         self,
         user_id: str,
         predicted_label: Optional[str] = None,
+        search: Optional[str] = None,
         limit: int = 50,
         skip: int = 0
     ) -> List[Dict[str, Any]]:
         """
-        Fetches classified emails for a specific user with optional label filter and pagination.
+        Fetches classified emails for a specific user with optional label filter, search, and pagination.
         """
         query: Dict[str, Any] = (
             {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]}
@@ -263,6 +264,22 @@ class EmailRepository:
         )
         if predicted_label:
             query["predicted_label"] = predicted_label
+
+        if search and search.strip():
+            term = re.escape(search.strip())
+            regex = {"$regex": term, "$options": "i"}
+            query["$and"] = [
+                {
+                    "$or": [
+                        {"subject": regex},
+                        {"snippet": regex},
+                        {"predicted_label": regex},
+                        {"prediction": regex},
+                        {"sender": regex},
+                        {"from": regex},
+                    ]
+                }
+            ]
 
         cursor = (
             self.collection.find(query)
@@ -275,10 +292,11 @@ class EmailRepository:
     def count_user_emails(
         self,
         user_id: str,
-        predicted_label: Optional[str] = None
+        predicted_label: Optional[str] = None,
+        search: Optional[str] = None
     ) -> int:
         """
-        Counts total classified emails stored for a user, optionally filtered by predicted_label.
+        Counts total classified emails stored for a user, optionally filtered by predicted_label and search query.
         """
         query: Dict[str, Any] = (
             {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]}
@@ -287,6 +305,22 @@ class EmailRepository:
         )
         if predicted_label:
             query["predicted_label"] = predicted_label
+
+        if search and search.strip():
+            term = re.escape(search.strip())
+            regex = {"$regex": term, "$options": "i"}
+            query["$and"] = [
+                {
+                    "$or": [
+                        {"subject": regex},
+                        {"snippet": regex},
+                        {"predicted_label": regex},
+                        {"prediction": regex},
+                        {"sender": regex},
+                        {"from": regex},
+                    ]
+                }
+            ]
 
         try:
             return self.collection.count_documents(query)
