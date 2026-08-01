@@ -25,13 +25,15 @@ class GoogleAccountRepository:
 
     def ensure_indexes(self) -> None:
         """
-        Creates indexes on google_accounts collection:
-        - Unique index on google_email
-        - Index on user_id
+        Creates unique indexes on google_accounts collection:
+        - Unique index on user_id (sparse=True)
+        - Unique index on google_user_id (sparse=True)
+        - Unique index on google_email (unique=True)
         """
         try:
+            self.collection.create_index("user_id", unique=True, sparse=True)
+            self.collection.create_index("google_user_id", unique=True, sparse=True)
             self.collection.create_index("google_email", unique=True)
-            self.collection.create_index("user_id", sparse=True)
             logger.info("Indexes ensured on google_accounts collection.")
         except Exception as e:
             logger.error(f"Error creating indexes on google_accounts: {str(e)}")
@@ -50,6 +52,46 @@ class GoogleAccountRepository:
         if not doc and ObjectId.is_valid(user_id):
             doc = self.collection.find_one({"user_id": ObjectId(user_id)})
         return doc
+
+    def find_account(
+        self,
+        user_id: str | None = None,
+        google_user_id: str | None = None,
+        google_email: str | None = None,
+    ) -> dict | None:
+        """
+        Finds a Google account document by user_id, google_user_id, or google_email.
+        """
+        if user_id:
+            doc = self.find_by_user_id(user_id)
+            if doc:
+                return doc
+        if google_user_id:
+            doc = self.collection.find_one({"google_user_id": str(google_user_id)})
+            if doc:
+                return doc
+        if google_email:
+            doc = self.find_by_email(google_email)
+            if doc:
+                return doc
+        return None
+
+    def update_user_google_connected(self, user_id: str | None, connected: bool, now: datetime) -> None:
+        """
+        Updates google_connected=true on the target user in the users collection.
+        """
+        if not user_id:
+            return
+        try:
+            users_col = self.db[settings.USER_COLLECTION_NAME]
+            query = (
+                {"$or": [{"_id": str(user_id)}, {"_id": ObjectId(user_id)}]}
+                if ObjectId.is_valid(user_id)
+                else {"_id": str(user_id)}
+            )
+            users_col.update_one(query, {"$set": {"google_connected": connected, "updated_at": now}})
+        except Exception as e:
+            logger.error(f"Error updating user google_connected status: {str(e)}")
 
     def disconnect_account(self, user_id: str) -> bool:
         """
@@ -76,48 +118,55 @@ class GoogleAccountRepository:
         Upserts (creates or updates) a Google account document in MongoDB.
 
         Rules:
-        - Stores google_user_id, refresh_token (encrypted), google_connected=True, user_id.
-        - Never stores access_token permanently.
-        - Preserves existing encrypted refresh_token if new one is not provided.
+        - Stores user_id, google_user_id, google_email, refresh_token (encrypted), access_token_expiry, google_connected=True, timestamps.
+        - Updates target user document in `users` collection with google_connected=True.
+        - Preserves existing encrypted refresh_token if new one is not provided or empty (never overwrites with null).
+        - Prevents duplicate documents (one google_account per user/google_user_id).
+        - Timestamps stored in UTC.
         """
         email = google_email.strip().lower()
         now = datetime.now(timezone.utc)
-        existing = self.find_by_email(email)
+        existing = self.find_account(user_id=user_id, google_user_id=google_user_id, google_email=email)
 
         if existing:
-            # Update existing Google account document
+            # Update existing Google account document (do NOT create duplicate)
             update_fields: dict = {
+                "google_email": email,
+                "access_token_expiry": access_token_expiry,
                 "updated_at": now,
                 "google_connected": True,
             }
 
             if google_user_id:
-                update_fields["google_user_id"] = google_user_id
-
-            if access_token_expiry is not None:
-                update_fields["access_token_expiry"] = access_token_expiry
+                update_fields["google_user_id"] = str(google_user_id)
 
             if user_id:
-                update_fields["user_id"] = user_id
+                update_fields["user_id"] = str(user_id)
 
-            # Update refresh_token only if a new non-empty token was provided
-            if encrypted_refresh_token:
-                update_fields["refresh_token"] = encrypted_refresh_token
+            # Update refresh_token ONLY if a new non-empty token is provided
+            # Never overwrite existing refresh token with null / empty / None
+            if encrypted_refresh_token and str(encrypted_refresh_token).strip():
+                update_fields["refresh_token"] = str(encrypted_refresh_token).strip()
 
             self.collection.update_one(
                 {"_id": existing["_id"]},
                 {"$set": update_fields}
             )
 
+            target_uid = user_id or existing.get("user_id")
+            if target_uid:
+                self.update_user_google_connected(target_uid, True, now)
+
             logger.info(f"Updated Google account in MongoDB: {email}")
-            return self.find_by_email(email) or {}
+            updated_doc = self.collection.find_one({"_id": existing["_id"]})
+            return updated_doc or {}
         else:
             # Create new Google account document
             doc = {
-                "user_id": user_id,
-                "google_user_id": google_user_id,
+                "user_id": str(user_id) if user_id else None,
+                "google_user_id": str(google_user_id) if google_user_id else None,
                 "google_email": email,
-                "refresh_token": encrypted_refresh_token,
+                "refresh_token": str(encrypted_refresh_token).strip() if (encrypted_refresh_token and str(encrypted_refresh_token).strip()) else None,
                 "access_token_expiry": access_token_expiry,
                 "google_connected": True,
                 "created_at": now,
@@ -126,6 +175,10 @@ class GoogleAccountRepository:
 
             result = self.collection.insert_one(doc)
             doc["_id"] = result.inserted_id
+
+            if user_id:
+                self.update_user_google_connected(user_id, True, now)
+
             logger.info(f"Created new Google account in MongoDB: {email}")
             return doc
 
