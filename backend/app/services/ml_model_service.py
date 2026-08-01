@@ -145,7 +145,13 @@ class MLModelService:
         target_path = latest_filepath
         if not os.path.exists(target_path):
             pattern = os.path.join(self.models_dir, "*.pkl")
-            files = glob.glob(pattern)
+            all_files = glob.glob(pattern)
+            # Exclude auxiliary artifact files (preprocessing.pkl and label_encoder.pkl)
+            files = [
+                f for f in all_files
+                if not os.path.basename(f).startswith("preprocessing")
+                and not os.path.basename(f).startswith("label_encoder")
+            ]
             if not files:
                 logger.warning(f"No model files found in '{self.models_dir}'.")
                 return None
@@ -251,13 +257,23 @@ class MLModelService:
                     else:
                         predicted_label = str(raw_val)
 
-            # Step 5: Run probability prediction if supported
+            # Step 5: Run probability / confidence calculation
+            import numpy as np
             if hasattr(model, "predict_proba"):
                 try:
-                    import numpy as np
                     proba = model.predict_proba(X_features)
                     if proba is not None and len(proba) > 0:
                         predicted_score = round(float(np.max(proba[0])), 4)
+                except Exception:
+                    pass
+            elif hasattr(model, "decision_function"):
+                try:
+                    dec = model.decision_function(X_features)
+                    if dec is not None and len(dec) > 0:
+                        val = float(dec[0])
+                        # Sigmoid transformation converting margin distance into confidence score
+                        prob = 1.0 / (1.0 + np.exp(-abs(val)))
+                        predicted_score = round(float(prob), 4)
                 except Exception:
                     pass
 
@@ -276,4 +292,5 @@ class MLModelService:
             "predicted_score": predicted_score,
             "classified_at": datetime.now(timezone.utc).isoformat()
         }
+
 
