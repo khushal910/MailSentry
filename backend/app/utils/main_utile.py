@@ -1,6 +1,5 @@
 from app.core.config import settings
 import bcrypt
-import jwt
 import re
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError, ExpiredSignatureError
