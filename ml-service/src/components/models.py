@@ -137,35 +137,20 @@ class ModelList:
                         "random_state": 42,
                         "n_jobs": -1,
                     },
-                ),
-                
-                "HistGradientBoosting": _ModelBundle(
-                name="HistGradientBoosting",
-                model=HistGradientBoostingClassifier(
-                    learning_rate=0.1,
-                    max_depth=6,
-                    random_state=42,
-                ),
-                params={
-                    "learning_rate": 0.1,
-                    "max_depth": 6,
-                    "random_state": 42,
-                },
-            ),
-                "AdaBoost": _ModelBundle(
-                name="AdaBoost",
-                model=AdaBoostClassifier(
-                    n_estimators=300,
-                    learning_rate=0.1,
-                    random_state=42,
-                ),
-                params={
-                    "n_estimators": 300,
-                    "learning_rate": 0.1,
-                    "random_state": 42,
-                },
-            ),
-        }
+                )
+            }
+
+            try:
+                from tabpfn import TabPFNClassifier
+                models["TabPFN"] = _ModelBundle(
+                    name="TabPFN",
+                    model=TabPFNClassifier(device="auto"),
+                    params={"device": "auto"},
+                )
+            except Exception as tabpfn_err:
+                logger.warning("Could not initialize TabPFNClassifier: %s", tabpfn_err)
+
             return models
+
         except Exception as exc:
             raise MyException(exc, sys) from exc

@@ -17,6 +17,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, Tuple
 import pandas as pd
+from src.components.hyperparameter_tuner import HyperparameterTuner
 from src.components.models import ModelList
 from src.constants import *
 from src.entity.artifact_entity import ModelTrainerArtifact
@@ -104,25 +105,64 @@ class ModelTrainer:
         y_train: pd.Series,
     ) -> Tuple[Dict[str, _ModelBundle], Dict[str, str]]:
         """
-        Fit every candidate model. If a model fails, its error is captured.
+        Tune every candidate model using RandomizedSearchCV. If a model fails, its error is captured.
         Returns:
-            - Dictionary of successfully trained model bundles.
+            - Dictionary of successfully trained & tuned model bundles.
             - Dictionary mapping failed model names to error messages.
         """
         trained_models: Dict[str, _ModelBundle] = {}
         training_errors: Dict[str, str] = {}
 
+        tuner = HyperparameterTuner(
+            n_iter=20,
+            cv=5,
+            scoring=self.model_evaluate_metric,
+            random_state=42,
+            n_jobs=-1,
+        )
+
         for model_name, bundle in models.items():
-            logger.info("Training model: %s", model_name)
+            logger.info("Processing model: %s", model_name)
             try:
-                bundle.model.fit(x_train.to_numpy(), y_train.to_numpy())
-                trained_models[model_name] = bundle
+                is_tabpfn = (
+                    model_name.lower().startswith("tabpfn")
+                    or type(bundle.model).__name__ == "TabPFNClassifier"
+                )
+
+                if is_tabpfn:
+                    logger.info("Fitting TabPFN directly without RandomizedSearchCV: %s", model_name)
+                    bundle.model.fit(x_train.to_numpy(), y_train.to_numpy())
+                    model_params = (
+                        getattr(bundle.model, "get_params", lambda: {})() or bundle.params
+                    )
+                    trained_bundle = _ModelBundle(
+                        name=bundle.name,
+                        model=bundle.model,
+                        params=model_params,
+                        best_cv_score=0.0,
+                    )
+                else:
+                    best_estimator, best_params, best_cv_score = tuner.tune(
+                        model_name=model_name,
+                        estimator=bundle.model,
+                        x_train=x_train,
+                        y_train=y_train,
+                    )
+                    trained_bundle = _ModelBundle(
+                        name=bundle.name,
+                        model=best_estimator,
+                        params=best_params,
+                        best_cv_score=best_cv_score,
+                    )
+                trained_models[model_name] = trained_bundle
             except Exception as e:
                 error_msg = str(e)
                 logger.error(f"Model {model_name} training failed: {error_msg}")
                 training_errors[model_name] = error_msg
 
         return trained_models, training_errors
+
+
 
     def _get_model_scores(self, model: Any, x_test: pd.DataFrame) -> Any:
         """
@@ -166,6 +206,7 @@ class ModelTrainer:
                     y_pred=y_pred,
                     y_score=y_score,
                 )
+                metrics["best_cv_score"] = getattr(bundle, "best_cv_score", 0.0)
 
                 log_model_to_mlflow(
                     model_name=model_name,

@@ -33,10 +33,13 @@ stages:
     cmd: python -m src.components.model_traning
     deps:
       - src/components/model_traning.py
+      - src/components/hyperparameter_tuner.py
+      - src/config/hyperparameter_config.py
       - src/utils/mlflow_utils.py
       - artifact/data_transformation/transformed_train.csv
       - artifact/data_transformation/transformed_test.csv
       - src/components/models.py
+
     outs:
       - artifact/model_trainer/model.pkl
       - artifact/model_trainer/model_report.yaml

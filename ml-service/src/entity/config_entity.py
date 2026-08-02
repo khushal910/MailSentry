@@ -48,11 +48,13 @@ class TrainModelConfig:
    
 @dataclass(frozen=True)
 class _ModelBundle:
-    """Container for a model and its logging parameters."""
+    """Container for a model, its logging parameters, and optional cross-validation score."""
 
     name: str
     model: Any
     params: Dict[str, Any]
+    best_cv_score: float = 0.0
+
 
 
 @dataclass(frozen=True)
