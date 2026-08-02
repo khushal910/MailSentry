@@ -42,6 +42,15 @@ export function AuthLayout({ title, subtitle, footer, children }: AuthLayoutProp
         {footer && (
           <p className="mt-6 text-center text-sm text-muted-foreground">{footer}</p>
         )}
+        <div className="mt-6 flex justify-center gap-4 text-xs text-muted-foreground">
+          <Link to="/privacy" className="hover:text-foreground transition-colors">
+            Privacy Policy
+          </Link>
+          <span>•</span>
+          <Link to="/terms" className="hover:text-foreground transition-colors">
+            Terms of Service
+          </Link>
+        </div>
       </div>
     </div>
   );

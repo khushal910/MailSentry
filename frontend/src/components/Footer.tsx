@@ -19,6 +19,13 @@ const sections = [
     ],
   },
   {
+    title: "Legal",
+    links: [
+      { to: "/privacy", label: "Privacy Policy" },
+      { to: "/terms", label: "Terms of Service" },
+    ],
+  },
+  {
     title: "Account",
     links: [
       { to: "/login", label: "Login" },
