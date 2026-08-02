@@ -19,6 +19,7 @@ class ClassificationJob:
         self.processed = 0
         self.classified_count = 0
         self.skipped_count = 0
+        self.current_subject: Optional[str] = None
         self.result: Optional[Dict[str, Any]] = None
         self.error_message: Optional[str] = None
         self.created_at = datetime.now(timezone.utc)
@@ -32,6 +33,7 @@ class ClassificationJob:
             "processed": self.processed,
             "classified": self.classified_count,
             "skipped": self.skipped_count,
+            "current_subject": self.current_subject,
             "result": self.result,
             "error": self.error_message,
             "created_at": self.created_at.isoformat(),
@@ -71,6 +73,7 @@ class JobService:
         processed_increment: int,
         classified_increment: int = 0,
         skipped_increment: int = 0,
+        current_subject: Optional[str] = None,
     ) -> None:
         job = self._jobs.get(job_id)
         if job:
@@ -78,6 +81,8 @@ class JobService:
             job.processed = min(job.total, job.processed + processed_increment)
             job.classified_count += classified_increment
             job.skipped_count += skipped_increment
+            if current_subject:
+                job.current_subject = current_subject
             job.updated_at = datetime.now(timezone.utc)
 
     def complete_job(self, job_id: str, result: Dict[str, Any]) -> None:

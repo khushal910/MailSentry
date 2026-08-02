@@ -62,6 +62,8 @@ function AutoClassifierPage() {
     processed: number;
     total: number;
     status: string;
+    current_subject?: string | null;
+    startTime?: number;
   } | null>(null);
 
   // Search & Pagination state
@@ -108,6 +110,7 @@ function AutoClassifierPage() {
     if (unclassifiedEmails.length === 0) return;
     setIsClassifying(true);
     setFetchError(null);
+    const startMs = Date.now();
 
     try {
       // Step 1: Start background job (returns in <100ms)
@@ -116,9 +119,11 @@ function AutoClassifierPage() {
         processed: job.processed,
         total: job.total || unclassifiedEmails.length,
         status: job.status,
+        current_subject: job.current_subject,
+        startTime: startMs,
       });
 
-      // Step 2: Poll status every 1.5s until complete or failed
+      // Step 2: Poll status every 1.0s until complete or failed
       await new Promise<void>((resolve, reject) => {
         const pollInterval = setInterval(async () => {
           try {
@@ -127,6 +132,8 @@ function AutoClassifierPage() {
               processed: statusRes.processed,
               total: statusRes.total || unclassifiedEmails.length,
               status: statusRes.status,
+              current_subject: statusRes.current_subject,
+              startTime: startMs,
             });
 
             if (statusRes.status === "completed") {
@@ -136,7 +143,7 @@ function AutoClassifierPage() {
               setSearchTerm("");
               setPage(1);
 
-              // Invalidate TanStack Query caches so History and Dashboard Stats auto-update
+              // Invalidate TanStack Query caches so History and Dashboard Stats auto-update immediately!
               queryClient.invalidateQueries({ queryKey: ["history"] });
               queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
 
@@ -159,7 +166,7 @@ function AutoClassifierPage() {
             clearInterval(pollInterval);
             reject(pollErr);
           }
-        }, 1500);
+        }, 1000);
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to classify emails.";
@@ -305,22 +312,38 @@ function AutoClassifierPage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mt-6 overflow-hidden rounded-xl border border-primary/30 bg-primary/5 p-5 shadow-sm"
+              className="mt-6 overflow-hidden rounded-xl border border-primary/40 bg-card/60 p-5 shadow-elegant backdrop-blur-sm"
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <RefreshCw className="h-5 w-5 animate-spin" />
+                  </div>
                   <div>
-                    <h4 className="font-semibold text-foreground">Classifying Emails with MailSentry AI...</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Processed {jobProgress.processed} of {jobProgress.total} emails
+                    <h4 className="font-semibold text-foreground">Classifying Emails...</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {jobProgress.processed} / {jobProgress.total} emails processed
+                      {jobProgress.startTime && jobProgress.processed > 0 && jobProgress.processed < jobProgress.total && (
+                        <span className="ml-2 text-primary font-medium">
+                          • Est. remaining: ~{Math.max(1, Math.ceil(((jobProgress.total - jobProgress.processed) * ((Date.now() - jobProgress.startTime) / 1000 / jobProgress.processed))))}s
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
-                <span className="text-sm font-bold text-primary">
-                  {Math.round((jobProgress.processed / (jobProgress.total || 1)) * 100)}%
-                </span>
+                <div className="text-right">
+                  <span className="text-base font-bold text-primary">
+                    {Math.round((jobProgress.processed / (jobProgress.total || 1)) * 100)}%
+                  </span>
+                </div>
               </div>
+
+              {jobProgress.current_subject && (
+                <p className="mt-3 text-xs text-muted-foreground truncate border-t border-border/40 pt-2">
+                  <span className="font-semibold text-foreground">Current Email:</span> {jobProgress.current_subject}
+                </p>
+              )}
+
               <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full bg-gradient-brand transition-all duration-300 ease-out"

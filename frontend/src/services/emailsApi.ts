@@ -60,6 +60,7 @@ export interface JobStatusResponse {
   processed: number;
   classified: number;
   skipped: number;
+  current_subject?: string | null;
   result?: ClassifyBatchResult | null;
   error?: string | null;
 }

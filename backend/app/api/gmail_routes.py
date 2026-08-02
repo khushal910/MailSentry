@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from app.dependencies.auth import get_current_user
 from app.dependencies.google_auth_deps import require_google_connected
@@ -32,7 +33,10 @@ async def _run_classify_job_background(job_id: str, user_id: str, emails_to_clas
             job_service.complete_job(job_id, {"classified": 0, "skipped": 0, "classified_emails": []})
             return
 
-        service.classify_and_save_batch(
+        # CRITICAL ARCHITECTURAL FIX: Offload CPU-bound ML prediction + DB writes to worker thread pool
+        # This keeps the main FastAPI event loop 100% unblocked to instantly handle GET /api/gmail/jobs/{job_id} polling!
+        await asyncio.to_thread(
+            service.classify_and_save_batch,
             user_id=user_id,
             emails_to_classify=emails_to_classify,
             job_id=job_id

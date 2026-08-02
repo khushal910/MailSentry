@@ -315,26 +315,22 @@ class GmailFetchService:
         saved_records = []
         batch_size = 5
 
-        for i in range(0, len(emails_to_classify), batch_size):
-            chunk = emails_to_classify[i:i + batch_size]
-            chunk_classified = 0
-            chunk_skipped = 0
-
-            for raw in chunk:
-                try:
-                    classified = self._classify_one(raw)
-                    message_id = raw.get("message_id") or raw.get("gmail_message_id")
-                    if not message_id:
-                        chunk_skipped += 1
-                        continue
-
+        for raw in emails_to_classify:
+            subject = raw.get("subject", "No subject")
+            is_success = False
+            try:
+                classified = self._classify_one(raw)
+                message_id = raw.get("message_id") or raw.get("gmail_message_id")
+                if not message_id:
+                    skipped_count += 1
+                else:
                     now = datetime.now(timezone.utc)
                     email_doc = {
                         "user_id": user_id,
                         "message_id": message_id,
                         "gmail_message_id": message_id,
                         "thread_id": raw.get("thread_id"),
-                        "subject": raw.get("subject", ""),
+                        "subject": subject,
                         "snippet": raw.get("snippet", ""),
                         "sender": raw.get("sender") or raw.get("from") or raw.get("received_at"),
                         "predicted_label": classified["predicted_label"],
@@ -349,12 +345,12 @@ class GmailFetchService:
                     }
                     self.email_repo.save_email(email_doc, check_access=False)
                     classified_count += 1
-                    chunk_classified += 1
+                    is_success = True
                     saved_records.append({
                         "message_id": message_id,
                         "gmail_message_id": message_id,
                         "thread_id": raw.get("thread_id"),
-                        "subject": raw.get("subject", ""),
+                        "subject": subject,
                         "snippet": raw.get("snippet", ""),
                         "predicted_label": classified["predicted_label"],
                         "prediction": classified["predicted_label"],
@@ -364,17 +360,17 @@ class GmailFetchService:
                         "created_at": now.isoformat(),
                         "sent_at": raw.get("sent_at") or raw.get("received_at"),
                     })
-                except Exception as err:
-                    skipped_count += 1
-                    chunk_skipped += 1
-                    logger.error(f"[ClassifyBatch] user_id={user_id} error classifying email: {err}")
+            except Exception as err:
+                skipped_count += 1
+                logger.error(f"[ClassifyBatch] user_id={user_id} error classifying email: {err}")
 
             if job_id:
                 job_service.update_progress(
                     job_id=job_id,
-                    processed_increment=len(chunk),
-                    classified_increment=chunk_classified,
-                    skipped_increment=chunk_skipped,
+                    processed_increment=1,
+                    classified_increment=1 if is_success else 0,
+                    skipped_increment=1 if not is_success else 0,
+                    current_subject=subject,
                 )
 
         result = {
