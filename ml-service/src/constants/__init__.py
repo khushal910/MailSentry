@@ -38,8 +38,13 @@ BACKEND_MODEL_PATH_DIR_NAME = "models"
 DATA_TRANSFORMATION_DIR_NAME = "data_transformation"
 DATA_TRANSFORMATION_TRANSFORMED_TRAIN_FILE = "transformed_train.csv"
 DATA_TRANSFORMATION_TRANSFORMED_TEST_FILE = "transformed_test.csv"
+DATA_TRANSFORMATION_TRANSFORMED_TRAIN_TFIDF_FILE = "transformed_train_tfidf.csv"
+DATA_TRANSFORMATION_TRANSFORMED_TEST_TFIDF_FILE = "transformed_test_tfidf.csv"
+DATA_TRANSFORMATION_TRANSFORMED_TRAIN_RAW_FILE = "transformed_train_raw.csv"
+DATA_TRANSFORMATION_TRANSFORMED_TEST_RAW_FILE = "transformed_test_raw.csv"
 DATA_TRANSFORMATION_PREPROCESSOR_FILE = "preprocessing.pkl"
 LABEL_ENCODER_FILE_NAME = "label_encoder.pkl"
+
 
 # Model training related constants
 TARGET_COLUMN = "target"
@@ -48,7 +53,12 @@ MODEL_FILE_NAME = "model.pkl"
 MODEL_REPORT_FILE_NAME = "model_report.yaml"
 MODEL_EVALUATE_METRIC = "f1"
 
+# Model Registry constants
+MODEL_REGISTRY_DIR_NAME = "model_registry"
+MODEL_REGISTRY_CHAMPION_DIR = "champion"
+MODEL_REGISTRY_ARCHIVE_DIR = "archive"
+
 # MLflow configuration
 DAGSHUB_USERNAME =  os.getenv("DAGSHUB_USERNAME")
 DAGSHUB_REPOSITORY =  os.getenv("DAGSHUB_REPOSITORY")
-EXPERIMENT_NAME =  os.getenv("EXPERIMENT_NAME")
+EXPERIMENT_NAME =  os.getenv("EXPERIMENT_NAME")

@@ -30,10 +30,15 @@ class DataValidationConfig:
 @dataclass
 class DataTransformationConfig:
     data_transform_dir: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME)
-    transform_train_file :str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_TRANSFORMED_TRAIN_FILE)
-    transform_test_file :str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_TRANSFORMED_TEST_FILE)
-    preprocessor_file :str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_PREPROCESSOR_FILE)
+    transform_train_file: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_TRANSFORMED_TRAIN_FILE)
+    transform_test_file: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_TRANSFORMED_TEST_FILE)
+    transform_train_tfidf_file: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_TRANSFORMED_TRAIN_TFIDF_FILE)
+    transform_test_tfidf_file: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_TRANSFORMED_TEST_TFIDF_FILE)
+    transform_train_raw_file: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_TRANSFORMED_TRAIN_RAW_FILE)
+    transform_test_raw_file: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_TRANSFORMED_TEST_RAW_FILE)
+    preprocessor_file: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, DATA_TRANSFORMATION_PREPROCESSOR_FILE)
     label_encoder_file_path: str = os.path.join(training_pipeline_config.artifact_dir, DATA_TRANSFORMATION_DIR_NAME, LABEL_ENCODER_FILE_NAME)
+
     
 
 @dataclass
@@ -44,6 +49,8 @@ class TrainModelConfig:
     preprocessor_file_backend_path: str = os.path.join(training_pipeline_config.bakend_dir, BACKEND_MODEL_PATH_DIR_NAME, DATA_TRANSFORMATION_PREPROCESSOR_FILE)
     trained_model_backend_path: str = os.path.join(training_pipeline_config.bakend_dir, BACKEND_MODEL_PATH_DIR_NAME, MODEL_FILE_NAME)
     model_evaluate_metric: str = MODEL_EVALUATE_METRIC
+    model_registry_dir: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", MODEL_REGISTRY_DIR_NAME))
+
    
    
 @dataclass(frozen=True)

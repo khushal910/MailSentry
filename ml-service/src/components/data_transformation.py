@@ -207,6 +207,8 @@ class DataTransformation:
                 y_train,
                 X_test,
                 y_test,
+                train_df["combined_text"],
+                test_df["combined_text"],
                 preprocessor,
                 label_encoder,
             )
@@ -265,29 +267,44 @@ class DataTransformation:
             raise MyException(e, sys)
 
     def store_transformed_data(
-        self, X_train, y_train, X_test, y_test, preprocessor, label_encoder
+        self,
+        X_train,
+        y_train,
+        X_test,
+        y_test,
+        raw_train_text,
+        raw_test_text,
+        preprocessor,
+        label_encoder,
     ):
         """
-        Store transformed train and test datasets as CSV, and save preprocessor and label encoder as pickle.
+        Store transformed TF-IDF train/test CSVs, raw text train/test CSVs, preprocessor, and label encoder.
         """
         try:
             logger.info("Entered store_transformed_data method")
 
-            # Convert sparse matrices to dense DataFrames
-            logger.info("Converting sparse matrices to DataFrames")
-            train_df = pd.DataFrame(X_train.toarray())
-            train_df["target"] = y_train.values
+            # Convert sparse matrices to dense DataFrames for TF-IDF
+            logger.info("Converting sparse matrices to TF-IDF DataFrames")
+            train_tfidf_df = pd.DataFrame(X_train.toarray())
+            train_tfidf_df["target"] = y_train.values
 
-            test_df = pd.DataFrame(X_test.toarray())
-            test_df["target"] = y_test.values
+            test_tfidf_df = pd.DataFrame(X_test.toarray())
+            test_tfidf_df["target"] = y_test.values
+
+            # Create Raw Text DataFrames
+            logger.info("Creating Raw Text DataFrames (email_text, target)")
+            train_raw_df = pd.DataFrame({
+                "email_text": raw_train_text.values,
+                "target": y_train.values,
+            })
+            test_raw_df = pd.DataFrame({
+                "email_text": raw_test_text.values,
+                "target": y_test.values,
+            })
 
             # Create directories
             os.makedirs(
                 os.path.dirname(self.data_transformation_config.transform_train_file),
-                exist_ok=True,
-            )
-            os.makedirs(
-                os.path.dirname(self.data_transformation_config.transform_test_file),
                 exist_ok=True,
             )
             os.makedirs(
@@ -301,19 +318,40 @@ class DataTransformation:
                 exist_ok=True,
             )
 
-            # Save CSV files
+            # Save TF-IDF CSV files
             logger.info(
-                f"Saving transformed train data to {self.data_transformation_config.transform_train_file}"
+                f"Saving TF-IDF train data to {self.data_transformation_config.transform_train_file}"
             )
-            train_df.to_csv(
+            train_tfidf_df.to_csv(
                 self.data_transformation_config.transform_train_file, index=False
+            )
+            train_tfidf_df.to_csv(
+                self.data_transformation_config.transform_train_tfidf_file, index=False
             )
 
             logger.info(
-                f"Saving transformed test data to {self.data_transformation_config.transform_test_file}"
+                f"Saving TF-IDF test data to {self.data_transformation_config.transform_test_file}"
             )
-            test_df.to_csv(
+            test_tfidf_df.to_csv(
                 self.data_transformation_config.transform_test_file, index=False
+            )
+            test_tfidf_df.to_csv(
+                self.data_transformation_config.transform_test_tfidf_file, index=False
+            )
+
+            # Save Raw Text CSV files
+            logger.info(
+                f"Saving raw text train data to {self.data_transformation_config.transform_train_raw_file}"
+            )
+            train_raw_df.to_csv(
+                self.data_transformation_config.transform_train_raw_file, index=False
+            )
+
+            logger.info(
+                f"Saving raw text test data to {self.data_transformation_config.transform_test_raw_file}"
+            )
+            test_raw_df.to_csv(
+                self.data_transformation_config.transform_test_raw_file, index=False
             )
 
             # Save preprocessor and label encoder locally to ml-service artifact directory
@@ -357,11 +395,7 @@ class DataTransformation:
 
     def init_transformation_pipeline(self):
         """
-        Method Name :   init_transformation_pipeline
-        Description :   This method initializes the data transformation pipeline
-                        by calling the methods in the correct order.
-        Output      :   None (files saved)
-        On Failure  :   Write an exception log and then raise an exception
+        Initialize the data transformation pipeline.
         """
         try:
             logger.info("Entered init_transformation_pipeline method")
@@ -371,6 +405,8 @@ class DataTransformation:
                 y_train,
                 X_test,
                 y_test,
+                raw_train_text,
+                raw_test_text,
                 preprocessor,
                 label_encoder,
             ) = self.apply_preprocessing(
@@ -382,6 +418,8 @@ class DataTransformation:
                 y_train=y_train,
                 X_test=X_test,
                 y_test=y_test,
+                raw_train_text=raw_train_text,
+                raw_test_text=raw_test_text,
                 preprocessor=preprocessor,
                 label_encoder=label_encoder,
             )
@@ -391,6 +429,7 @@ class DataTransformation:
         except Exception as e:
             logger.error(f"Exception in init_transformation_pipeline: {e}")
             raise MyException(e, sys)
+
 
 
 if __name__ == "__main__":

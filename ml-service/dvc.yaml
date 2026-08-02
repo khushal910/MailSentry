@@ -26,6 +26,8 @@ stages:
     outs:
       - artifact/data_transformation/transformed_train.csv
       - artifact/data_transformation/transformed_test.csv
+      - artifact/data_transformation/transformed_train_raw.csv
+      - artifact/data_transformation/transformed_test_raw.csv
       - artifact/data_transformation/preprocessing.pkl
       - artifact/data_transformation/label_encoder.pkl
   
@@ -33,13 +35,21 @@ stages:
     cmd: python -m src.components.model_traning
     deps:
       - src/components/model_traning.py
+      - src/components/transformer_trainer.py
+      - src/components/benchmark.py
       - src/components/hyperparameter_tuner.py
       - src/config/hyperparameter_config.py
+      - src/entity/model_metadata.py
+      - src/services/storage_service.py
+      - src/services/model_registry.py
+      - src/services/model_saver.py
       - src/utils/mlflow_utils.py
       - artifact/data_transformation/transformed_train.csv
       - artifact/data_transformation/transformed_test.csv
+      - artifact/data_transformation/transformed_train_raw.csv
+      - artifact/data_transformation/transformed_test_raw.csv
       - src/components/models.py
 
     outs:
-      - artifact/model_trainer/model.pkl
       - artifact/model_trainer/model_report.yaml
+

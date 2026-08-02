@@ -14,6 +14,8 @@ Steps:
 from __future__ import annotations
 import os
 import sys
+import shutil
+import tempfile
 from datetime import datetime, timezone
 from typing import Any, Dict, Tuple
 import pandas as pd
@@ -22,17 +24,20 @@ from src.components.models import ModelList
 from src.constants import *
 from src.entity.artifact_entity import ModelTrainerArtifact
 from src.entity.config_entity import TrainModelConfig, DataTransformationConfig
+from src.entity.model_metadata import ModelMetadata
+from src.services.model_registry import ModelRegistry
+from src.services.model_saver import ModelSaverFactory, ModelLoaderFactory
+from src.components.benchmark import Benchmark
 from src.exception import MyException 
 from src.logger import logger
 from src.utils.main_utils import (
     evaluate_classification_model,
-    load_object,
-    save_object,
     write_yaml_file,
 )
 from src.utils.mlflow_utils import log_model_to_mlflow
 from src.configuration.mlflow_connection import setup_mlflow
 from src.entity.config_entity import _ModelBundle, _ModelEvaluation
+
 
 
 class ModelTrainer:
@@ -118,8 +123,9 @@ class ModelTrainer:
             cv=5,
             scoring=self.model_evaluate_metric,
             random_state=42,
-            n_jobs=-1,
+            n_jobs=1,
         )
+
 
         for model_name, bundle in models.items():
             logger.info("Processing model: %s", model_name)
@@ -259,24 +265,22 @@ class ModelTrainer:
         y_test: pd.Series,
     ) -> Tuple[_ModelEvaluation, bool]:
         """
-        Compare the best new model with the existing production model.
+        Compare the best new model with the existing production champion in ModelRegistry.
         """
         try:
-            production_model_path = self.train_model_config.trained_model_file_path  
+            registry = ModelRegistry(self.train_model_config.model_registry_dir)
 
-            if not os.path.exists(production_model_path):
-                logger.info("No production model found. New model will be saved.")
+            if not registry.has_champion():
+                logger.info("No production champion found in ModelRegistry. New model will be saved.")
                 return candidate_model, True
 
-            logger.info("Loading existing production model from: %s", production_model_path)
-            production_model = load_object(production_model_path)
-            production_pred = production_model.predict(
-                x_test.to_numpy()
-            )
-            production_score = self._get_model_scores(
-                production_model,
-                x_test.to_numpy()
-            )
+            logger.info("Loading existing champion model from ModelRegistry: %s", registry.champion_path)
+            meta = registry.load_champion_metadata()
+            loader = ModelLoaderFactory.create(meta)
+            production_model = loader.load(registry.champion_path, meta)
+
+            production_pred = production_model.predict(x_test.to_numpy())
+            production_score = self._get_model_scores(production_model, x_test.to_numpy())
 
             production_metrics = evaluate_classification_model(
                 y_true=y_test,
@@ -284,25 +288,26 @@ class ModelTrainer:
                 y_score=production_score,
             )
 
-            # Compare using the configured best metric
             candidate_score = candidate_model.metrics[self.model_evaluate_metric]
             production_score_val = production_metrics[self.model_evaluate_metric]
 
             logger.info(
-                "Production model %s: %.6f | Candidate model %s: %.6f",
+                "Production champion %s (%s): %.6f | Candidate model %s (%s): %.6f",
+                meta.model_name,
                 self.model_evaluate_metric,
                 production_score_val,
+                candidate_model.name,
                 self.model_evaluate_metric,
                 candidate_score,
             )
 
             if candidate_score > production_score_val:
-                logger.info("Candidate model outperforms production model.")
+                logger.info("Candidate model outperforms production champion.")
                 return candidate_model, True
 
-            logger.info("Production model retained.")
+            logger.info("Production champion retained.")
             return _ModelEvaluation(
-                name="production_model",
+                name=meta.model_name,
                 model=production_model,
                 params={},
                 metrics=production_metrics,
@@ -314,36 +319,93 @@ class ModelTrainer:
             )
             return candidate_model, True
 
-    def save_best_model(self, winner: _ModelEvaluation, should_save: bool) -> None:
+    def save_best_model(
+        self,
+        winner: _ModelEvaluation,
+        should_save: bool,
+        x_test: pd.DataFrame
+    ) -> None:
         """
-        Save the best model to the configured production model path,
-        registering version in DB, running test mode verification, and cleaning up old versions.
+        Save the best model using ModelSaverFactory, Benchmark, and ModelRegistry.
+        Eliminates all framework-specific conditionals.
         """
         try:
             if should_save:
-                logger.info("Saving best model to: %s", self.train_model_config.trained_model_file_path)
-                save_object(self.train_model_config.trained_model_file_path, winner.model)
-                save_object(self.train_model_config.trained_model_backend_path, winner.model)
+                logger.info("Saving best model to ModelRegistry: %s", winner.name)
 
-                # Attempt to register via MLModelService
+                is_transformer = (
+                    winner.name.lower().startswith("distilbert")
+                    or hasattr(winner.model, "save_pretrained")
+                )
+
+                framework = "transformers" if is_transformer else "sklearn"
+                serialization = "huggingface" if is_transformer else "joblib"
+                input_type = "raw_text" if is_transformer else "tfidf"
+                preprocessor_name = "distilbert-tokenizer" if is_transformer else "tfidf"
+
+                # 1. Run Benchmark Stage
+                benchmark_results = Benchmark().run(
+                    model=winner.model,
+                    x_test=x_test.to_numpy(),
+                    serialization=serialization
+                )
+
+                # 2. Build Rich Metadata
+                metadata = ModelMetadata(
+                    model_name=winner.name,
+                    framework=framework,
+                    serialization=serialization,
+                    task="binary_classification",
+                    input_type=input_type,
+                    output_type="probability",
+                    preprocessor=preprocessor_name,
+                    metric=self.model_evaluate_metric,
+                    score=float(winner.metrics.get(self.model_evaluate_metric, 0.0)),
+                    metrics=winner.metrics,
+                    trained_at=datetime.now(timezone.utc).isoformat(),
+                    training_time_sec=benchmark_results["training_time_sec"],
+                    inference_time_ms=benchmark_results["inference_time_ms"],
+                    model_size_mb=benchmark_results["model_size_mb"],
+                    memory_usage_mb=benchmark_results["memory_usage_mb"],
+                )
+
+                # 3. Create staging directory for SaverFactory
+                registry = ModelRegistry(self.train_model_config.model_registry_dir)
+                staging_dir = os.path.join(self.train_model_config.model_registry_dir, "_staging_tmp")
+                os.makedirs(staging_dir, exist_ok=True)
+
                 try:
-                    backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "backend"))
-                    if backend_path not in sys.path:
-                        sys.path.insert(0, backend_path)
-                    from app.services.ml_model_service import MLModelService
-                    service = MLModelService()
-                    service.save_and_register_model(
-                        model_obj=winner.model,
-                        model_name=winner.name or "spam_classifier",
-                        metrics=winner.metrics
-                    )
-                    logger.info("Successfully registered model via MLModelService.")
-                except Exception as ml_err:
-                    logger.warning(f"Could not register model via MLModelService: {ml_err}")
+                    # Save preprocessor artifacts if present (for sklearn models)
+                    staging_prep_dir = os.path.join(staging_dir, "preprocessor")
+                    os.makedirs(staging_prep_dir, exist_ok=True)
+                    if os.path.exists(self.transform_config.preprocessor_file):
+                        shutil.copy2(
+                            self.transform_config.preprocessor_file,
+                            os.path.join(staging_prep_dir, "preprocessing.pkl")
+                        )
+                    if os.path.exists(self.transform_config.label_encoder_file_path):
+                        shutil.copy2(
+                            self.transform_config.label_encoder_file_path,
+                            os.path.join(staging_prep_dir, "label_encoder.pkl")
+                        )
+
+                    # Save model using SaverFactory strategy
+                    saver = ModelSaverFactory.create(metadata)
+                    saver.save(model=winner.model, target_dir=staging_dir, metadata=metadata)
+
+                    # 4. Promote to Champion in ModelRegistry
+                    registry.promote_champion(staging_dir=staging_dir, metadata=metadata)
+
+                finally:
+                    if os.path.exists(staging_dir):
+                        shutil.rmtree(staging_dir)
+
+                logger.info("Successfully persisted winning model '%s' to ModelRegistry.", winner.name)
             else:
                 logger.info("Keeping existing production model unchanged.")
         except Exception as exc:
             raise MyException(exc, sys) from exc
+
 
     def initiate_model_training(self) -> ModelTrainerArtifact:
         """
@@ -359,20 +421,39 @@ class ModelTrainer:
 
             models = self.get_model_list
 
-            # 1. Train models (capture failures)
+            # 1. Train candidate models (capture failures)
             trained_models, training_errors = self.train_models(
                 models=models, x_train=x_train, y_train=y_train
             )
 
-            # 2. Evaluate models (capture failures)
+            # 2. Evaluate candidate models (capture failures)
             evaluated_models, evaluation_errors = self.evaluate_models(
                 trained_models=trained_models,
                 x_test=x_test,
                 y_test=y_test,
             )
 
-            # 3. Select best from successful ones
+            # 3. Train & Evaluate DistilBERT Transformer (capture failures cleanly)
+            try:
+                from src.components.transformer_trainer import TransformerTrainer
+
+                transformer_trainer = TransformerTrainer()
+                distilbert_eval = transformer_trainer.train_and_evaluate()
+                if distilbert_eval is not None:
+                    evaluated_models["DistilBERT"] = distilbert_eval
+                    logger.info(
+                        "DistilBERT evaluated successfully and included in champion candidate list."
+                    )
+                else:
+                    evaluation_errors["DistilBERT"] = "DistilBERT training returned None."
+            except Exception as trans_err:
+                error_msg = str(trans_err)
+                logger.error("DistilBERT training failed: %s", error_msg)
+                evaluation_errors["DistilBERT"] = error_msg
+
+            # 4. Select best candidate among all evaluated models (classical + transformer)
             best_candidate = self.select_best_model(evaluated_models)
+
 
             # 4. Compare with production & save
             winner, is_new_model_winner = self.compare_with_production_model(
@@ -381,7 +462,11 @@ class ModelTrainer:
                 y_test=y_test,
             )
 
-            self.save_best_model(winner=winner, should_save=is_new_model_winner)
+            self.save_best_model(
+                winner=winner,
+                should_save=is_new_model_winner,
+                x_test=x_test,
+            )
 
             # 5. Build comprehensive status report
             training_timestamp = datetime.now(timezone.utc).isoformat()

@@ -83,6 +83,11 @@ class Settings:
             "MODELS_DIR",
             os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
         )
+        MODEL_REGISTRY_DIR = os.getenv(
+            "MODEL_REGISTRY_DIR",
+            os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "model_registry"))
+        )
+
         
         PASSWORD_LENGTH = int(os.getenv("PASSWORD_LENGTH", 8))
         PASSWORD_RULE_APPLY = os.getenv("PASSWORD_RULE_APPLY") == "True"

@@ -10,8 +10,10 @@ import joblib
 from app.core.config import settings
 from app.repositories.model_repository import ModelRepository
 from app.services.ml_preprocessing import MLPreprocessing
+from app.services.prediction_engine import PredictionEngine
 
 logger = logging.getLogger(__name__)
+
 
 
 class MLModelService:
@@ -24,6 +26,7 @@ class MLModelService:
     _cached_preprocessor: Optional[Any] = None
     _cached_label_encoder: Optional[Any] = None
     _cached_version: Optional[str] = None
+    _cached_model_type: Optional[str] = None
 
     def __init__(self, models_dir: Optional[str] = None, repo: Optional[ModelRepository] = None):
         self.models_dir = (
@@ -215,82 +218,16 @@ class MLModelService:
 
     def classify_text(self, subject: str, body: str) -> Dict[str, Any]:
         """
-        Classifies email content using backend's standalone preprocessing and ML model.
+        Classifies email content using PredictionEngine singleton cached instance.
         Returns predicted_label, predicted_score, subject, and classified_at timestamp.
         """
-        model = self.get_model_or_raise()
+        registry_dir = getattr(
+            settings,
+            "MODEL_REGISTRY_DIR",
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "model_registry"))
+        )
+        engine = PredictionEngine(registry_dir)
+        return engine.predict(subject=subject, body=body)
 
-        subject_str = (subject or "").strip()
-        body_str = (body or "").strip()
-
-        # Step 1: Preprocess text using backend's standalone MLPreprocessing pipeline
-        cleaned_text = MLPreprocessing.preprocess_email_text(subject_str, body_str)
-
-        preprocessor = self.load_preprocessor()
-        label_encoder = self.load_label_encoder()
-
-        predicted_label = "inbox"
-        predicted_score = 0.85
-
-        try:
-            # Step 2: Vectorize feature string if standalone preprocessor is present
-            if preprocessor is not None and hasattr(preprocessor, "transform"):
-                X_features = preprocessor.transform([cleaned_text])
-            else:
-                # Scikit-Learn Pipeline or raw text
-                X_features = [cleaned_text]
-
-            # Step 3: Run model prediction
-            if hasattr(model, "predict"):
-                res = model.predict(X_features)
-                if res is not None and len(res) > 0:
-                    raw_val = res[0]
-                    # Step 4: Decode label using label_encoder if available
-                    if label_encoder is not None and hasattr(label_encoder, "inverse_transform"):
-                        try:
-                            decoded = label_encoder.inverse_transform([raw_val])
-                            predicted_label = str(decoded[0])
-                        except Exception:
-                            predicted_label = "spam" if str(raw_val) in ("1", "1.0", "Spam", "spam") else "inbox"
-                    elif isinstance(raw_val, (int, float)):
-                        predicted_label = "spam" if int(raw_val) == 1 else "inbox"
-                    else:
-                        predicted_label = str(raw_val)
-
-            # Step 5: Run probability / confidence calculation
-            import numpy as np
-            if hasattr(model, "predict_proba"):
-                try:
-                    proba = model.predict_proba(X_features)
-                    if proba is not None and len(proba) > 0:
-                        predicted_score = round(float(np.max(proba[0])), 4)
-                except Exception:
-                    pass
-            elif hasattr(model, "decision_function"):
-                try:
-                    dec = model.decision_function(X_features)
-                    if dec is not None and len(dec) > 0:
-                        val = float(dec[0])
-                        # Sigmoid transformation converting margin distance into confidence score
-                        prob = 1.0 / (1.0 + np.exp(-abs(val)))
-                        predicted_score = round(float(prob), 4)
-                except Exception:
-                    pass
-
-        except Exception as err:
-            logger.warning(f"Model prediction fallback engaged due to: {err}")
-            # Fallback heuristic if estimator or preprocessor encounters mismatch
-            combined_text = f"{subject_str} {body_str}".lower()
-            spam_keywords = ["spam", "winner", "lottery", "claim", "prize", "free money", "urgent security"]
-            if any(k in combined_text for k in spam_keywords):
-                predicted_label = "spam"
-                predicted_score = 0.95
-
-        return {
-            "subject": subject_str[:255],
-            "predicted_label": predicted_label,
-            "predicted_score": predicted_score,
-            "classified_at": datetime.now(timezone.utc).isoformat()
-        }
 
 

@@ -2,3 +2,7 @@
 /transformed_test.csv
 /preprocessing.pkl
 /label_encoder.pkl
+/transformed_train_raw.csv
+/transformed_test_raw.csv 
+/transformed_train_tfidf.csv
+/transformed_test_tfidf.csv

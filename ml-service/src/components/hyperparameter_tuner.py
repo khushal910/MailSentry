@@ -32,7 +32,8 @@ class HyperparameterTuner:
         cv: int = 5,
         scoring: str = "f1",
         random_state: int = 42,
-        n_jobs: int = -1,
+        n_jobs: int = 1,
+
     ) -> None:
         """
         Initialize HyperparameterTuner settings.
