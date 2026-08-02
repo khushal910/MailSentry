@@ -1,7 +1,46 @@
 from dotenv import load_dotenv
+import json
 import os
 
 load_dotenv()
+
+
+def _parse_cors_origins(val) -> list[str]:
+    default_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ]
+    if not val:
+        return default_origins
+
+    if isinstance(val, list):
+        parsed_list = [str(item).strip() for item in val if str(item).strip()]
+    else:
+        val_str = str(val).strip()
+        if not val_str:
+            return default_origins
+
+        parsed_list = []
+        if val_str.startswith("[") and val_str.endswith("]"):
+            try:
+                parsed = json.loads(val_str)
+                if isinstance(parsed, list):
+                    parsed_list = [str(item).strip() for item in parsed if str(item).strip()]
+            except Exception:
+                parsed_list = []
+
+        if not parsed_list:
+            parsed_list = [item.strip() for item in val_str.split(",") if item.strip()]
+
+    valid_origins = [
+        o for o in parsed_list
+        if o == "*" or o.startswith("http://") or o.startswith("https://")
+    ]
+    return valid_origins if valid_origins else default_origins
 
 
 class Settings:
@@ -10,6 +49,14 @@ class Settings:
     try:
         APP_NAME = os.getenv("APP_NAME")
         DEBUG = os.getenv("DEBUG") == "True"
+
+        raw_origins = (
+            os.getenv("CORS_ORIGINS")
+            or os.getenv("COSE_ORIGINS")
+            or os.getenv("CORSE_ORIGIN")
+        )
+        CORS_ORIGINS = _parse_cors_origins(raw_origins)
+        COSE_ORIGINS = CORS_ORIGINS  # Alias for backward compatibility
 
         SECRET_KEY = os.getenv("SECRET_KEY")
         ALGORITHM = os.getenv("ALGORITHM")
