@@ -14,11 +14,13 @@ import { useAuth } from "@/context/AuthContext";
 
 type LoginSearch = {
   oauth_error?: string;
+  redirect?: string;
 };
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): LoginSearch => ({
     oauth_error: typeof search.oauth_error === "string" ? search.oauth_error : undefined,
+    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
   }),
   head: () => ({
     meta: [
@@ -39,7 +41,7 @@ function LoginPage() {
   const { login, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const { oauth_error: oauthError } = Route.useSearch();
+  const { oauth_error: oauthError, redirect } = Route.useSearch();
 
   useEffect(() => {
     // Show OAuth error toast if redirected back from a failed Google OAuth attempt
@@ -51,11 +53,12 @@ function LoginPage() {
   }, [oauthError]);
 
   useEffect(() => {
-    // If the user is already authenticated, send them to the dashboard
+    // If the user is already authenticated, send them to target page or dashboard
     if (!isLoading && isAuthenticated) {
-      navigate({ to: "/dashboard" });
+      const target = redirect && redirect.startsWith("/") ? redirect : "/dashboard";
+      window.location.href = target;
     }
-  }, [isLoading, isAuthenticated, navigate]);
+  }, [isLoading, isAuthenticated, redirect]);
 
   const {
     register,

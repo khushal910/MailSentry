@@ -25,6 +25,13 @@ const apiClient: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
+type SessionExpiredHandler = (expiredUrl: string) => void;
+let onSessionExpiredHandler: SessionExpiredHandler | null = null;
+
+export function setSessionExpiredHandler(handler: SessionExpiredHandler | null) {
+  onSessionExpiredHandler = handler;
+}
+
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("token");
@@ -38,6 +45,17 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (r) => r,
   (error: AxiosError<{ message?: string; detail?: string | { msg: string }[] }>) => {
+    if (error.response?.status === 401) {
+      const requestUrl = error.config?.url || "";
+      const isAuthCheck = requestUrl.includes("/auth/me") || requestUrl.includes("/auth/login");
+      if (!isAuthCheck && typeof window !== "undefined") {
+        const currentPath = window.location.pathname + window.location.search;
+        if (onSessionExpiredHandler) {
+          onSessionExpiredHandler(currentPath);
+        }
+      }
+    }
+
     const data = error.response?.data as any;
     const message =
       data?.message ||
