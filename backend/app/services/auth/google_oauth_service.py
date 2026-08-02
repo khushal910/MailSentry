@@ -208,7 +208,10 @@ class GoogleOAuthService:
         try:
             req = google_requests.Request()
             user_info = google_id_token.verify_oauth2_token(
-                id_token_str, req, settings.GOOGLE_CLIENT_ID
+                id_token_str,
+                req,
+                settings.GOOGLE_CLIENT_ID,
+                clock_skew_in_seconds=10,
             )
         except Exception as e:
             logger.error(f"Invalid Google ID Token: {str(e)}")
