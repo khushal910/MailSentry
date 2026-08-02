@@ -271,6 +271,27 @@ class EmailRepository:
         """
         return self.collection.find_one({"user_id": str(user_id), "message_id": str(message_id)})
 
+    def get_existing_message_ids(self, user_id: str, message_ids: List[str]) -> set:
+        """
+        Returns a set of message_ids from the given list that already exist in MongoDB for the user.
+        Uses a single $in batch query instead of N individual database queries.
+        """
+        if not message_ids:
+            return set()
+        clean_ids = [str(m).strip() for m in message_ids if str(m).strip()]
+        if not clean_ids:
+            return set()
+        query = {
+            "user_id": str(user_id),
+            "message_id": {"$in": clean_ids}
+        }
+        try:
+            docs = self.collection.find(query, {"message_id": 1})
+            return {doc["message_id"] for doc in docs if "message_id" in doc}
+        except Exception as e:
+            logger.error(f"Error querying existing message_ids for user_id={user_id}: {e}")
+            return set()
+
     def get_user_emails(
         self,
         user_id: str,
