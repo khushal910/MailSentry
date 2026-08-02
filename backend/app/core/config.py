@@ -13,6 +13,7 @@ def _parse_cors_origins(val) -> list[str]:
         "http://127.0.0.1:3000",
         "http://localhost:8080",
         "http://127.0.0.1:8080",
+        "https://mail-sentry.vercel.app",
     ]
     if not val:
         return default_origins
@@ -57,6 +58,10 @@ class Settings:
         )
         CORS_ORIGINS = _parse_cors_origins(raw_origins)
         COSE_ORIGINS = CORS_ORIGINS  # Alias for backward compatibility
+        CORS_ORIGIN_REGEX = os.getenv(
+            "CORS_ORIGIN_REGEX",
+            r"https://.*\.vercel\.app"
+        )
 
         SECRET_KEY = os.getenv("SECRET_KEY")
         ALGORITHM = os.getenv("ALGORITHM")
