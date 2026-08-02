@@ -53,6 +53,17 @@ export interface ClassifyBatchResult {
   classified_emails: ClassifiedEmail[];
 }
 
+export interface JobStatusResponse {
+  job_id: string;
+  status: "started" | "running" | "completed" | "failed";
+  total: number;
+  processed: number;
+  classified: number;
+  skipped: number;
+  result?: ClassifyBatchResult | null;
+  error?: string | null;
+}
+
 
 export const emailsApi = {
   /**
@@ -62,6 +73,24 @@ export const emailsApi = {
   async fetchUnclassifiedEmails(): Promise<FetchUnclassifiedResult> {
     const { data } = await apiClient.post<{ data: FetchUnclassifiedResult }>("/api/gmail/fetch-unclassified");
     return data.data ?? { fetched: 0, unclassified_emails: [] };
+  },
+
+  /**
+   * POST /api/gmail/classify-job
+   * Starts an asynchronous background classification job and returns immediately with job_id.
+   */
+  async startClassifyJob(emails: UnclassifiedEmail[]): Promise<JobStatusResponse> {
+    const { data } = await apiClient.post<{ data: JobStatusResponse }>("/api/gmail/classify-job", { emails });
+    return data.data;
+  },
+
+  /**
+   * GET /api/gmail/jobs/:job_id
+   * Polls progress of an active background classification job.
+   */
+  async getJobStatus(jobId: string): Promise<JobStatusResponse> {
+    const { data } = await apiClient.get<{ data: JobStatusResponse }>(`/api/gmail/jobs/${jobId}`);
+    return data.data;
   },
 
   /**

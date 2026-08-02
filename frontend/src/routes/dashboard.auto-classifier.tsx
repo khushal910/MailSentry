@@ -48,6 +48,11 @@ function AutoClassifierPage() {
   const [isFetching, setIsFetching] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [jobProgress, setJobProgress] = useState<{
+    processed: number;
+    total: number;
+    status: string;
+  } | null>(null);
 
   // Search & Pagination state
   const [searchTerm, setSearchTerm] = useState("");
@@ -95,30 +100,60 @@ function AutoClassifierPage() {
     setFetchError(null);
 
     try {
-      const result = await emailsApi.classifyEmails(unclassifiedEmails);
-      const count = result.classified || unclassifiedEmails.length;
+      // Step 1: Start background job (returns in <100ms)
+      const job = await emailsApi.startClassifyJob(unclassifiedEmails);
+      setJobProgress({
+        processed: job.processed,
+        total: job.total || unclassifiedEmails.length,
+        status: job.status,
+      });
 
-      // Remove classified emails from Auto Classifier page immediately after successful storage
-      setUnclassifiedEmails([]);
-      setSearchTerm("");
-      setPage(1);
+      // Step 2: Poll status every 1.5s until complete or failed
+      await new Promise<void>((resolve, reject) => {
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusRes = await emailsApi.getJobStatus(job.job_id);
+            setJobProgress({
+              processed: statusRes.processed,
+              total: statusRes.total || unclassifiedEmails.length,
+              status: statusRes.status,
+            });
 
-      toast.success(
-        `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
-        {
-          duration: 5000,
-          action: {
-            label: "View History",
-            onClick: () => navigate({ to: "/dashboard/history" }),
-          },
-        }
-      );
+            if (statusRes.status === "completed") {
+              clearInterval(pollInterval);
+              const count = statusRes.classified || statusRes.processed;
+              setUnclassifiedEmails([]);
+              setSearchTerm("");
+              setPage(1);
+
+              toast.success(
+                `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
+                {
+                  duration: 5000,
+                  action: {
+                    label: "View History",
+                    onClick: () => navigate({ to: "/dashboard/history" }),
+                  },
+                }
+              );
+              resolve();
+            } else if (statusRes.status === "failed") {
+              clearInterval(pollInterval);
+              reject(new Error(statusRes.error || "Background classification job failed."));
+            }
+          } catch (pollErr) {
+            clearInterval(pollInterval);
+            reject(pollErr);
+          }
+        }, 1500);
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to classify emails.";
       setFetchError(msg);
       toast.error(msg);
     } finally {
       setIsClassifying(false);
+      setJobProgress(null);
     }
   };
 
@@ -247,6 +282,42 @@ function AutoClassifierPage() {
             </Button>
           </div>
         </div>
+
+        {/* Live Progress Bar Banner */}
+        <AnimatePresence>
+          {jobProgress && (
+            <motion.div
+              key="job-progress-banner"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-6 overflow-hidden rounded-xl border border-primary/30 bg-primary/5 p-5 shadow-sm"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+                  <div>
+                    <h4 className="font-semibold text-foreground">Classifying Emails with MailSentry AI...</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Processed {jobProgress.processed} of {jobProgress.total} emails
+                    </p>
+                  </div>
+                </div>
+                <span className="text-sm font-bold text-primary">
+                  {Math.round((jobProgress.processed / (jobProgress.total || 1)) * 100)}%
+                </span>
+              </div>
+              <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-gradient-brand transition-all duration-300 ease-out"
+                  style={{
+                    width: `${Math.min(100, Math.max(5, Math.round((jobProgress.processed / (jobProgress.total || 1)) * 100)))}%`,
+                  }}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Fetch error banner */}
         <AnimatePresence>

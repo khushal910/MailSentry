@@ -301,67 +301,92 @@ class GmailFetchService:
         return raw_emails
 
     def classify_and_save_batch(
-        self, user_id: str, emails_to_classify: list
+        self, user_id: str, emails_to_classify: list, job_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Classifies specified unclassified emails using ML model, saves records to MongoDB,
-        and returns saved classified email documents with all required metadata.
+        updates progress on job_id if provided, and returns saved classified email documents.
         """
+        from app.services.job_service import JobService
+        job_service = JobService()
+
         classified_count = 0
         skipped_count = 0
         saved_records = []
+        batch_size = 5
 
-        for raw in emails_to_classify:
-            try:
-                classified = self._classify_one(raw)
-                message_id = raw.get("message_id") or raw.get("gmail_message_id")
-                if not message_id:
-                    continue
+        for i in range(0, len(emails_to_classify), batch_size):
+            chunk = emails_to_classify[i:i + batch_size]
+            chunk_classified = 0
+            chunk_skipped = 0
 
-                now = datetime.now(timezone.utc)
-                email_doc = {
-                    "user_id": user_id,
-                    "message_id": message_id,
-                    "gmail_message_id": message_id,
-                    "thread_id": raw.get("thread_id"),
-                    "subject": raw.get("subject", ""),
-                    "snippet": raw.get("snippet", ""),
-                    "sender": raw.get("sender") or raw.get("from") or raw.get("received_at"),
-                    "predicted_label": classified["predicted_label"],
-                    "prediction": classified["predicted_label"],
-                    "predicted_score": classified["predicted_score"],
-                    "confidence": classified["predicted_score"],
-                    "fetch_time": now,
-                    "classified_at": datetime.fromisoformat(classified["classified_at"]),
-                    "created_at": now,
-                    "received_at": raw.get("received_at") or raw.get("sent_at"),
-                    "sent_at": raw.get("sent_at") or raw.get("received_at"),
-                }
-                self.email_repo.save_email(email_doc, check_access=False)
-                classified_count += 1
-                saved_records.append({
-                    "message_id": message_id,
-                    "gmail_message_id": message_id,
-                    "thread_id": raw.get("thread_id"),
-                    "subject": raw.get("subject", ""),
-                    "snippet": raw.get("snippet", ""),
-                    "predicted_label": classified["predicted_label"],
-                    "prediction": classified["predicted_label"],
-                    "predicted_score": classified["predicted_score"],
-                    "confidence": classified["predicted_score"],
-                    "classified_at": classified["classified_at"],
-                    "created_at": now.isoformat(),
-                    "sent_at": raw.get("sent_at") or raw.get("received_at"),
-                })
-            except Exception as err:
-                skipped_count += 1
-                logger.error(f"[ClassifyBatch] user_id={user_id} error classifying email: {err}")
+            for raw in chunk:
+                try:
+                    classified = self._classify_one(raw)
+                    message_id = raw.get("message_id") or raw.get("gmail_message_id")
+                    if not message_id:
+                        chunk_skipped += 1
+                        continue
 
-        return {
+                    now = datetime.now(timezone.utc)
+                    email_doc = {
+                        "user_id": user_id,
+                        "message_id": message_id,
+                        "gmail_message_id": message_id,
+                        "thread_id": raw.get("thread_id"),
+                        "subject": raw.get("subject", ""),
+                        "snippet": raw.get("snippet", ""),
+                        "sender": raw.get("sender") or raw.get("from") or raw.get("received_at"),
+                        "predicted_label": classified["predicted_label"],
+                        "prediction": classified["predicted_label"],
+                        "predicted_score": classified["predicted_score"],
+                        "confidence": classified["predicted_score"],
+                        "fetch_time": now,
+                        "classified_at": datetime.fromisoformat(classified["classified_at"]),
+                        "created_at": now,
+                        "received_at": raw.get("received_at") or raw.get("sent_at"),
+                        "sent_at": raw.get("sent_at") or raw.get("received_at"),
+                    }
+                    self.email_repo.save_email(email_doc, check_access=False)
+                    classified_count += 1
+                    chunk_classified += 1
+                    saved_records.append({
+                        "message_id": message_id,
+                        "gmail_message_id": message_id,
+                        "thread_id": raw.get("thread_id"),
+                        "subject": raw.get("subject", ""),
+                        "snippet": raw.get("snippet", ""),
+                        "predicted_label": classified["predicted_label"],
+                        "prediction": classified["predicted_label"],
+                        "predicted_score": classified["predicted_score"],
+                        "confidence": classified["predicted_score"],
+                        "classified_at": classified["classified_at"],
+                        "created_at": now.isoformat(),
+                        "sent_at": raw.get("sent_at") or raw.get("received_at"),
+                    })
+                except Exception as err:
+                    skipped_count += 1
+                    chunk_skipped += 1
+                    logger.error(f"[ClassifyBatch] user_id={user_id} error classifying email: {err}")
+
+            if job_id:
+                job_service.update_progress(
+                    job_id=job_id,
+                    processed_increment=len(chunk),
+                    classified_increment=chunk_classified,
+                    skipped_increment=chunk_skipped,
+                )
+
+        result = {
             "classified": classified_count,
             "skipped": skipped_count,
             "classified_emails": saved_records
         }
+
+        if job_id:
+            job_service.complete_job(job_id, result)
+
+        return result
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
