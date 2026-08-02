@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   predictionApi,
   type PredictionRequest,
@@ -26,6 +27,7 @@ export function PredictionProvider({ children }: { children: ReactNode }) {
   const [isPredicting, setPredicting] = useState(false);
   const [latest, setLatest] = useState<PredictionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const predict = useCallback(async (payload: PredictionRequest) => {
     setPredicting(true);
@@ -33,6 +35,8 @@ export function PredictionProvider({ children }: { children: ReactNode }) {
     try {
       const res = await predictionApi.predict(payload);
       setLatest(res);
+      queryClient.invalidateQueries({ queryKey: ["history"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
       return res;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Prediction failed";
@@ -41,7 +45,7 @@ export function PredictionProvider({ children }: { children: ReactNode }) {
     } finally {
       setPredicting(false);
     }
-  }, []);
+  }, [queryClient]);
 
   const reset = useCallback(() => {
     setLatest(null);

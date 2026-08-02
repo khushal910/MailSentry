@@ -351,13 +351,25 @@ class ProfileService:
         Changes password for local accounts.
         Validates current password, hashes new password with bcrypt, updates DB with audit logging.
         """
+        if not current_pw or not current_pw.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is required."
+            )
+
+        if not new_pw or not new_pw.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password is required."
+            )
+
         if new_pw != confirm_pw:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="New password and confirm password do not match."
             )
 
-        if len(new_pw) < 8:
+        if len(new_pw.strip()) < 8:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Password must be at least 8 characters long."

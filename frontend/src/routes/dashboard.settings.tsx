@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+import { profileApi } from "@/services/profileApi";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/settings")({
   head: () => ({
@@ -47,17 +49,48 @@ function SettingsPage() {
   const [curPass, setCurPass] = useState("");
   const [newPass, setNewPass] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  const handlePasswordUpdate = (e: React.FormEvent) => {
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPass && newPass !== confirmPass) {
-      toast.error("New passwords do not match");
+    const cur = curPass.trim();
+    const newP = newPass.trim();
+    const confP = confirmPass.trim();
+
+    if (!cur) {
+      toast.error("Current password is required");
       return;
     }
-    toast.success("Password updated successfully");
-    setCurPass("");
-    setNewPass("");
-    setConfirmPass("");
+    if (!newP) {
+      toast.error("New password is required");
+      return;
+    }
+    if (newP.length < 8) {
+      toast.error("New password must be at least 8 characters long");
+      return;
+    }
+    if (newP !== confP) {
+      toast.error("New password and confirm password do not match");
+      return;
+    }
+
+    try {
+      setIsUpdatingPassword(true);
+      const res = await profileApi.changePassword({
+        current_password: cur,
+        new_password: newP,
+        confirm_password: confP,
+      });
+      toast.success(res.message || "Password updated successfully");
+      setCurPass("");
+      setNewPass("");
+      setConfirmPass("");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update password";
+      toast.error(msg);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
   return (
@@ -186,8 +219,14 @@ function SettingsPage() {
             </div>
 
             <div className="sm:col-span-2 pt-1">
-              <Button type="submit" className="bg-gradient-brand shadow-elegant">
-                Update password
+              <Button type="submit" disabled={isUpdatingPassword} className="bg-gradient-brand shadow-elegant">
+                {isUpdatingPassword ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating…
+                  </>
+                ) : (
+                  "Update password"
+                )}
               </Button>
             </div>
           </form>

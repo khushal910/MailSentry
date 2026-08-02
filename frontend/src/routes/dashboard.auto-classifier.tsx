@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   RefreshCw,
@@ -43,6 +44,15 @@ const PAGE_SIZE = 10;
 
 function AutoClassifierPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const handleConnectGmail = async () => {
+    try {
+      await googleAuthApi.initiateConnect();
+    } catch (err) {
+      toast.error("Failed to initiate Google OAuth connection.");
+    }
+  };
 
   const [pageState, setPageState] = useState<PageState>("loading");
   const [isFetching, setIsFetching] = useState(false);
@@ -125,6 +135,10 @@ function AutoClassifierPage() {
               setUnclassifiedEmails([]);
               setSearchTerm("");
               setPage(1);
+
+              // Invalidate TanStack Query caches so History and Dashboard Stats auto-update
+              queryClient.invalidateQueries({ queryKey: ["history"] });
+              queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
 
               toast.success(
                 `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
@@ -213,7 +227,7 @@ function AutoClassifierPage() {
   if (pageState === "gmail-not-connected") {
     return (
       <PageTransition>
-        <GmailNotConnectedState onConnect={() => navigate({ to: "/dashboard/settings" })} />
+        <GmailNotConnectedState onConnect={handleConnectGmail} />
       </PageTransition>
     );
   }

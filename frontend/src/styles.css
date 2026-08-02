@@ -253,3 +253,14 @@
   box-shadow: 0 0 25px 2px rgba(79, 70, 229, 0.4), 0 0 15px -1px rgba(6, 182, 212, 0.3);
   transform: scale(1.015);
 }
+
+/* Fix browser autofill background override for dark/light mode input design consistency */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--foreground) !important;
+  -webkit-box-shadow: 0 0 0px 1000px var(--background) inset !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+  background-color: transparent !important;
+}

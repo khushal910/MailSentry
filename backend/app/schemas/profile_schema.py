@@ -47,12 +47,24 @@ class VerifyEmailOtpRequest(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
+    current_password: str = Field(...)
+    new_password: str = Field(...)
+    confirm_password: str = Field(...)
+
+    @validator("current_password", "new_password", "confirm_password")
+    def validate_non_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Password fields cannot be empty or whitespace only.")
+        return v
+
+    @validator("new_password")
+    def validate_new_password_length(cls, v: str) -> str:
+        if len(v.strip()) < 8:
+            raise ValueError("New password must be at least 8 characters long.")
+        return v
 
     @validator("confirm_password")
     def validate_passwords_match(cls, v: str, values: dict) -> str:
         if "new_password" in values and v != values["new_password"]:
-            raise ValueError("Passwords do not match")
+            raise ValueError("New password and confirm password do not match.")
         return v
