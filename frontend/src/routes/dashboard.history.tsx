@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
-import { Search, MailX, X, SearchX } from "lucide-react";
+import { useState } from "react";
+import { Search, MailX, X, SearchX, RefreshCw } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { EmailLabelBadge } from "@/components/EmailLabelBadge";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { emailsApi, type ClassifiedEmail } from "@/services/emailsApi";
 import { formatConfidence, formatDate, truncate } from "@/utils/format";
 import { useDebounce } from "@/hooks/useDebounce";
+import { usePredictiveHistory } from "@/hooks/usePredictiveHistory";
 import { HighlightText } from "@/components/HighlightText";
 
 export const Route = createFileRoute("/dashboard/history")({
@@ -38,48 +38,37 @@ function HistoryPage() {
 
   const [filter, setFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
-  const [emails, setEmails] = useState<ClassifiedEmail[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  /* ─── Fetch history from MongoDB backend ─── */
-  const loadHistory = useCallback(async (pg: number, labelFilter: string, searchStr: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const labelParam = labelFilter !== "all" ? labelFilter : undefined;
-      const searchParam = searchStr.trim() ? searchStr.trim() : undefined;
-      const res = await emailsApi.getEmails({
-        page: pg,
-        limit: PAGE_SIZE,
-        label: labelParam,
-        search: searchParam,
-      });
-      setEmails(res.emails);
-      setTotalCount(res.total_count ?? res.total ?? res.count);
-      setPage(pg);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load prediction history.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  /* ─── Trigger fetch when page, filter, or debounced search changes ─── */
-  useEffect(() => {
-    loadHistory(page, filter, debouncedSearch);
-  }, [page, filter, debouncedSearch, loadHistory]);
-
-  const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  // TanStack Query with Intelligent Predictive Idle Prefetching
+  const {
+    emails,
+    totalCount,
+    pageCount,
+    isLoading,
+    isFetching,
+    error,
+  } = usePredictiveHistory({
+    page,
+    limit: PAGE_SIZE,
+    label: filter,
+    search: debouncedSearch,
+  });
 
   return (
     <PageTransition>
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Prediction History</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          All classified emails stored in your MailSentry database.
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Prediction History</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            All classified emails stored in your MailSentry database.
+          </p>
+        </div>
+        {isFetching && !isLoading && (
+          <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary shadow-sm">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            <span className="hidden sm:inline">Predictive Sync Active</span>
+          </div>
+        )}
       </div>
 
       <div className="glass mt-6 rounded-2xl p-4 md:p-6">

@@ -54,10 +54,10 @@ class EmailRepository:
                 [("user_id", ASCENDING), ("classified_at", DESCENDING)],
                 name="idx_user_classified_at"
             )
-            # Compound index for label filtering
+            # Compound index for label filtering with timeline sorting
             self.collection.create_index(
-                [("user_id", ASCENDING), ("predicted_label", ASCENDING)],
-                name="idx_user_label"
+                [("user_id", ASCENDING), ("predicted_label", ASCENDING), ("classified_at", DESCENDING)],
+                name="idx_user_label_classified_at"
             )
             logger.info("Indexes ensured on emails collection.")
         except OperationFailure as e:
