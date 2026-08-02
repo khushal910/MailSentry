@@ -25,6 +25,16 @@ const apiClient: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
 apiClient.interceptors.response.use(
   (r) => r,
   (error: AxiosError<{ message?: string; detail?: string | { msg: string }[] }>) => {

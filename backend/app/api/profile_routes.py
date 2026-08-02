@@ -30,15 +30,7 @@ def _get_client_ip(request: Request) -> str:
 def _set_jwt_cookie(response: Response, user_id: str, username: str) -> str:
     """Generates a fresh JWT access token and sets it as an HttpOnly cookie."""
     new_jwt = create_access_token(user_id=user_id, username=username)
-    response.set_cookie(
-        key="access_token",
-        value=new_jwt,
-        httponly=True,
-        secure=settings.SECURE_COOKIES,
-        samesite="lax",
-        path="/",
-        max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-    )
+    set_auth_cookie(response, new_jwt)
     return new_jwt
 
 

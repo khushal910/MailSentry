@@ -87,7 +87,11 @@ class Settings:
         PASSWORD_LENGTH = int(os.getenv("PASSWORD_LENGTH", 8))
         PASSWORD_RULE_APPLY = os.getenv("PASSWORD_RULE_APPLY") == "True"
         
-        SECURE_COOKIES = os.getenv("SECURE_COOKIES") == "True"
+        SECURE_COOKIES = os.getenv("SECURE_COOKIES", "True" if not DEBUG else "False") == "True"
+        COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "none" if not DEBUG else "lax").lower()
+        COOKIE_SECURE = SECURE_COOKIES
+        if COOKIE_SAMESITE == "none":
+            COOKIE_SECURE = True  # SameSite=None requires Secure=True in all browsers
 
         # SMTP — email delivery
         SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")

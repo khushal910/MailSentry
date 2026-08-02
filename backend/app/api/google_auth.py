@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse
 from app.core.config import settings
 from app.dependencies.google_auth_deps import get_google_oauth_service
 from app.services.auth.google_oauth_service import GoogleOAuthService
-from app.utils.main_utile import return_response, create_access_token
+from app.utils.main_utile import return_response, create_access_token, set_auth_cookie
 
 logger = logging.getLogger("mailsentry.google_oauth.router")
 
@@ -191,15 +191,7 @@ async def google_callback(
                     }
                 }
             )
-            response.set_cookie(
-                key="access_token",
-                value=jwt_token,
-                httponly=True,
-                secure=settings.SECURE_COOKIES,
-                samesite="lax",
-                path="/",
-                max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-            )
+            set_auth_cookie(response, jwt_token)
             return res
 
         # 8. Redirect to frontend /auth/callback with token as URL param.
@@ -257,15 +249,7 @@ async def set_token(
         from app.utils.main_utile import decode_token
         decode_token(token)  # raises HTTPException 401 if invalid/expired
 
-        response.set_cookie(
-            key="access_token",
-            value=token,
-            httponly=True,
-            secure=settings.SECURE_COOKIES,
-            samesite="lax",
-            path="/",
-            max_age=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-        )
+        set_auth_cookie(response, token)
         logger.info("Access token cookie set successfully via /auth/google/set-token")
         return return_response(status_code=200, message="Token set successfully")
 

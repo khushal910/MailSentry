@@ -3,7 +3,30 @@ import bcrypt
 import re
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError, ExpiredSignatureError
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Response
+
+def set_auth_cookie(response: Response, token: str, max_age: int | None = None) -> None:
+    """Sets the access_token HttpOnly cookie on the response with proper SameSite/Secure parameters."""
+    if max_age is None:
+        max_age = 60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES
+
+    samesite_val = getattr(settings, "COOKIE_SAMESITE", "none").lower()
+    if samesite_val not in ("lax", "strict", "none"):
+        samesite_val = "none"
+
+    secure_val = getattr(settings, "COOKIE_SECURE", True)
+    if samesite_val == "none":
+        secure_val = True
+
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=secure_val,
+        samesite=samesite_val,
+        path="/",
+        max_age=max_age,
+    )
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt with a salt round of 12."""

@@ -61,7 +61,8 @@ function OAuthCallbackPage() {
       }
 
       try {
-        // Step 1: Exchange the URL token for a proper HttpOnly cookie
+        // Step 1: Store token in localStorage as fallback & exchange for HttpOnly cookie
+        localStorage.setItem("token", token);
         const { data } = await apiClient.post("/auth/google/set-token", { token });
 
         if (!data?.success) {

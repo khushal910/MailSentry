@@ -4,12 +4,17 @@ from app.db.mongodb import get_database
 from app.utils.main_utile import (
     verify_password,
     create_access_token,
-    return_response
+    return_response,
+    set_auth_cookie,
 )
 from app.schemas.user import UserLoginSchema
 from app.core.config import settings 
     
 async def login_user(user: UserLoginSchema, response: Response):
+    """
+    Authenticate user with email and password.
+    Returns: success response and sets access_token cookie.
+    """
     try:
         db = get_database()
         user_col = db[settings.USER_COLLECTION_NAME]
@@ -34,14 +39,7 @@ async def login_user(user: UserLoginSchema, response: Response):
             username = db_user["username"]
         )
 
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            secure=settings.SECURE_COOKIES,      
-            samesite="lax",
-            max_age=60 * 30
-        )
+        set_auth_cookie(response, access_token)
 
         return return_response(
             status_code=200,

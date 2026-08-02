@@ -9,41 +9,37 @@ from app.utils.main_utile import (
     hash_password,
     create_access_token,
     return_response,
+    set_auth_cookie,
 )
 from app.schemas.user import UserRegisterSchema
 
 
-async def register_user(user_data: UserRegisterSchema, response: Response) -> Dict[str, Any]:
+async def register_user(user: UserRegisterSchema, response: Response):
     """
-    Registers a new user and sets an HTTP-only access_token cookie on success,
-    exactly like login_user does.
+    Registers a new user into MongoDB after performing validation checks.
     """
     try:
-        data     = user_data.model_dump()
-        username = data["username"].strip()
-        email    = data["email"].strip().lower()
-        password = data["password"]
+        username, email, password = user.username, user.email, user.password
 
-        # Validate email
-        if not validate_email(email):
-            return return_response(status_code=400, message="Invalid email format")
+        val = validate_email(email)
+        if not val["is_valid"]:
+            return return_response(status_code=400, message=val["message"])
 
-        # Validate password strength
-        if not validate_password_strength(password):
-            return return_response(
-                status_code=400,
-                message="Password must be at least 8 characters, with uppercase, lowercase, and a digit",
-            )
+        val_pw = validate_password_strength(password)
+        if not val_pw["is_valid"]:
+            return return_response(status_code=400, message=val_pw["message"])
 
-        # Check for duplicate username or email
-        db        = get_database()
+        db = get_database()
         users_col = db[settings.USER_COLLECTION_NAME]
-        existing  = users_col.find_one({"$or": [{"username": username}, {"email": email}]})
-        if existing:
-            return return_response(status_code=400, message="Username or email already exists")
 
-        # Hash password and insert user
+        if users_col.find_one({"email": email}):
+            return return_response(status_code=400, message="Email already registered")
+
+        if users_col.find_one({"username": username}):
+            return return_response(status_code=400, message="Username already taken")
+
         hashed_password = hash_password(password)
+
         new_user = {
             "username":   username,
             "email":      email,
@@ -59,14 +55,7 @@ async def register_user(user_data: UserRegisterSchema, response: Response) -> Di
         # Generate token and set HTTP-only cookie — identical to login
         access_token = create_access_token(user_id=user_id, username=username)
 
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            secure=settings.SECURE_COOKIES,
-            samesite="lax",
-            max_age=60 * 30,
-        )
+        set_auth_cookie(response, access_token)
 
         return return_response(status_code=201, message="User registered successfully")
 
