@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any, Union
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
+from pymongo.errors import OperationFailure
 from pymongo.database import Database
 from unittest.mock import MagicMock
 
@@ -59,6 +60,11 @@ class EmailRepository:
                 name="idx_user_label"
             )
             logger.info("Indexes ensured on emails collection.")
+        except OperationFailure as e:
+            if e.code == 85:
+                logger.info(f"Email index already exists on collection: {e.details.get('errmsg', str(e))}")
+            else:
+                logger.error(f"Error creating indexes on emails collection: {str(e)}")
         except Exception as e:
             logger.error(f"Error creating indexes on emails collection: {str(e)}")
 

@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from pymongo import DESCENDING
+from pymongo.errors import OperationFailure
 from pymongo.database import Database
 from unittest.mock import MagicMock
 
@@ -37,6 +38,11 @@ class ModelRepository:
             self.collection.create_index("status", name="idx_model_status")
             self.collection.create_index([("created_at", DESCENDING)], name="idx_model_created_at")
             logger.info("Indexes ensured on models collection.")
+        except OperationFailure as e:
+            if e.code == 85:
+                logger.info(f"Model index already exists on collection: {e.details.get('errmsg', str(e))}")
+            else:
+                logger.error(f"Error creating indexes on models collection: {str(e)}")
         except Exception as e:
             logger.error(f"Error creating indexes on models collection: {str(e)}")
 

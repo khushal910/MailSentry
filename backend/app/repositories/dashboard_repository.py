@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
+from pymongo.errors import OperationFailure
 from pymongo.database import Database
 from unittest.mock import MagicMock
 
@@ -34,24 +35,25 @@ class DashboardRepository:
         - (user_id, prediction) & (user_id, predicted_label)
         """
         try:
-            self.collection.create_index([("user_id", ASCENDING)], name="idx_dashboard_user_id")
+            self.collection.create_index([("user_id", ASCENDING)])
             self.collection.create_index(
-                [("user_id", ASCENDING), ("created_at", DESCENDING)],
-                name="idx_dashboard_user_created_at"
+                [("user_id", ASCENDING), ("created_at", DESCENDING)]
             )
             self.collection.create_index(
-                [("user_id", ASCENDING), ("classified_at", DESCENDING)],
-                name="idx_dashboard_user_classified_at"
+                [("user_id", ASCENDING), ("classified_at", DESCENDING)]
             )
             self.collection.create_index(
-                [("user_id", ASCENDING), ("prediction", ASCENDING)],
-                name="idx_dashboard_user_prediction"
+                [("user_id", ASCENDING), ("prediction", ASCENDING)]
             )
             self.collection.create_index(
-                [("user_id", ASCENDING), ("predicted_label", ASCENDING)],
-                name="idx_dashboard_user_predicted_label"
+                [("user_id", ASCENDING), ("predicted_label", ASCENDING)]
             )
             logger.info("Dashboard performance indexes ensured.")
+        except OperationFailure as e:
+            if e.code == 85:
+                logger.info(f"Dashboard index already exists on collection: {e.details.get('errmsg', str(e))}")
+            else:
+                logger.error(f"Error ensuring dashboard indexes: {str(e)}")
         except Exception as e:
             logger.error(f"Error ensuring dashboard indexes: {str(e)}")
 

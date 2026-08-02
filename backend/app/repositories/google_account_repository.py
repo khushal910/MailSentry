@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timezone
 from pymongo.database import Database
 from pymongo import ASCENDING
+from pymongo.errors import OperationFailure
 from app.db.mongodb import get_database
 from app.core.config import settings
 
@@ -35,6 +36,11 @@ class GoogleAccountRepository:
             self.collection.create_index("google_user_id", unique=True, sparse=True)
             self.collection.create_index("google_email", unique=True)
             logger.info("Indexes ensured on google_accounts collection.")
+        except OperationFailure as e:
+            if e.code == 85:
+                logger.info(f"Google account index already exists on collection: {e.details.get('errmsg', str(e))}")
+            else:
+                logger.error(f"Error creating indexes on google_accounts: {str(e)}")
         except Exception as e:
             logger.error(f"Error creating indexes on google_accounts: {str(e)}")
 
