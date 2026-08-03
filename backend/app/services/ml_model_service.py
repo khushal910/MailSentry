@@ -221,12 +221,7 @@ class MLModelService:
         Classifies email content using PredictionEngine singleton cached instance.
         Returns predicted_label, predicted_score, subject, and classified_at timestamp.
         """
-        registry_dir = getattr(
-            settings,
-            "MODEL_REGISTRY_DIR",
-            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "model_registry"))
-        )
-        engine = PredictionEngine(registry_dir)
+        engine = PredictionEngine(self.models_dir)
         return engine.predict(subject=subject, body=body)
 
 

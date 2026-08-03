@@ -1,40 +1,120 @@
 """
-Model routes for production machine learning model details and status.
+Model REST API routes for production model specifications, history, version details, and comparison.
+All endpoints read exclusively from backend/models/ (independent of ml-service).
 """
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, HTTPException, status
 from app.utils.main_utile import return_response
+from app.services.backend_model_storage import BackendModelStorage
 
 model_router = APIRouter()
+storage = BackendModelStorage()
 
 
 @model_router.get(
     "/model/production",
-    summary="Get currently deployed production machine learning model details",
-    response_description="Production model specifications, status, and performance metrics",
+    summary="Get currently deployed production machine learning model metadata",
+    response_description="Active production model metadata, status, metrics, and specifications",
 )
 async def get_production_model():
     """
     GET /api/v1/model/production (also accessible at /api/model/production)
-    Returns information about the machine learning model currently deployed in production.
+    Returns metadata of the current production model loaded from backend/models/production/metadata.json.
     """
-    model_data = {
-        "model_name": "DistilBERT",
-        "version": "v2.1.0",
-        "status": "Production",
-        "task": "Spam Email Classification",
-        "accuracy": 98.42,
-        "precision": 98.16,
-        "recall": 97.91,
-        "f1_score": 98.03,
-        "training_date": "2026-08-03",
-        "dataset_size": 17880,
-        "algorithm_type": "Transformer",
-        "description": "Fine-tuned DistilBERT model trained for binary spam classification.",
-        "is_active": True,
-    }
-    return return_response(
-        status_code=status.HTTP_200_OK,
-        message="Production model details retrieved successfully",
-        data=model_data,
-    )
+    try:
+        data = storage.get_production_metadata()
+        return return_response(
+            status_code=status.HTTP_200_OK,
+            message="Production model details retrieved successfully",
+            data=data,
+        )
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load production model metadata: {str(err)}",
+        )
+
+
+@model_router.get(
+    "/model/history",
+    summary="Get history of all production models",
+    response_description="List of all production and archived versions sorted by deployment date descending",
+)
+async def get_model_history():
+    """
+    GET /api/v1/model/history (also accessible at /api/model/history)
+    Returns list of all model versions stored in backend/models/ (production + versions).
+    """
+    try:
+        history = storage.get_history()
+        return return_response(
+            status_code=status.HTTP_200_OK,
+            message="Model version history retrieved successfully",
+            data={"history": history, "total": len(history)},
+        )
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load model history: {str(err)}",
+        )
+
+
+@model_router.get(
+    "/model/version/{version}",
+    summary="Get specific model version metadata",
+    response_description="Detailed metadata for a specific model version tag",
+)
+async def get_model_version(version: str):
+    """
+    GET /api/v1/model/version/{version} (also accessible at /api/model/version/{version})
+    Returns metadata for a specific model version from backend/models/versions/{version}/.
+    """
+    try:
+        data = storage.get_version_metadata(version)
+        return return_response(
+            status_code=status.HTTP_200_OK,
+            message=f"Model version {version} metadata retrieved successfully",
+            data=data,
+        )
+    except FileNotFoundError as fnf:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(fnf),
+        )
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load model version {version}: {str(err)}",
+        )
+
+
+@model_router.get(
+    "/model/compare",
+    summary="Compare two model versions",
+    response_description="Side-by-side metric comparison between two model versions",
+)
+async def compare_models(
+    v1: str = Query(..., description="Base version tag (e.g. v1.0.0 or production)"),
+    v2: str = Query(..., description="Target version tag (e.g. v2.0.0 or production)"),
+):
+    """
+    GET /api/v1/model/compare?v1=v1.0.0&v2=production
+    Returns detailed metric differences, direction indicators (improved, decreased, no_change), and percentage changes.
+    """
+    try:
+        result = storage.compare_models(v1, v2)
+        return return_response(
+            status_code=status.HTTP_200_OK,
+            message=f"Model comparison between {v1} and {v2} completed successfully",
+            data=result,
+        )
+    except FileNotFoundError as fnf:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(fnf),
+        )
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to compare models {v1} and {v2}: {str(err)}",
+        )

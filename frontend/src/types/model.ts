@@ -1,15 +1,62 @@
 export interface ProductionModelInfo {
-  model_name: string;
   version: string;
-  status: string;
+  model_name: string;
+  algorithm: string;
+  algorithm_type: string;
+  framework: string;
+  serialization: string;
   task: string;
+  deployment_date: string;
+  training_date: string;
+  deployment_status: string;
+  status: string;
+  model_hash: string;
+  preprocessing_hash: string;
+  label_encoder_hash: string;
+  dataset_version: string;
+  dataset_size: number;
+  hyperparameters: Record<string, any>;
   accuracy: number;
   precision: number;
   recall: number;
   f1_score: number;
-  training_date: string;
-  dataset_size: number;
-  algorithm_type: string;
+  roc_auc: number;
+  training_time_sec: number;
+  inference_time_ms: number;
+  model_size_mb: number;
+  primary_metric: string;
+  primary_score: number;
   description: string;
   is_active: boolean;
+}
+
+export interface MetricDiffItem {
+  label: string;
+  unit: string;
+  v1_value: number;
+  v2_value: number;
+  diff: number;
+  percentage_change: number;
+  status: "improved" | "decreased" | "no_change";
+  indicator: "↑" | "↓" | "→";
+}
+
+export interface ModelComparisonResult {
+  v1: {
+    version: string;
+    model_name: string;
+    algorithm: string;
+    deployment_date: string;
+    dataset_version: string;
+    hyperparameters: Record<string, any>;
+  };
+  v2: {
+    version: string;
+    model_name: string;
+    algorithm: string;
+    deployment_date: string;
+    dataset_version: string;
+    hyperparameters: Record<string, any>;
+  };
+  comparison: Record<string, MetricDiffItem>;
 }

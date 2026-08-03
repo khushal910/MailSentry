@@ -158,6 +158,28 @@ class ModelRegistry:
             metadata.metric,
             metadata.score,
         )
+
+        # Step 5: Sync directly into backend/models/ (independent backend storage)
+        try:
+            backend_models_dir = os.path.abspath(
+                os.path.join(self.root, "..", "backend", "models")
+            )
+            if os.path.exists(os.path.dirname(backend_models_dir)):
+                # Import BackendModelStorage dynamically
+                import sys
+                backend_path = os.path.abspath(os.path.join(self.root, "..", "backend"))
+                if backend_path not in sys.path:
+                    sys.path.insert(0, backend_path)
+                from app.services.backend_model_storage import BackendModelStorage
+                b_storage = BackendModelStorage(models_dir=backend_models_dir)
+                b_storage.promote_new_version(
+                    new_artifacts_dir=self.champion_path,
+                    new_metadata=metadata.to_dict(),
+                )
+                logger.info("Synced new champion promotion to backend/models storage.")
+        except Exception as sync_err:
+            logger.warning("Failed to sync model to backend/models storage: %s", sync_err)
+
         return metadata
 
     def rollback(self, version: str) -> ModelMetadata:

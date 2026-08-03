@@ -39,106 +39,106 @@ class ModelList:
                         "random_state": 42,
                     },
                 ),
-                "RandomForest": _ModelBundle(
-                    name="RandomForest",
-                    model=RandomForestClassifier(
-                        n_estimators=300,
-                        random_state=42,
-                        n_jobs=-1,
-                    ),
-                    params={
-                        "n_estimators": 300,
-                        "random_state": 42,
-                        "n_jobs": -1,
-                    },
-                ),
-                "XGBClassifier": _ModelBundle(
-                    name="XGBClassifier",
-                    model=XGBClassifier(
-                        n_estimators=300,
-                        max_depth=6,
-                        learning_rate=0.1,
-                        subsample=0.8,
-                        colsample_bytree=0.8,
-                        objective="binary:logistic",
-                        eval_metric="logloss",
-                        random_state=42,
-                        n_jobs=-1,
-                    ),
-                    params={
-                        "n_estimators": 300,
-                        "max_depth": 6,
-                        "learning_rate": 0.1,
-                        "subsample": 0.8,
-                        "colsample_bytree": 0.8,
-                        "objective": "binary:logistic",
-                        "eval_metric": "logloss",
-                        "random_state": 42,
-                        "n_jobs": -1,
-                    },
-                ),
-                "CatBoostClassifier": _ModelBundle(
-                    name="CatBoostClassifier",
-                    model=CatBoostClassifier(
-                        iterations=500,  
-                        learning_rate=0.1,
-                        depth=6,
-                        loss_function="Logloss",
-                        random_seed=42,
-                        verbose=False,
-                        allow_writing_files=False,
-                    ),
-                    params={
-                        "iterations": 500,
-                        "learning_rate": 0.1,
-                        "depth": 6,
-                        "loss_function": "Logloss",
-                        "random_seed": 42,
-                        "verbose": False,
-                        "allow_writing_files": False,
-                    },
-                ),
-                "LinearSVC": _ModelBundle(
-                    name="LinearSVC",
-                    model=LinearSVC(
-                        C=1.0,
-                        random_state=42,
-                    ),
-                    params={
-                        "C": 1.0,
-                        "random_state": 42,
-                    },
-                ),
-                "ExtraTrees": _ModelBundle(
-                    name="ExtraTrees",
-                    model=ExtraTreesClassifier(
-                        n_estimators=300,
-                        random_state=42,
-                        n_jobs=-1,
-                    ),
-                    params={
-                        "n_estimators": 300,
-                        "random_state": 42,
-                        "n_jobs": -1,
-                    },
-                ),
+                # "RandomForest": _ModelBundle(
+                #     name="RandomForest",
+                #     model=RandomForestClassifier(
+                #         n_estimators=300,
+                #         random_state=42,
+                #         n_jobs=-1,
+                #     ),
+                #     params={
+                #         "n_estimators": 300,
+                #         "random_state": 42,
+                #         "n_jobs": -1,
+                #     },
+                # ),
+                # "XGBClassifier": _ModelBundle(
+                #     name="XGBClassifier",
+                #     model=XGBClassifier(
+                #         n_estimators=300,
+                #         max_depth=6,
+                #         learning_rate=0.1,
+                #         subsample=0.8,
+                #         colsample_bytree=0.8,
+                #         objective="binary:logistic",
+                #         eval_metric="logloss",
+                #         random_state=42,
+                #         n_jobs=-1,
+                #     ),
+                #     params={
+                #         "n_estimators": 300,
+                #         "max_depth": 6,
+                #         "learning_rate": 0.1,
+                #         "subsample": 0.8,
+                #         "colsample_bytree": 0.8,
+                #         "objective": "binary:logistic",
+                #         "eval_metric": "logloss",
+                #         "random_state": 42,
+                #         "n_jobs": -1,
+                #     },
+                # ),
+                # "CatBoostClassifier": _ModelBundle(
+                #     name="CatBoostClassifier",
+                #     model=CatBoostClassifier(
+                #         iterations=500,  
+                #         learning_rate=0.1,
+                #         depth=6,
+                #         loss_function="Logloss",
+                #         random_seed=42,
+                #         verbose=False,
+                #         allow_writing_files=False,
+                #     ),
+                #     params={
+                #         "iterations": 500,
+                #         "learning_rate": 0.1,
+                #         "depth": 6,
+                #         "loss_function": "Logloss",
+                #         "random_seed": 42,
+                #         "verbose": False,
+                #         "allow_writing_files": False,
+                #     },
+                # ),
+                # "LinearSVC": _ModelBundle(
+                #     name="LinearSVC",
+                #     model=LinearSVC(
+                #         C=1.0,
+                #         random_state=42,
+                #     ),
+                #     params={
+                #         "C": 1.0,
+                #         "random_state": 42,
+                #     },
+                # ),
+                # "ExtraTrees": _ModelBundle(
+                #     name="ExtraTrees",
+                #     model=ExtraTreesClassifier(
+                #         n_estimators=300,
+                #         random_state=42,
+                #         n_jobs=-1,
+                #     ),
+                #     params={
+                #         "n_estimators": 300,
+                #         "random_state": 42,
+                #         "n_jobs": -1,
+                #     },
+                # ),
                 
                 
-                "LightGBM": _ModelBundle(
-                    name="LightGBM",
-                    model=LGBMClassifier(
-                        n_estimators=300,
-                        learning_rate=0.1,
-                        random_state=42,
-                        n_jobs=-1,
-                    ),
-                    params={
-                        "n_estimators": 300,
-                        "learning_rate": 0.1,
-                        "random_state": 42,
-                        "n_jobs": -1,
-                    },
-                )
+                # "LightGBM": _ModelBundle(
+                #     name="LightGBM",
+                #     model=LGBMClassifier(
+                #         n_estimators=300,
+                #         learning_rate=0.1,
+                #         random_state=42,
+                #         n_jobs=-1,
+                #     ),
+                #     params={
+                #         "n_estimators": 300,
+                #         "learning_rate": 0.1,
+                #         "random_state": 42,
+                #         "n_jobs": -1,
+                #     },
+                # )
             }
 
             if ENABLE_TABPFN:

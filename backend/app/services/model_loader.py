@@ -70,14 +70,20 @@ class BaseModelLoader(ABC):
 
 
 class SklearnModelLoader(BaseModelLoader):
-    """Loads sklearn models saved with **joblib**."""
+    """Loads sklearn models saved with **joblib** or **pickle**."""
 
     def load(self, champion_dir: str, metadata: dict) -> Any:
         import joblib
 
-        model_path = os.path.join(champion_dir, "model", "model.joblib")
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Sklearn model not found at: {model_path}")
+        possible_paths = [
+            os.path.join(champion_dir, "model.pkl"),
+            os.path.join(champion_dir, "model", "model.joblib"),
+            os.path.join(champion_dir, "model", "model.pkl"),
+            os.path.join(champion_dir, "model.joblib"),
+        ]
+        model_path = next((p for p in possible_paths if os.path.exists(p)), None)
+        if model_path is None:
+            raise FileNotFoundError(f"Sklearn model not found in directory: {champion_dir}")
         model = joblib.load(model_path)
         logger.info("Loaded sklearn model via joblib ← %s", model_path)
         return model

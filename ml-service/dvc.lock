@@ -91,28 +91,64 @@ stages:
       hash: md5
       md5: bafa68919dd48cf9e6a28c6e0e58412e
       size: 246174058
+    - path: artifact/data_transformation/transformed_test_raw.csv
+      hash: md5
+      md5: a82c389ca6336299b36a1069bd0b9f03
+      size: 11110589
     - path: artifact/data_transformation/transformed_train.csv
       hash: md5
       md5: a967e687bb88c4f6fd237aa547916d97
       size: 738934642
+    - path: artifact/data_transformation/transformed_train_raw.csv
+      hash: md5
+      md5: 28565d7acf3913bacb0818fc4d67db45
+      size: 35102086
+    - path: src/components/benchmark.py
+      hash: md5
+      md5: b70655aec15f7c130c79a7cb711a6769
+      size: 5040
+    - path: src/components/hyperparameter_tuner.py
+      hash: md5
+      md5: f53d5288abc89bb293f4e0c0ea794195
+      size: 5256
     - path: src/components/model_traning.py
       hash: md5
-      md5: 19c8c7f1b64e51ddac06b6f5ade0bbb4
-      size: 14883
+      md5: 264215cf7567c7ca1cca16871073be9a
+      size: 39876
     - path: src/components/models.py
       hash: md5
-      md5: d5e35dca185f0965e7f96f1eb5c29c74
-      size: 6357
+      md5: 976d812b0601221f6b64e633a214ad62
+      size: 6163
+    - path: src/components/transformer_trainer.py
+      hash: md5
+      md5: 028dff455de4632047a4545be80ccb05
+      size: 9099
+    - path: src/config/hyperparameter_config.py
+      hash: md5
+      md5: 0e2931bfd00e286dc8fe65e091f4d9a1
+      size: 1670
+    - path: src/entity/model_metadata.py
+      hash: md5
+      md5: f39728b2da82dc1775d19d1920e13764
+      size: 4280
+    - path: src/services/model_registry.py
+      hash: md5
+      md5: 44ba542fe109e011b10d3b8ee78eafa9
+      size: 8946
+    - path: src/services/model_saver.py
+      hash: md5
+      md5: 4143da0642e76986acd3994d2a9fc571
+      size: 7900
+    - path: src/services/storage_service.py
+      hash: md5
+      md5: d5e75f0e56ddbf816945c68154b13f52
+      size: 3145
     - path: src/utils/mlflow_utils.py
       hash: md5
       md5: 700284ba00a7965152109a7f2f31e4ff
       size: 2751
     outs:
-    - path: artifact/model_trainer/model.pkl
-      hash: md5
-      md5: 4305bff8d464ba2a3e324a3c82ba9a80
-      size: 56606
     - path: artifact/model_trainer/model_report.yaml
       hash: md5
-      md5: 542efa33ad329000c5ea6eb60e497099
-      size: 2130
+      md5: 7a16bcfc09fb81c19990dc1478880d3d
+      size: 1162

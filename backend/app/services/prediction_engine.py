@@ -77,11 +77,15 @@ class SklearnPredictor(BasePredictor):
 
     @staticmethod
     def _load_artifact(champion_dir: str, filename: str) -> Optional[Any]:
-        """Load a pickle/joblib artifact from champion_dir/preprocessor/."""
+        """Load a pickle/joblib artifact from champion_dir or champion_dir/preprocessor/."""
         import joblib
 
-        path = os.path.join(champion_dir, "preprocessor", filename)
-        if os.path.exists(path):
+        possible_paths = [
+            os.path.join(champion_dir, filename),
+            os.path.join(champion_dir, "preprocessor", filename),
+        ]
+        path = next((p for p in possible_paths if os.path.exists(p)), None)
+        if path:
             try:
                 obj = joblib.load(path)
                 logger.info("Loaded %s from %s", filename, path)
@@ -307,11 +311,24 @@ class PredictionEngine:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, registry_path: str) -> None:
+    def __init__(self, registry_path: Optional[str] = None) -> None:
         if PredictionEngine._initialized:
             return
 
-        champion_dir = os.path.join(registry_path, "champion")
+        if not registry_path:
+            backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            registry_path = os.path.join(backend_dir, "models")
+
+        possible_dirs = [
+            os.path.join(registry_path, "production"),
+            os.path.join(registry_path, "champion"),
+            registry_path,
+        ]
+
+        champion_dir = next(
+            (d for d in possible_dirs if os.path.exists(os.path.join(d, "metadata.json"))),
+            os.path.join(registry_path, "production"),
+        )
         meta_path = os.path.join(champion_dir, "metadata.json")
 
         if not os.path.exists(meta_path):
