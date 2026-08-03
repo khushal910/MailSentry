@@ -1,0 +1,25 @@
+{
+  "model_name": "LightGBM",
+  "framework": "sklearn",
+  "serialization": "joblib",
+  "task": "binary_classification",
+  "input_type": "tfidf",
+  "output_type": "probability",
+  "preprocessor": "tfidf",
+  "metric": "f1",
+  "score": 0.9867435158501441,
+  "metrics": {
+    "accuracy": 0.9863566259342745,
+    "precision": 0.9794050343249427,
+    "recall": 0.9941927990708479,
+    "f1": 0.9867435158501441,
+    "roc_auc": 0.9988467833964746,
+    "best_cv_score": 0.0
+  },
+  "version": "v1",
+  "trained_at": "2026-08-03T17:17:26.848275+00:00",
+  "training_time_sec": 0.0,
+  "inference_time_ms": 7.448,
+  "model_size_mb": 1.28,
+  "memory_usage_mb": 0.06
+}

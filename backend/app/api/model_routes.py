@@ -1,6 +1,7 @@
 """
 Model REST API routes for production model specifications, history, version details, and comparison.
 All endpoints read exclusively from backend/models/ (independent of ml-service).
+Sanitizes all internal filesystem paths to produce clean, enterprise-grade production errors.
 """
 
 from fastapi import APIRouter, Query, HTTPException, status
@@ -28,10 +29,15 @@ async def get_production_model():
             message="Production model details retrieved successfully",
             data=data,
         )
-    except Exception as err:
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Production model metadata is currently unavailable or initializing. Please deploy a model.",
+        )
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to load production model metadata: {str(err)}",
+            detail="Unable to load production model details. Please try again later.",
         )
 
 
@@ -52,10 +58,10 @@ async def get_model_history():
             message="Model version history retrieved successfully",
             data={"history": history, "total": len(history)},
         )
-    except Exception as err:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to load model history: {str(err)}",
+            detail="Unable to retrieve model version history.",
         )
 
 
@@ -76,15 +82,15 @@ async def get_model_version(version: str):
             message=f"Model version {version} metadata retrieved successfully",
             data=data,
         )
-    except FileNotFoundError as fnf:
+    except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(fnf),
+            detail=f"Requested model version '{version}' was not found in version history.",
         )
-    except Exception as err:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to load model version {version}: {str(err)}",
+            detail=f"Unable to load details for model version '{version}'.",
         )
 
 
@@ -108,13 +114,13 @@ async def compare_models(
             message=f"Model comparison between {v1} and {v2} completed successfully",
             data=result,
         )
-    except FileNotFoundError as fnf:
+    except FileNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(fnf),
+            detail=f"One or both model versions ('{v1}', '{v2}') were not found for comparison.",
         )
-    except Exception as err:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to compare models {v1} and {v2}: {str(err)}",
+            detail=f"Unable to compare model versions '{v1}' and '{v2}'.",
         )

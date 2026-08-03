@@ -10,6 +10,12 @@ from __future__ import annotations
 import sys
 from typing import Any, Dict
 
+# Reconfigure stdout/stderr on Windows to handle MLflow unicode emojis (e.g. \U0001f3c3)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
+
 import mlflow
 import mlflow.sklearn
 import mlflow.xgboost

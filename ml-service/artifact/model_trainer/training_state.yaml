@@ -1,0 +1,14 @@
+training_started_at: '2026-08-03T17:10:19.415633+00:00'
+last_updated_at: '2026-08-03T17:24:05.969161+00:00'
+training_version: 1.0.0
+models:
+  LightGBM:
+    status: completed
+    completed_at: '2026-08-03T17:17:25.802206+00:00'
+    checkpoint: artifact\model_trainer\checkpoints\LightGBM
+    config_hash: 6dd114b0a639a5bd77925b2a953636078cad3afe77057813aea55e2a57201670
+  LogisticRegression:
+    status: completed
+    completed_at: '2026-08-03T17:24:05.969161+00:00'
+    checkpoint: artifact\model_trainer\checkpoints\LogisticRegression
+    config_hash: b2e61b4113c1ac8d86fe6ff7322f9c90ff5e743290269d01cd67731180fb24e0

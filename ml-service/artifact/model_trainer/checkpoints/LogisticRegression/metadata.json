@@ -16,14 +16,12 @@
     "roc_auc": 0.9988193526801554,
     "best_cv_score": 0.0
   },
-  "version": "v2",
-  "trained_at": "2026-08-03T17:24:08.554063+00:00",
+  "version": "",
+  "trained_at": "2026-08-03T17:24:05.938708+00:00",
   "training_time_sec": 0.0,
-  "inference_time_ms": 1.743,
-  "model_size_mb": 0.05,
+  "inference_time_ms": 0.0,
+  "model_size_mb": 0.0,
   "memory_usage_mb": 0.0,
-  "deployment_date": "2026-08-03T17:24:08.720430+00:00",
-  "deployment_status": "Production",
-  "status": "Production",
-  "is_active": true
+  "config_hash": "b2e61b4113c1ac8d86fe6ff7322f9c90ff5e743290269d01cd67731180fb24e0",
+  "checkpoint_version": "1.0.0"
 }

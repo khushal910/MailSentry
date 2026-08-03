@@ -124,21 +124,21 @@ class ModelList:
                 # ),
                 
                 
-                # "LightGBM": _ModelBundle(
-                #     name="LightGBM",
-                #     model=LGBMClassifier(
-                #         n_estimators=300,
-                #         learning_rate=0.1,
-                #         random_state=42,
-                #         n_jobs=-1,
-                #     ),
-                #     params={
-                #         "n_estimators": 300,
-                #         "learning_rate": 0.1,
-                #         "random_state": 42,
-                #         "n_jobs": -1,
-                #     },
-                # )
+                "LightGBM": _ModelBundle(
+                    name="LightGBM",
+                    model=LGBMClassifier(
+                        n_estimators=300,
+                        learning_rate=0.1,
+                        random_state=42,
+                        n_jobs=-1,
+                    ),
+                    params={
+                        "n_estimators": 300,
+                        "learning_rate": 0.1,
+                        "random_state": 42,
+                        "n_jobs": -1,
+                    },
+                )
             }
 
             if ENABLE_TABPFN:
