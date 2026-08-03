@@ -35,6 +35,16 @@ def compute_file_hash(filepath: str) -> str:
     return hasher.hexdigest()
 
 
+def find_artifact_file(base_dir: str, filename: str) -> str:
+    """Locates an artifact file directly in base_dir or in subdirectories (model/ or preprocessor/)."""
+    possible_paths = [
+        os.path.join(base_dir, filename),
+        os.path.join(base_dir, "model", filename),
+        os.path.join(base_dir, "preprocessor", filename),
+    ]
+    return next((p for p in possible_paths if os.path.exists(p)), os.path.join(base_dir, filename))
+
+
 def _normalize_metric_val(val: Any, default: float = 0.0) -> float:
     """
     Normalizes metric to 0-100 percentage scale.
@@ -59,81 +69,68 @@ class BackendModelStorage:
         self.ensure_structure()
 
     def ensure_structure(self) -> None:
-        """Ensures production/ and versions/ directories exist and migrates legacy root files if needed."""
+        """Ensures production/ and versions/ directories exist."""
         os.makedirs(self.production_dir, exist_ok=True)
         os.makedirs(self.versions_dir, exist_ok=True)
 
         meta_path = os.path.join(self.production_dir, "metadata.json")
+        prod_model_file = find_artifact_file(self.production_dir, "model.pkl")
 
-        # Migrate legacy files from models/ root to models/production/ if production metadata missing
-        if not os.path.exists(meta_path):
-            legacy_model = os.path.join(self.models_dir, "model.pkl")
-            legacy_prep = os.path.join(self.models_dir, "preprocessing.pkl")
-            legacy_enc = os.path.join(self.models_dir, "label_encoder.pkl")
+        # Initialize default metadata if missing
+        if not os.path.exists(meta_path) and os.path.exists(prod_model_file):
+            now_iso = datetime.now(timezone.utc).isoformat()
+            model_hash = compute_file_hash(prod_model_file)
+            prep_hash = compute_file_hash(find_artifact_file(self.production_dir, "preprocessing.pkl"))
+            enc_hash = compute_file_hash(find_artifact_file(self.production_dir, "label_encoder.pkl"))
 
-            if os.path.exists(legacy_model):
-                shutil.copy2(legacy_model, os.path.join(self.production_dir, "model.pkl"))
-            if os.path.exists(legacy_prep):
-                shutil.copy2(legacy_prep, os.path.join(self.production_dir, "preprocessing.pkl"))
-            if os.path.exists(legacy_enc):
-                shutil.copy2(legacy_enc, os.path.join(self.production_dir, "label_encoder.pkl"))
-
-            # Only create initial metadata if model file actually exists
-            prod_model_file = os.path.join(self.production_dir, "model.pkl")
-            if os.path.exists(prod_model_file):
-                now_iso = datetime.now(timezone.utc).isoformat()
-                model_hash = compute_file_hash(os.path.join(self.production_dir, "model.pkl"))
-                prep_hash = compute_file_hash(os.path.join(self.production_dir, "preprocessing.pkl"))
-                enc_hash = compute_file_hash(os.path.join(self.production_dir, "label_encoder.pkl"))
-
-                initial_meta = {
-                    "version": "v1.0.0",
-                    "model_name": "LinearSVC",
-                    "algorithm": "Linear Support Vector Classifier",
-                    "algorithm_type": "Linear SVM",
-                    "framework": "sklearn",
-                    "serialization": "joblib",
-                    "task": "Spam Email Classification",
-                    "deployment_date": now_iso,
-                    "training_date": "2026-08-03T12:36:41Z",
-                    "deployment_status": "Production",
-                    "status": "Production",
-                    "model_hash": model_hash,
-                    "preprocessing_hash": prep_hash,
-                    "label_encoder_hash": enc_hash,
-                    "dataset_version": "v1.0.0",
-                    "dataset_size": 17880,
-                    "hyperparameters": {
-                        "C": 1.0,
-                        "penalty": "l2",
-                        "loss": "squared_hinge",
-                        "dual": "auto",
-                        "max_iter": 1000
-                    },
-                    "accuracy": 98.98,
-                    "precision": 98.57,
-                    "recall": 99.44,
-                    "f1_score": 99.01,
-                    "roc_auc": 99.93,
-                    "training_time_sec": 4.25,
-                    "inference_time_ms": 1.82,
-                    "model_size_mb": 0.28,
-                    "primary_metric": "f1",
-                    "primary_score": 99.01,
-                    "description": "Linear Support Vector Machine optimized with TF-IDF feature extraction for binary email spam classification.",
-                    "is_active": True
-                }
-                with open(meta_path, "w", encoding="utf-8") as f:
-                    json.dump(initial_meta, f, indent=2)
-                logger.info("Initialized production model storage at %s", self.production_dir)
+            initial_meta = {
+                "version": "v1.0.0",
+                "model_name": "LinearSVC",
+                "algorithm": "Linear Support Vector Classifier",
+                "algorithm_type": "Linear SVM",
+                "framework": "sklearn",
+                "serialization": "joblib",
+                "task": "Spam Email Classification",
+                "deployment_date": now_iso,
+                "training_date": now_iso,
+                "deployment_status": "Production",
+                "status": "Production",
+                "model_hash": model_hash,
+                "preprocessing_hash": prep_hash,
+                "label_encoder_hash": enc_hash,
+                "dataset_version": "v1.0.0",
+                "dataset_size": 17880,
+                "hyperparameters": {
+                    "C": 1.0,
+                    "penalty": "l2",
+                    "loss": "squared_hinge",
+                    "dual": "auto",
+                    "max_iter": 1000
+                },
+                "accuracy": 98.98,
+                "precision": 98.57,
+                "recall": 99.44,
+                "f1_score": 99.01,
+                "roc_auc": 99.93,
+                "training_time_sec": 4.25,
+                "inference_time_ms": 1.82,
+                "model_size_mb": 0.28,
+                "primary_metric": "f1",
+                "primary_score": 99.01,
+                "description": "Linear Support Vector Machine optimized with TF-IDF feature extraction for binary email spam classification.",
+                "is_active": True
+            }
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(initial_meta, f, indent=2)
+            logger.info("Initialized production model storage at %s", self.production_dir)
 
     def _enrich_metadata_defaults(self, data: Dict[str, Any], base_dir: str) -> Dict[str, Any]:
         """Ensures all required evaluation metrics and metadata fields are present and normalized to 0-100%."""
         now_iso = datetime.now(timezone.utc).isoformat()
         
-        model_file = os.path.join(base_dir, "model.pkl")
-        prep_file = os.path.join(base_dir, "preprocessing.pkl")
-        enc_file = os.path.join(base_dir, "label_encoder.pkl")
+        model_file = find_artifact_file(base_dir, "model.pkl")
+        prep_file = find_artifact_file(base_dir, "preprocessing.pkl")
+        enc_file = find_artifact_file(base_dir, "label_encoder.pkl")
 
         metrics_map = data.get("metrics") or {}
 
@@ -197,7 +194,6 @@ class BackendModelStorage:
                 data["status"] = "Production"
                 return self._enrich_metadata_defaults(data, self.production_dir)
         
-        # If metadata.json missing, generate it dynamically from production directory artifacts
         empty_meta = {}
         enriched = self._enrich_metadata_defaults(empty_meta, self.production_dir)
         with open(meta_path, "w", encoding="utf-8") as f:
@@ -280,7 +276,6 @@ class BackendModelStorage:
             val1 = float(m1.get(key, 0.0))
             val2 = float(m2.get(key, 0.0))
 
-            # Ensure metrics are on the 0-100% scale for percentage metrics
             if unit == "%":
                 val1 = _normalize_metric_val(val1)
                 val2 = _normalize_metric_val(val2)

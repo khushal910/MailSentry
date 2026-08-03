@@ -1,5 +1,5 @@
 training_started_at: '2026-08-03T17:10:19.415633+00:00'
-last_updated_at: '2026-08-03T17:24:05.969161+00:00'
+last_updated_at: '2026-08-03T18:20:06.290119+00:00'
 training_version: 1.0.0
 models:
   LightGBM:
@@ -12,3 +12,28 @@ models:
     completed_at: '2026-08-03T17:24:05.969161+00:00'
     checkpoint: artifact\model_trainer\checkpoints\LogisticRegression
     config_hash: b2e61b4113c1ac8d86fe6ff7322f9c90ff5e743290269d01cd67731180fb24e0
+  RandomForest:
+    status: completed
+    completed_at: '2026-08-03T17:45:06.120584+00:00'
+    checkpoint: artifact\model_trainer\checkpoints\RandomForest
+    config_hash: b0262d8e3b2c73fb52306e21d28c0713f4074f82746457c07717a5cd15346c47
+  XGBClassifier:
+    status: completed
+    completed_at: '2026-08-03T17:56:10.389675+00:00'
+    checkpoint: artifact\model_trainer\checkpoints\XGBClassifier
+    config_hash: bc542e14ae879c060767e8624d57f19302d6a88a9a99d7f3f7adff06fc1fc0d2
+  CatBoostClassifier:
+    status: completed
+    completed_at: '2026-08-03T18:10:07.735334+00:00'
+    checkpoint: artifact\model_trainer\checkpoints\CatBoostClassifier
+    config_hash: 85c82ae54fe7100c387098eff00e4d3be76d915d9bebc9b4888eca58a6d37dc6
+  LinearSVC:
+    status: completed
+    completed_at: '2026-08-03T18:10:52.047103+00:00'
+    checkpoint: artifact\model_trainer\checkpoints\LinearSVC
+    config_hash: 7e18a6041a768d7d0028c8af6aaa55fa9771a5d545e6e2222dbbb30ebef07115
+  ExtraTrees:
+    status: completed
+    completed_at: '2026-08-03T18:20:06.290119+00:00'
+    checkpoint: artifact\model_trainer\checkpoints\ExtraTrees
+    config_hash: 3fd552fdf85a90a83ee7836a3d7e8f83f6f456102edf7776a44eb7fac07a9f2e

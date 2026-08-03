@@ -117,8 +117,8 @@ stages:
       size: 41463
     - path: src/components/models.py
       hash: md5
-      md5: 1ce54e290bcd3c528309264bef198457
-      size: 6225
+      md5: 4a80c07e89f6e34cef1f4534c9cd1a73
+      size: 6023
     - path: src/components/transformer_trainer.py
       hash: md5
       md5: 028dff455de4632047a4545be80ccb05
@@ -150,5 +150,5 @@ stages:
     outs:
     - path: artifact/model_trainer/model_report.yaml
       hash: md5
-      md5: da7688d4940879ec870268d81351f04b
-      size: 707
+      md5: af2eacc367b974d7974f47d1fbbf0b53
+      size: 1911
