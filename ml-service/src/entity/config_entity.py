@@ -53,6 +53,8 @@ class TrainModelConfig:
     checkpoints_dir: str = os.path.join(model_trainer_dir, "checkpoints")
     training_state_file_path: str = os.path.join(model_trainer_dir, "training_state.yaml")
     enable_fine_tuning: bool = ENABLE_FINE_TUNING
+    enable_distilbert: bool = ENABLE_DISTILBERT
+    enable_tabpfn: bool = ENABLE_TABPFN
 
    
    

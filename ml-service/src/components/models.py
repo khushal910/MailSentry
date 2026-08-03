@@ -4,6 +4,7 @@ from catboost import CatBoostClassifier
 from sklearn.ensemble import AdaBoostClassifier, ExtraTreesClassifier, HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import LinearSVC
+from src.constants import ENABLE_TABPFN
 from src.entity.config_entity import _ModelBundle
 from xgboost import XGBClassifier
 from typing import Dict
@@ -140,15 +141,18 @@ class ModelList:
                 )
             }
 
-            try:
-                from tabpfn import TabPFNClassifier
-                models["TabPFN"] = _ModelBundle(
-                    name="TabPFN",
-                    model=TabPFNClassifier(device="auto"),
-                    params={"device": "auto"},
-                )
-            except Exception as tabpfn_err:
-                logger.warning("Could not initialize TabPFNClassifier: %s", tabpfn_err)
+            if ENABLE_TABPFN:
+                try:
+                    from tabpfn import TabPFNClassifier
+                    models["TabPFN"] = _ModelBundle(
+                        name="TabPFN",
+                        model=TabPFNClassifier(device="auto"),
+                        params={"device": "auto"},
+                    )
+                except Exception as tabpfn_err:
+                    logger.warning("Could not initialize TabPFNClassifier: %s", tabpfn_err)
+            else:
+                logger.info("TabPFN training disabled via ENABLE_TABPFN=false.")
 
             return models
 

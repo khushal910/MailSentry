@@ -798,7 +798,16 @@ class ModelTrainer:
                 serialization="huggingface",
             )
 
-            if state.is_completed(distilbert_name):
+            if not self.train_model_config.enable_distilbert:
+                logger.info("DistilBERT fine-tuning disabled via ENABLE_DISTILBERT=false.")
+                if state.is_completed(distilbert_name) and checkpoint_mgr.validate_checkpoint(distilbert_name, distilbert_config_hash):
+                    try:
+                        distilbert_eval = checkpoint_mgr.load_checkpoint(distilbert_name)
+                        evaluated_models[distilbert_name] = distilbert_eval
+                        logger.info("Loaded pre-existing validated checkpoint for disabled DistilBERT.")
+                    except Exception as load_err:
+                        logger.warning("DistilBERT disabled and checkpoint unreadable: %s", load_err)
+            elif state.is_completed(distilbert_name):
                 if checkpoint_mgr.validate_checkpoint(distilbert_name, distilbert_config_hash):
                     logger.info("Checkpoint validated for %s. Skipping...", distilbert_name)
                     try:

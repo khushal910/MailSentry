@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -344,8 +345,8 @@ class CheckpointManager:
 
         Steps:
         1. Verify <model_name>_tmp exists.
-        2. Delete existing <model_name> directory.
-        3. Rename <model_name>_tmp -> <model_name>.
+        2. Delete existing <model_name> directory with Windows lock handling.
+        3. Rename or move <model_name>_tmp -> <model_name>.
         4. Return promoted path.
         """
         try:
@@ -356,9 +357,24 @@ class CheckpointManager:
                 raise FileNotFoundError(f"Temporary staging checkpoint missing: {tmp_chk_dir}")
 
             if final_chk_dir.is_dir():
-                shutil.rmtree(final_chk_dir)
+                def remove_readonly(func: Any, path: Any, exc_info: Any) -> None:
+                    try:
+                        os.chmod(path, 0o777)
+                        func(path)
+                    except Exception:
+                        pass
 
-            os.rename(tmp_chk_dir, final_chk_dir)
+                shutil.rmtree(final_chk_dir, onerror=remove_readonly)
+                for _ in range(5):
+                    if not final_chk_dir.exists():
+                        break
+                    time.sleep(0.1)
+
+            try:
+                os.rename(tmp_chk_dir, final_chk_dir)
+            except OSError:
+                shutil.move(str(tmp_chk_dir), str(final_chk_dir))
+
             logger.info(
                 "Atomically promoted checkpoint '%s_tmp' -> '%s'.",
                 model_name,
