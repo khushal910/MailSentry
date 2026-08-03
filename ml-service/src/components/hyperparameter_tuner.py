@@ -33,7 +33,7 @@ class HyperparameterTuner:
         scoring: str = "f1",
         random_state: int = 42,
         n_jobs: int = 1,
-
+        enable_fine_tuning: bool = True,
     ) -> None:
         """
         Initialize HyperparameterTuner settings.
@@ -43,6 +43,7 @@ class HyperparameterTuner:
         self.scoring = scoring
         self.random_state = random_state
         self.n_jobs = n_jobs
+        self.enable_fine_tuning = enable_fine_tuning
 
     def tune(
         self,
@@ -53,6 +54,7 @@ class HyperparameterTuner:
     ) -> Tuple[Any, Dict[str, Any], float]:
         """
         Run RandomizedSearchCV on the estimator using the model's search space.
+        If enable_fine_tuning is False, fits the estimator directly without RandomizedSearchCV.
 
         Parameters
         ----------
@@ -71,7 +73,19 @@ class HyperparameterTuner:
             best_estimator, best_params, best_cv_score
         """
         try:
-            logger.info("Initiating hyperparameter search for: %s", model_name)
+            logger.info("Initiating model training for: %s", model_name)
+
+            if not self.enable_fine_tuning:
+                logger.info(
+                    "Hyperparameter fine-tuning disabled (ENABLE_FINE_TUNING=false). "
+                    "Fitting '%s' directly with default parameters.",
+                    model_name,
+                )
+                x_data = x_train.to_numpy() if isinstance(x_train, pd.DataFrame) else x_train
+                y_data = y_train.to_numpy() if isinstance(y_train, pd.Series) else y_train
+                estimator.fit(x_data, y_data)
+                default_params = getattr(estimator, "get_params", lambda: {})() or {}
+                return estimator, default_params, 0.0
 
             param_dist = PARAM_SEARCH_SPACES.get(model_name, {})
 
@@ -83,7 +97,7 @@ class HyperparameterTuner:
                 x_data = x_train.to_numpy() if isinstance(x_train, pd.DataFrame) else x_train
                 y_data = y_train.to_numpy() if isinstance(y_train, pd.Series) else y_train
                 estimator.fit(x_data, y_data)
-                default_params = getattr(estimator, "get_params", lambda: {})()
+                default_params = getattr(estimator, "get_params", lambda: {})() or {}
                 return estimator, default_params, 0.0
 
             # Calculate actual n_iter to avoid exceeding total discrete combinations

@@ -52,6 +52,7 @@ MODEL_TRAINER_DIR_NAME = "model_trainer"
 MODEL_FILE_NAME = "model.pkl"
 MODEL_REPORT_FILE_NAME = "model_report.yaml"
 MODEL_EVALUATE_METRIC = "f1"
+ENABLE_FINE_TUNING: bool = os.getenv("ENABLE_FINE_TUNING", "true").lower() in ("true", "1", "yes", "t")
 
 # Model Registry constants
 MODEL_REGISTRY_DIR_NAME = "model_registry"

@@ -52,6 +52,7 @@ class TrainModelConfig:
     model_registry_dir: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", MODEL_REGISTRY_DIR_NAME))
     checkpoints_dir: str = os.path.join(model_trainer_dir, "checkpoints")
     training_state_file_path: str = os.path.join(model_trainer_dir, "training_state.yaml")
+    enable_fine_tuning: bool = ENABLE_FINE_TUNING
 
    
    

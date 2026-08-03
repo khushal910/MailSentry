@@ -633,6 +633,7 @@ class ModelTrainer:
                 scoring=self.model_evaluate_metric,
                 random_state=42,
                 n_jobs=1,
+                enable_fine_tuning=self.train_model_config.enable_fine_tuning,
             )
 
             # Compute SHA-256 hashes for dataset & preprocessor files
@@ -654,6 +655,7 @@ class ModelTrainer:
                 "n_iter": tuner.n_iter,
                 "cv": tuner.cv,
                 "random_state": tuner.random_state,
+                "enable_fine_tuning": self.train_model_config.enable_fine_tuning,
             }
 
             # 1. Process candidate classical models
