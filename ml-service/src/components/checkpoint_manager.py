@@ -98,38 +98,45 @@ class CheckpointManager:
         train_file_hash: str,
         test_file_hash: str,
         prep_file_hashes: Dict[str, str],
-        metric: str,
         params: Dict[str, Any],
         search_space: Dict[str, Any],
         tuner_config: Dict[str, Any],
         framework: str = "sklearn",
         serialization: str = "joblib",
+        metric: Optional[str] = None,
     ) -> str:
         """
         Compute a comprehensive SHA-256 config_hash for a specific model.
 
-        Includes all factors that can alter training results:
+        Includes all factors that alter training results (model weights):
         - model_name
         - train dataset SHA-256
         - test dataset SHA-256
         - preprocessor SHA-256 hashes
-        - evaluation metric
         - model hyperparameter config
         - hyperparameter search space
         - tuner config (n_iter, cv, random_state)
         - framework name
         - serialization type
+
+        Note: Evaluation selection metric is intentionally excluded so changing
+        selection metrics (e.g. Accuracy -> F1) does NOT invalidate trained checkpoints.
         """
         try:
+            # Clean tuner_config to remove metric/scoring if present
+            clean_tuner_config = {
+                k: v for k, v in (tuner_config or {}).items()
+                if k not in ("scoring", "metric")
+            }
+
             hash_payload = {
                 "model_name": str(model_name),
                 "train_dataset_hash": str(train_file_hash),
                 "test_dataset_hash": str(test_file_hash),
                 "preprocessor_hashes": prep_file_hashes or {},
-                "metric": str(metric),
                 "params": params or {},
                 "search_space": search_space or {},
-                "tuner_config": tuner_config or {},
+                "tuner_config": clean_tuner_config,
                 "framework": str(framework),
                 "serialization": str(serialization),
                 "checkpoint_version": self.CURRENT_CHECKPOINT_VERSION,

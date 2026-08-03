@@ -653,7 +653,6 @@ class ModelTrainer:
             tuner_config = {
                 "n_iter": tuner.n_iter,
                 "cv": tuner.cv,
-                "scoring": tuner.scoring,
                 "random_state": tuner.random_state,
             }
 
@@ -664,7 +663,6 @@ class ModelTrainer:
                     train_file_hash=train_file_hash,
                     test_file_hash=test_file_hash,
                     prep_file_hashes=prep_file_hashes,
-                    metric=self.model_evaluate_metric,
                     params=bundle.params,
                     search_space=PARAM_SEARCH_SPACES.get(model_name, {}),
                     tuner_config=tuner_config,
@@ -786,7 +784,6 @@ class ModelTrainer:
                 train_file_hash=raw_train_hash,
                 test_file_hash=raw_test_hash,
                 prep_file_hashes={},
-                metric=self.model_evaluate_metric,
                 params={
                     "model_name": "distilbert-base-uncased",
                     "epochs": 3,
