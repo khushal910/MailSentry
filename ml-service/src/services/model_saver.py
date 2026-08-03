@@ -68,7 +68,7 @@ class SklearnModelSaver(BaseModelSaver):
         os.makedirs(model_dir, exist_ok=True)
         model_path = os.path.join(model_dir, "model.joblib")
         joblib.dump(model, model_path)
-        logger.info("Saved sklearn model via joblib → %s", model_path)
+        logger.info("Saved sklearn model via joblib -> %s", model_path)
 
 
 class TransformerModelSaver(BaseModelSaver):
@@ -149,7 +149,7 @@ class SklearnModelLoader(BaseModelLoader):
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Sklearn model not found at: {model_path}")
         model = joblib.load(model_path)
-        logger.info("Loaded sklearn model via joblib ← %s", model_path)
+        logger.info("Loaded sklearn model via joblib <- %s", model_path)
         return model
 
 

@@ -554,42 +554,53 @@ class ModelTrainer:
         evaluation_errors: Dict[str, str],
     ) -> None:
         """
-        Train, evaluate, checkpoint, and update state for DistilBERT transformer model.
+        Train, evaluate, save temporary staging checkpoint, verify, promote, and update state for DistilBERT.
         """
         distilbert_name = "DistilBERT"
         logger.info("Training %s...", distilbert_name)
+        checkpoint_mgr.cleanup_temporary_checkpoint(distilbert_name)
         try:
             from src.components.transformer_trainer import TransformerTrainer
 
             transformer_trainer = TransformerTrainer()
             distilbert_eval = transformer_trainer.train_and_evaluate()
             if distilbert_eval is not None:
-                chk_dir = checkpoint_mgr.save_checkpoint(
+                tmp_chk_dir = checkpoint_mgr.save_temporary_checkpoint(
                     distilbert_eval, config_hash=config_hash
                 )
-                state.mark_completed(
-                    distilbert_name,
-                    checkpoint=chk_dir,
-                    config_hash=config_hash,
-                )
-                evaluated_models[distilbert_name] = distilbert_eval
-                logger.info(
-                    "DistilBERT evaluated successfully and included in candidate list."
-                )
+                if checkpoint_mgr.verify_checkpoint(tmp_chk_dir, expected_config_hash=config_hash):
+                    final_chk_dir = checkpoint_mgr.promote_checkpoint(distilbert_name)
+                    state.mark_completed(
+                        distilbert_name,
+                        checkpoint=final_chk_dir,
+                        config_hash=config_hash,
+                    )
+                    evaluated_models[distilbert_name] = distilbert_eval
+                    logger.info(
+                        "DistilBERT evaluated successfully, verified, and promoted to candidate list."
+                    )
+                else:
+                    err_msg = "DistilBERT temporary staging checkpoint verification failed."
+                    logger.error(err_msg)
+                    checkpoint_mgr.cleanup_temporary_checkpoint(distilbert_name)
+                    evaluation_errors[distilbert_name] = err_msg
+                    state.mark_failed(distilbert_name, reason=err_msg)
             else:
                 err_msg = "DistilBERT training returned None."
+                checkpoint_mgr.cleanup_temporary_checkpoint(distilbert_name)
                 evaluation_errors[distilbert_name] = err_msg
                 state.mark_failed(distilbert_name, reason=err_msg)
         except Exception as trans_err:
             error_msg = str(trans_err)
+            checkpoint_mgr.cleanup_temporary_checkpoint(distilbert_name)
             logger.error("DistilBERT training failed: %s", error_msg)
             evaluation_errors[distilbert_name] = error_msg
             state.mark_failed(distilbert_name, reason=error_msg)
 
     def initiate_model_training(self) -> ModelTrainerArtifact:
         """
-        Execute the full training pipeline with per-model SHA-256 config_hash validation,
-        incremental retraining, fail-fast checkpoint management, error tolerance, and reporting.
+        Execute the full training pipeline with atomic checkpoint replacement, per-model SHA-256
+        config_hash validation, incremental retraining, fail-fast verification, and reporting.
         """
         try:
             logger.info("Starting model training pipeline.")
@@ -670,20 +681,15 @@ class ModelTrainer:
                             continue
                         except Exception as load_err:
                             logger.warning(
-                                "Recovered from corrupted checkpoint for %s (%s). Deleting corrupted checkpoint...",
+                                "Recovered from corrupted checkpoint for %s (%s). Retraining...",
                                 model_name,
                                 load_err,
                             )
 
-                # Validation failed / hash mismatch / corrupted / state not completed
-                if checkpoint_mgr.checkpoint_exists(model_name):
-                    logger.info(
-                        "Checkpoint hash mismatch or invalid for %s. Deleting stale checkpoint...",
-                        model_name,
-                    )
-                    checkpoint_mgr.delete_checkpoint(model_name)
+                # Clean up any lingering temporary staging directory before retraining
+                checkpoint_mgr.cleanup_temporary_checkpoint(model_name)
 
-                # Update state to pending BEFORE retraining starts (Fix 4)
+                # Update state to pending BEFORE retraining starts
                 state.mark_pending(model_name)
                 logger.info("Training %s...", model_name)
 
@@ -741,20 +747,29 @@ class ModelTrainer:
                         metrics=metrics,
                     )
 
-                    # Save checkpoint with config_hash & update training state
-                    chk_dir = checkpoint_mgr.save_checkpoint(
+                    # Atomic Checkpoint Replacement: Save to _tmp, verify, and promote
+                    tmp_chk_dir = checkpoint_mgr.save_temporary_checkpoint(
                         eval_obj, config_hash=current_config_hash
                     )
-                    state.mark_completed(
-                        model_name, checkpoint=chk_dir, config_hash=current_config_hash
-                    )
-                    evaluated_models[model_name] = eval_obj
+                    if checkpoint_mgr.verify_checkpoint(tmp_chk_dir, expected_config_hash=current_config_hash):
+                        final_chk_dir = checkpoint_mgr.promote_checkpoint(model_name)
+                        state.mark_completed(
+                            model_name, checkpoint=final_chk_dir, config_hash=current_config_hash
+                        )
+                        evaluated_models[model_name] = eval_obj
+                    else:
+                        err_msg = f"Temporary checkpoint verification failed for model {model_name}"
+                        logger.error(err_msg)
+                        checkpoint_mgr.cleanup_temporary_checkpoint(model_name)
+                        training_errors[model_name] = err_msg
+                        state.mark_failed(model_name, reason=err_msg)
 
                 except Exception as e:
                     error_msg = str(e)
                     logger.error(
                         f"Model {model_name} training/evaluation failed: {error_msg}"
                     )
+                    checkpoint_mgr.cleanup_temporary_checkpoint(model_name)
                     training_errors[model_name] = error_msg
                     state.mark_failed(model_name, reason=error_msg)
 
@@ -792,27 +807,20 @@ class ModelTrainer:
                         evaluated_models[distilbert_name] = distilbert_eval
                     except Exception as load_err:
                         logger.warning(
-                            "Recovered from corrupted checkpoint for %s (%s). Deleting corrupted checkpoint...",
+                            "Recovered from corrupted checkpoint for %s (%s). Retraining...",
                             distilbert_name,
                             load_err,
                         )
+                        state.mark_pending(distilbert_name)
                         self._train_and_checkpoint_distilbert(
                             state, checkpoint_mgr, distilbert_config_hash, evaluated_models, evaluation_errors
                         )
                 else:
-                    if checkpoint_mgr.checkpoint_exists(distilbert_name):
-                        logger.info(
-                            "Checkpoint hash mismatch or invalid for %s. Deleting stale checkpoint...",
-                            distilbert_name,
-                        )
-                        checkpoint_mgr.delete_checkpoint(distilbert_name)
                     state.mark_pending(distilbert_name)
                     self._train_and_checkpoint_distilbert(
                         state, checkpoint_mgr, distilbert_config_hash, evaluated_models, evaluation_errors
                     )
             else:
-                if checkpoint_mgr.checkpoint_exists(distilbert_name):
-                    checkpoint_mgr.delete_checkpoint(distilbert_name)
                 state.mark_pending(distilbert_name)
                 self._train_and_checkpoint_distilbert(
                     state, checkpoint_mgr, distilbert_config_hash, evaluated_models, evaluation_errors

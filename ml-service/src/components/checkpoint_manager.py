@@ -53,11 +53,13 @@ def compute_sha256(file_path: str | Path) -> str:
 
 class CheckpointManager:
     """
-    Dedicated manager for model checkpoint creation, validation, loading, and deletion.
+    Dedicated manager for model checkpoint creation, validation, loading, deletion, and atomic replacement.
 
     Responsibilities:
     - Compute SHA-256 file checksums & comprehensive per-model config_hash
-    - Save model checkpoints with metadata and versioning
+    - Save model checkpoints into temporary staging directories (_tmp)
+    - Verify temporary checkpoint integrity before replacing active checkpoints
+    - Atomically promote temporary checkpoints to active checkpoints
     - Load model checkpoints into _ModelEvaluation objects
     - Delete stale or corrupted checkpoints
     - Fail-fast checkpoint validation
@@ -139,16 +141,124 @@ class CheckpointManager:
 
     def get_checkpoint_dir(self, model_name: str) -> Path:
         """
-        Get absolute path to a model's checkpoint directory.
+        Get absolute path to a model's active checkpoint directory.
         """
         return self.checkpoints_dir / model_name
 
+    def get_temp_checkpoint_dir(self, model_name: str) -> Path:
+        """
+        Get absolute path to a model's temporary staging checkpoint directory.
+        """
+        return self.checkpoints_dir / f"{model_name}_tmp"
+
     def checkpoint_exists(self, model_name: str) -> bool:
         """
-        Check if checkpoint directory for a model exists.
+        Check if active checkpoint directory for a model exists.
         """
         chk_dir = self.get_checkpoint_dir(model_name)
         return chk_dir.is_dir()
+
+    def verify_checkpoint(
+        self,
+        checkpoint_dir: str | Path,
+        expected_config_hash: str,
+    ) -> bool:
+        """
+        Verify file presence, readability, checkpoint_version, and config_hash for any checkpoint directory.
+
+        Parameters
+        ----------
+        checkpoint_dir : str | Path
+            Directory path of checkpoint to verify (e.g. temporary or active).
+        expected_config_hash : str
+            Expected SHA-256 config_hash.
+
+        Returns
+        -------
+        bool
+            True if verification succeeds fast; False otherwise.
+        """
+        try:
+            chk_dir = Path(checkpoint_dir)
+            if not chk_dir.is_dir():
+                logger.info("Verification failed: Directory '%s' does not exist.", chk_dir)
+                return False
+
+            meta_path = chk_dir / "metadata.json"
+            if not meta_path.is_file():
+                logger.info("Verification failed: metadata.json missing in '%s'.", chk_dir)
+                return False
+
+            try:
+                meta_dict = self.storage.read_json(str(meta_path))
+            except Exception as e:
+                logger.warning("Verification failed: Unreadable metadata.json in '%s' (%s).", chk_dir, e)
+                return False
+
+            meta_version = meta_dict.get("checkpoint_version")
+            if meta_version != self.CURRENT_CHECKPOINT_VERSION:
+                logger.info(
+                    "Verification failed: Version mismatch (stored: %s, required: %s) in '%s'.",
+                    meta_version,
+                    self.CURRENT_CHECKPOINT_VERSION,
+                    chk_dir,
+                )
+                return False
+
+            stored_hash = meta_dict.get("config_hash")
+            if stored_hash != expected_config_hash:
+                logger.info("Verification failed: config_hash mismatch in '%s'.", chk_dir)
+                return False
+
+            metrics_path = chk_dir / "metrics.yaml"
+            if not metrics_path.is_file():
+                logger.info("Verification failed: metrics.yaml missing in '%s'.", chk_dir)
+                return False
+
+            try:
+                metrics_data = read_yaml_file(metrics_path)
+                if not isinstance(metrics_data, dict) or not metrics_data:
+                    logger.info("Verification failed: metrics.yaml is empty or invalid in '%s'.", chk_dir)
+                    return False
+            except Exception as e:
+                logger.warning("Verification failed: Unreadable metrics.yaml in '%s' (%s).", chk_dir, e)
+                return False
+
+            params_path = chk_dir / "params.yaml"
+            if not params_path.is_file():
+                logger.info("Verification failed: params.yaml missing in '%s'.", chk_dir)
+                return False
+
+            serialization = meta_dict.get("serialization", "joblib")
+            model_dir = chk_dir / "model"
+            if not model_dir.is_dir():
+                logger.info("Verification failed: model directory missing in '%s'.", chk_dir)
+                return False
+
+            if serialization == "joblib":
+                model_file = model_dir / "model.joblib"
+                if not model_file.is_file() or model_file.stat().st_size == 0:
+                    logger.info("Verification failed: model.joblib missing or 0 bytes in '%s'.", chk_dir)
+                    return False
+            elif serialization == "huggingface":
+                config_file = model_dir / "config.json"
+                if not config_file.is_file():
+                    logger.info("Verification failed: transformer config.json missing in '%s'.", chk_dir)
+                    return False
+                weights_exist = any(
+                    (model_dir / name).is_file() and (model_dir / name).stat().st_size > 0
+                    for name in ["model.safetensors", "pytorch_model.bin"]
+                )
+                if not weights_exist:
+                    logger.info("Verification failed: transformer model weights missing or 0 bytes in '%s'.", chk_dir)
+                    return False
+
+            logger.info("Checkpoint verification succeeded for '%s'.", chk_dir)
+            return True
+
+        except Exception as exc:
+            logger.warning("Verification encountered error for '%s': %s", checkpoint_dir, exc)
+            return False
 
     def validate_checkpoint(
         self,
@@ -156,100 +266,112 @@ class CheckpointManager:
         current_config_hash: str,
     ) -> bool:
         """
-        Validate checkpoint integrity, file presence, readability, version, and config_hash.
+        Validate active checkpoint directory <model_name>.
+        """
+        chk_dir = self.get_checkpoint_dir(model_name)
+        return self.verify_checkpoint(chk_dir, current_config_hash)
 
-        Returns True only if ALL validation criteria pass; returns False fast otherwise.
+    def save_temporary_checkpoint(
+        self,
+        model_eval: _ModelEvaluation,
+        config_hash: str,
+    ) -> str:
+        """
+        Save model checkpoint artifacts into temporary staging directory <model_name>_tmp.
+
+        The existing active checkpoint <model_name> remains untouched.
         """
         try:
-            chk_dir = self.get_checkpoint_dir(model_name)
-            if not chk_dir.is_dir():
-                logger.info("Validation failed for %s: Checkpoint directory does not exist.", model_name)
-                return False
+            tmp_chk_dir = self.get_temp_checkpoint_dir(model_eval.name)
+            if tmp_chk_dir.is_dir():
+                shutil.rmtree(tmp_chk_dir)
+            os.makedirs(tmp_chk_dir, exist_ok=True)
 
-            # 1. Check metadata.json
-            meta_path = chk_dir / "metadata.json"
-            if not meta_path.is_file():
-                logger.info("Validation failed for %s: metadata.json missing.", model_name)
-                return False
+            is_transformer = (
+                model_eval.name.lower().startswith("distilbert")
+                or hasattr(model_eval.model, "save_pretrained")
+            )
 
-            try:
-                meta_dict = self.storage.read_json(str(meta_path))
-            except Exception as e:
-                logger.warning("Validation failed for %s: Unreadable metadata.json (%s).", model_name, e)
-                return False
+            framework = "transformers" if is_transformer else "sklearn"
+            serialization = "huggingface" if is_transformer else "joblib"
+            input_type = "raw_text" if is_transformer else "tfidf"
+            preprocessor_name = "distilbert-tokenizer" if is_transformer else "tfidf"
 
-            # Check checkpoint_version
-            meta_version = meta_dict.get("checkpoint_version")
-            if meta_version != self.CURRENT_CHECKPOINT_VERSION:
-                logger.info(
-                    "Validation failed for %s: Version mismatch (stored: %s, required: %s).",
-                    model_name,
-                    meta_version,
-                    self.CURRENT_CHECKPOINT_VERSION,
-                )
-                return False
+            metadata = ModelMetadata(
+                model_name=model_eval.name,
+                framework=framework,
+                serialization=serialization,
+                task="binary_classification",
+                input_type=input_type,
+                output_type="probability",
+                preprocessor=preprocessor_name,
+                metric=self.default_metric,
+                score=float(model_eval.metrics.get(self.default_metric, 0.0)),
+                metrics=model_eval.metrics,
+                trained_at=datetime.now(timezone.utc).isoformat(),
+            )
 
-            # Check config_hash
-            stored_hash = meta_dict.get("config_hash")
-            if stored_hash != current_config_hash:
-                logger.info(
-                    "Validation failed for %s: config_hash mismatch.",
-                    model_name,
-                )
-                return False
+            meta_dict = metadata.to_dict()
+            meta_dict["config_hash"] = config_hash
+            meta_dict["checkpoint_version"] = self.CURRENT_CHECKPOINT_VERSION
 
-            # 2. Check metrics.yaml
-            metrics_path = chk_dir / "metrics.yaml"
-            if not metrics_path.is_file():
-                logger.info("Validation failed for %s: metrics.yaml missing.", model_name)
-                return False
+            saver = ModelSaverFactory.create(metadata)
+            saver.save(model=model_eval.model, target_dir=str(tmp_chk_dir), metadata=metadata)
 
-            try:
-                metrics_data = read_yaml_file(metrics_path)
-                if not isinstance(metrics_data, dict) or not metrics_data:
-                    logger.info("Validation failed for %s: metrics.yaml is empty or invalid.", model_name)
-                    return False
-            except Exception as e:
-                logger.warning("Validation failed for %s: Unreadable metrics.yaml (%s).", model_name, e)
-                return False
+            write_yaml_file(str(tmp_chk_dir / "metrics.yaml"), model_eval.metrics)
+            write_yaml_file(str(tmp_chk_dir / "params.yaml"), model_eval.params or {})
+            self.storage.write_json(str(tmp_chk_dir / "metadata.json"), meta_dict)
 
-            # 3. Check params.yaml
-            params_path = chk_dir / "params.yaml"
-            if not params_path.is_file():
-                logger.info("Validation failed for %s: params.yaml missing.", model_name)
-                return False
-
-            # 4. Check model files based on serialization type
-            serialization = meta_dict.get("serialization", "joblib")
-            model_dir = chk_dir / "model"
-            if not model_dir.is_dir():
-                logger.info("Validation failed for %s: model directory missing.", model_name)
-                return False
-
-            if serialization == "joblib":
-                model_file = model_dir / "model.joblib"
-                if not model_file.is_file() or model_file.stat().st_size == 0:
-                    logger.info("Validation failed for %s: model.joblib missing or 0 bytes.", model_name)
-                    return False
-            elif serialization == "huggingface":
-                config_file = model_dir / "config.json"
-                if not config_file.is_file():
-                    logger.info("Validation failed for %s: transformer config.json missing.", model_name)
-                    return False
-                weights_exist = any(
-                    (model_dir / name).is_file() and (model_dir / name).stat().st_size > 0
-                    for name in ["model.safetensors", "pytorch_model.bin"]
-                )
-                if not weights_exist:
-                    logger.info("Validation failed for %s: transformer model weights missing or 0 bytes.", model_name)
-                    return False
-
-            logger.info("Checkpoint validated for %s.", model_name)
-            return True
-
+            logger.info(
+                "Saved temporary staging checkpoint for model '%s' at: %s",
+                model_eval.name,
+                tmp_chk_dir,
+            )
+            return str(tmp_chk_dir)
         except Exception as exc:
-            logger.warning("Validation check encountered error for %s: %s", model_name, exc)
-            return False
+            raise MyException(exc, sys) from exc
+
+    def promote_checkpoint(self, model_name: str) -> str:
+        """
+        Atomically promote temporary staging checkpoint <model_name>_tmp -> active <model_name>.
+
+        Steps:
+        1. Verify <model_name>_tmp exists.
+        2. Delete existing <model_name> directory.
+        3. Rename <model_name>_tmp -> <model_name>.
+        4. Return promoted path.
+        """
+        try:
+            tmp_chk_dir = self.get_temp_checkpoint_dir(model_name)
+            final_chk_dir = self.get_checkpoint_dir(model_name)
+
+            if not tmp_chk_dir.is_dir():
+                raise FileNotFoundError(f"Temporary staging checkpoint missing: {tmp_chk_dir}")
+
+            if final_chk_dir.is_dir():
+                shutil.rmtree(final_chk_dir)
+
+            os.rename(tmp_chk_dir, final_chk_dir)
+            logger.info(
+                "Atomically promoted checkpoint '%s_tmp' -> '%s'.",
+                model_name,
+                model_name,
+            )
+            return str(final_chk_dir)
+        except Exception as exc:
+            raise MyException(exc, sys) from exc
+
+    def cleanup_temporary_checkpoint(self, model_name: str) -> None:
+        """
+        Safely delete temporary staging checkpoint <model_name>_tmp if present.
+        """
+        try:
+            tmp_chk_dir = self.get_temp_checkpoint_dir(model_name)
+            if tmp_chk_dir.is_dir():
+                shutil.rmtree(tmp_chk_dir)
+                logger.info("Cleaned up temporary staging checkpoint for '%s': %s", model_name, tmp_chk_dir)
+        except Exception as exc:
+            logger.warning("Failed to clean up temporary checkpoint for '%s': %s", model_name, exc)
 
     def save_checkpoint(
         self,
@@ -257,7 +379,7 @@ class CheckpointManager:
         config_hash: str,
     ) -> str:
         """
-        Save model checkpoint artifacts, metadata.json, metrics.yaml, and params.yaml.
+        Save model checkpoint directly to active directory <model_name>.
         """
         try:
             chk_dir = self.get_checkpoint_dir(model_eval.name)
