@@ -7,6 +7,7 @@ import {
   Settings,
   LogOut,
   MailSearch,
+  Cpu,
 } from "lucide-react";
 import { BrandLogo } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
@@ -14,7 +15,14 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
 const links: Array<{
-  to: "/dashboard" | "/dashboard/classifier" | "/dashboard/auto-classifier" | "/dashboard/history" | "/dashboard/profile" | "/dashboard/settings";
+  to:
+    | "/dashboard"
+    | "/dashboard/classifier"
+    | "/dashboard/auto-classifier"
+    | "/dashboard/production-model"
+    | "/dashboard/history"
+    | "/dashboard/profile"
+    | "/dashboard/settings";
   label: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
@@ -22,6 +30,7 @@ const links: Array<{
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/dashboard/classifier", label: "Email Classifier", icon: Wand2 },
   { to: "/dashboard/auto-classifier", label: "Auto Classifier", icon: MailSearch },
+  { to: "/dashboard/production-model", label: "Production Model", icon: Cpu },
   { to: "/dashboard/history", label: "History", icon: History },
   { to: "/dashboard/profile", label: "Profile", icon: UserCircle },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },

@@ -25,6 +25,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
+import { Route as DashboardProductionModelRouteImport } from './routes/dashboard.production-model'
 import { Route as DashboardHistoryRouteImport } from './routes/dashboard.history'
 import { Route as DashboardClassifierRouteImport } from './routes/dashboard.classifier'
 import { Route as DashboardAutoClassifierRouteImport } from './routes/dashboard.auto-classifier'
@@ -110,6 +111,12 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardProductionModelRoute =
+  DashboardProductionModelRouteImport.update({
+    id: '/production-model',
+    path: '/production-model',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardHistoryRoute = DashboardHistoryRouteImport.update({
   id: '/history',
   path: '/history',
@@ -149,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/auto-classifier': typeof DashboardAutoClassifierRoute
   '/dashboard/classifier': typeof DashboardClassifierRoute
   '/dashboard/history': typeof DashboardHistoryRoute
+  '/dashboard/production-model': typeof DashboardProductionModelRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -170,6 +178,7 @@ export interface FileRoutesByTo {
   '/dashboard/auto-classifier': typeof DashboardAutoClassifierRoute
   '/dashboard/classifier': typeof DashboardClassifierRoute
   '/dashboard/history': typeof DashboardHistoryRoute
+  '/dashboard/production-model': typeof DashboardProductionModelRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -193,6 +202,7 @@ export interface FileRoutesById {
   '/dashboard/auto-classifier': typeof DashboardAutoClassifierRoute
   '/dashboard/classifier': typeof DashboardClassifierRoute
   '/dashboard/history': typeof DashboardHistoryRoute
+  '/dashboard/production-model': typeof DashboardProductionModelRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/dashboard/auto-classifier'
     | '/dashboard/classifier'
     | '/dashboard/history'
+    | '/dashboard/production-model'
     | '/dashboard/profile'
     | '/dashboard/settings'
     | '/dashboard/'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/dashboard/auto-classifier'
     | '/dashboard/classifier'
     | '/dashboard/history'
+    | '/dashboard/production-model'
     | '/dashboard/profile'
     | '/dashboard/settings'
     | '/dashboard'
@@ -260,6 +272,7 @@ export interface FileRouteTypes {
     | '/dashboard/auto-classifier'
     | '/dashboard/classifier'
     | '/dashboard/history'
+    | '/dashboard/production-model'
     | '/dashboard/profile'
     | '/dashboard/settings'
     | '/dashboard/'
@@ -396,6 +409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/production-model': {
+      id: '/dashboard/production-model'
+      path: '/production-model'
+      fullPath: '/dashboard/production-model'
+      preLoaderRoute: typeof DashboardProductionModelRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/history': {
       id: '/dashboard/history'
       path: '/history'
@@ -431,6 +451,7 @@ interface DashboardRouteChildren {
   DashboardAutoClassifierRoute: typeof DashboardAutoClassifierRoute
   DashboardClassifierRoute: typeof DashboardClassifierRoute
   DashboardHistoryRoute: typeof DashboardHistoryRoute
+  DashboardProductionModelRoute: typeof DashboardProductionModelRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -440,6 +461,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardAutoClassifierRoute: DashboardAutoClassifierRoute,
   DashboardClassifierRoute: DashboardClassifierRoute,
   DashboardHistoryRoute: DashboardHistoryRoute,
+  DashboardProductionModelRoute: DashboardProductionModelRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardIndexRoute: DashboardIndexRoute,

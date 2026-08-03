@@ -52,6 +52,7 @@ from app.api.classify_email import classify_router
 from app.api.emails import emails_router
 from app.api.profile_routes import profile_router
 from app.api.dashboard_routes import dashboard_router
+from app.api.model_routes import model_router
 
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(google_auth_router, prefix="/auth/google", tags=["Google OAuth"])
@@ -62,6 +63,8 @@ app.include_router(emails_router, prefix="/api", tags=["Emails"])
 app.include_router(profile_router, prefix="/api", tags=["Profile"])
 app.include_router(profile_router, prefix="/api/v1", tags=["Profile V1"])
 app.include_router(dashboard_router, prefix="/api", tags=["Dashboard"])
+app.include_router(model_router, prefix="/api/v1", tags=["Production Model"])
+app.include_router(model_router, prefix="/api", tags=["Production Model Base"])
 
 
 
