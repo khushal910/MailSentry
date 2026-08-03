@@ -21,14 +21,15 @@ class TrainingStateManager:
 
     Responsibilities:
     - create training_state.yaml if missing
-    - load YAML
-    - update model status
+    - load YAML state
+    - update model status, timestamps, and config_hash
     - save YAML safely
-    - mark completed
-    - mark failed
+    - mark completed, failed, or pending
+    - query model status and stored config_hash
     - reset state
-    - query whether model is completed
     """
+
+    TRAINING_VERSION: str = "1.0.0"
 
     def __init__(self, path: str | Path) -> None:
         """
@@ -56,14 +57,17 @@ class TrainingStateManager:
         """
         try:
             if self.path.exists():
-                logger.info("Loading previous training state from %s", self.path)
+                logger.info("Loading previous training session state from %s", self.path)
                 content = read_yaml_file(self.path)
                 if isinstance(content, dict) and "models" in content:
                     return content
 
             logger.info("Initializing new training state at %s", self.path)
+            now_iso = datetime.now(timezone.utc).isoformat()
             initial_state: Dict[str, Any] = {
-                "training_started_at": datetime.now(timezone.utc).isoformat(),
+                "training_started_at": now_iso,
+                "last_updated_at": now_iso,
+                "training_version": self.TRAINING_VERSION,
                 "models": {},
             }
             self.save_state(initial_state)
@@ -74,11 +78,6 @@ class TrainingStateManager:
     def save_state(self, state_dict: Dict[str, Any]) -> None:
         """
         Write state dictionary to training_state.yaml.
-
-        Parameters
-        ----------
-        state_dict : Dict[str, Any]
-            Dictionary representing current training state.
         """
         try:
             write_yaml_file(str(self.path), state_dict)
@@ -87,23 +86,20 @@ class TrainingStateManager:
 
     def save(self) -> None:
         """
-        Persist current internal state to disk.
+        Persist current internal state to disk, updating last_updated_at.
         """
+        self.state["last_updated_at"] = datetime.now(timezone.utc).isoformat()
         self.save_state(self.state)
+
+    def update_last_updated(self) -> None:
+        """
+        Update last_updated_at timestamp and save state.
+        """
+        self.save()
 
     def is_completed(self, model_name: str) -> bool:
         """
-        Query whether a model has been successfully completed.
-
-        Parameters
-        ----------
-        model_name : str
-            Name of the model.
-
-        Returns
-        -------
-        bool
-            True if status is 'completed', False otherwise.
+        Query whether a model has been marked as completed.
         """
         models = self.state.get("models", {})
         if isinstance(models, dict):
@@ -112,23 +108,25 @@ class TrainingStateManager:
                 return model_info.get("status") == "completed"
         return False
 
+    def get_config_hash(self, model_name: str) -> Optional[str]:
+        """
+        Retrieve stored config_hash for a model from training state.
+        """
+        models = self.state.get("models", {})
+        if isinstance(models, dict):
+            info = models.get(model_name, {})
+            if isinstance(info, dict):
+                return info.get("config_hash")
+        return None
+
     def mark_completed(
         self,
         model_name: str,
         checkpoint: Optional[str] = None,
-        metrics: Optional[Dict[str, float]] = None,
+        config_hash: Optional[str] = None,
     ) -> None:
         """
-        Mark a model as completed and update metadata.
-
-        Parameters
-        ----------
-        model_name : str
-            Name of the completed model.
-        checkpoint : Optional[str]
-            Path to model checkpoint directory/file.
-        metrics : Optional[Dict[str, float]]
-            Evaluation metrics of the completed model.
+        Mark a model as completed and record its config_hash and checkpoint path.
         """
         try:
             if "models" not in self.state or not isinstance(self.state["models"], dict):
@@ -138,7 +136,7 @@ class TrainingStateManager:
                 "status": "completed",
                 "completed_at": datetime.now(timezone.utc).isoformat(),
                 "checkpoint": checkpoint or "",
-                "metrics": metrics or {},
+                "config_hash": config_hash or "",
             }
             self.save()
             logger.info("Marked model '%s' as completed in training state.", model_name)
@@ -148,13 +146,6 @@ class TrainingStateManager:
     def mark_failed(self, model_name: str, reason: str) -> None:
         """
         Mark a model as failed with a specified reason.
-
-        Parameters
-        ----------
-        model_name : str
-            Name of the failed model.
-        reason : str
-            Error message or description of failure.
         """
         try:
             if "models" not in self.state or not isinstance(self.state["models"], dict):
@@ -176,12 +167,7 @@ class TrainingStateManager:
 
     def mark_pending(self, model_name: str) -> None:
         """
-        Mark a model status as pending.
-
-        Parameters
-        ----------
-        model_name : str
-            Name of the model.
+        Mark a model status as pending before training or retraining.
         """
         try:
             if "models" not in self.state or not isinstance(self.state["models"], dict):
@@ -189,24 +175,16 @@ class TrainingStateManager:
 
             self.state["models"][model_name] = {
                 "status": "pending",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             self.save()
+            logger.info("Marked model '%s' as pending in training state.", model_name)
         except Exception as exc:
             raise MyException(exc, sys) from exc
 
     def get_model_status(self, model_name: str) -> Optional[str]:
         """
         Get current status of a model.
-
-        Parameters
-        ----------
-        model_name : str
-            Name of the model.
-
-        Returns
-        -------
-        Optional[str]
-            Status string ('completed', 'failed', 'pending', or None if unrecorded).
         """
         models = self.state.get("models", {})
         if isinstance(models, dict):
@@ -218,16 +196,6 @@ class TrainingStateManager:
     def get_model_info(self, model_name: str) -> Dict[str, Any]:
         """
         Get metadata dictionary for a specific model.
-
-        Parameters
-        ----------
-        model_name : str
-            Name of the model.
-
-        Returns
-        -------
-        Dict[str, Any]
-            Model info dictionary or empty dict if not found.
         """
         models = self.state.get("models", {})
         if isinstance(models, dict):
@@ -241,11 +209,14 @@ class TrainingStateManager:
         Reset training state by clearing all recorded model statuses.
         """
         try:
+            now_iso = datetime.now(timezone.utc).isoformat()
             self.state = {
-                "training_started_at": datetime.now(timezone.utc).isoformat(),
+                "training_started_at": now_iso,
+                "last_updated_at": now_iso,
+                "training_version": self.TRAINING_VERSION,
                 "models": {},
             }
-            self.save()
+            self.save_state(self.state)
             logger.info("Reset training state at %s", self.path)
         except Exception as exc:
             raise MyException(exc, sys) from exc

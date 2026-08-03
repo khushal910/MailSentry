@@ -28,9 +28,11 @@ from src.entity.model_metadata import ModelMetadata
 from src.services.model_registry import ModelRegistry
 from src.services.model_saver import ModelSaverFactory, ModelLoaderFactory
 from src.components.benchmark import Benchmark
+from src.components.checkpoint_manager import CheckpointManager
+from src.components.training_state_manager import TrainingStateManager
+from src.config.hyperparameter_config import PARAM_SEARCH_SPACES
 from src.exception import MyException 
 from src.logger import logger
-from src.components.training_state_manager import TrainingStateManager
 from src.services.storage_service import LocalStorageService
 from src.utils.main_utils import (
     evaluate_classification_model,
@@ -546,6 +548,8 @@ class ModelTrainer:
     def _train_and_checkpoint_distilbert(
         self,
         state: TrainingStateManager,
+        checkpoint_mgr: CheckpointManager,
+        config_hash: str,
         evaluated_models: Dict[str, _ModelEvaluation],
         evaluation_errors: Dict[str, str],
     ) -> None:
@@ -554,18 +558,19 @@ class ModelTrainer:
         """
         distilbert_name = "DistilBERT"
         logger.info("Training %s...", distilbert_name)
-        state.mark_pending(distilbert_name)
         try:
             from src.components.transformer_trainer import TransformerTrainer
 
             transformer_trainer = TransformerTrainer()
             distilbert_eval = transformer_trainer.train_and_evaluate()
             if distilbert_eval is not None:
-                chk_dir = self._save_checkpoint(distilbert_eval)
+                chk_dir = checkpoint_mgr.save_checkpoint(
+                    distilbert_eval, config_hash=config_hash
+                )
                 state.mark_completed(
                     distilbert_name,
                     checkpoint=chk_dir,
-                    metrics=distilbert_eval.metrics,
+                    config_hash=config_hash,
                 )
                 evaluated_models[distilbert_name] = distilbert_eval
                 logger.info(
@@ -583,17 +588,23 @@ class ModelTrainer:
 
     def initiate_model_training(self) -> ModelTrainerArtifact:
         """
-        Execute the full training pipeline with per-model checkpoint/resume capability,
-        error tolerance, and comprehensive reporting.
+        Execute the full training pipeline with per-model SHA-256 config_hash validation,
+        incremental retraining, fail-fast checkpoint management, error tolerance, and reporting.
         """
         try:
             logger.info("Starting model training pipeline.")
             setup_mlflow()
 
-            logger.info("Loading training state...")
             state = TrainingStateManager(
                 self.train_model_config.training_state_file_path
             )
+            checkpoint_mgr = CheckpointManager(
+                checkpoints_dir=self.train_model_config.checkpoints_dir,
+                default_metric=self.model_evaluate_metric,
+            )
+
+            state.update_last_updated()
+            logger.info("Loading previous training session state...")
 
             train_df, test_df = self.load_data()
             x_train, y_train = self._split_features_target(train_df)
@@ -613,24 +624,69 @@ class ModelTrainer:
                 n_jobs=1,
             )
 
-            # 1. Process candidate classification models
-            for model_name, bundle in models.items():
-                if state.is_completed(model_name):
-                    logger.info("%s already completed.", model_name)
-                    logger.info("Skipping...")
-                    try:
-                        loaded_eval = self._load_checkpoint(model_name)
-                        evaluated_models[model_name] = loaded_eval
-                        continue
-                    except Exception as load_err:
-                        logger.warning(
-                            "Checkpoint for %s is invalid or corrupt (%s). Retraining...",
-                            model_name,
-                            load_err,
-                        )
+            # Compute SHA-256 hashes for dataset & preprocessor files
+            train_file_hash = checkpoint_mgr.compute_file_checksum(
+                self.transformed_train_file_path
+            )
+            test_file_hash = checkpoint_mgr.compute_file_checksum(
+                self.transformed_test_file_path
+            )
+            prep_file_hashes = {
+                "preprocessor": checkpoint_mgr.compute_file_checksum(
+                    self.transform_config.preprocessor_file
+                ),
+                "label_encoder": checkpoint_mgr.compute_file_checksum(
+                    self.transform_config.label_encoder_file_path
+                ),
+            }
+            tuner_config = {
+                "n_iter": tuner.n_iter,
+                "cv": tuner.cv,
+                "scoring": tuner.scoring,
+                "random_state": tuner.random_state,
+            }
 
-                logger.info("Training %s...", model_name)
+            # 1. Process candidate classical models
+            for model_name, bundle in models.items():
+                current_config_hash = checkpoint_mgr.compute_config_hash(
+                    model_name=model_name,
+                    train_file_hash=train_file_hash,
+                    test_file_hash=test_file_hash,
+                    prep_file_hashes=prep_file_hashes,
+                    metric=self.model_evaluate_metric,
+                    params=bundle.params,
+                    search_space=PARAM_SEARCH_SPACES.get(model_name, {}),
+                    tuner_config=tuner_config,
+                    framework="sklearn",
+                    serialization="joblib",
+                )
+
+                if state.is_completed(model_name):
+                    if checkpoint_mgr.validate_checkpoint(model_name, current_config_hash):
+                        logger.info("Checkpoint validated for %s. Skipping...", model_name)
+                        try:
+                            loaded_eval = checkpoint_mgr.load_checkpoint(model_name)
+                            evaluated_models[model_name] = loaded_eval
+                            continue
+                        except Exception as load_err:
+                            logger.warning(
+                                "Recovered from corrupted checkpoint for %s (%s). Deleting corrupted checkpoint...",
+                                model_name,
+                                load_err,
+                            )
+
+                # Validation failed / hash mismatch / corrupted / state not completed
+                if checkpoint_mgr.checkpoint_exists(model_name):
+                    logger.info(
+                        "Checkpoint hash mismatch or invalid for %s. Deleting stale checkpoint...",
+                        model_name,
+                    )
+                    checkpoint_mgr.delete_checkpoint(model_name)
+
+                # Update state to pending BEFORE retraining starts (Fix 4)
                 state.mark_pending(model_name)
+                logger.info("Training %s...", model_name)
+
                 try:
                     is_tabpfn = (
                         model_name.lower().startswith("tabpfn")
@@ -685,9 +741,13 @@ class ModelTrainer:
                         metrics=metrics,
                     )
 
-                    # Save checkpoint immediately & update training state
-                    chk_dir = self._save_checkpoint(eval_obj)
-                    state.mark_completed(model_name, checkpoint=chk_dir, metrics=metrics)
+                    # Save checkpoint with config_hash & update training state
+                    chk_dir = checkpoint_mgr.save_checkpoint(
+                        eval_obj, config_hash=current_config_hash
+                    )
+                    state.mark_completed(
+                        model_name, checkpoint=chk_dir, config_hash=current_config_hash
+                    )
                     evaluated_models[model_name] = eval_obj
 
                 except Exception as e:
@@ -700,27 +760,65 @@ class ModelTrainer:
 
             # 2. Process DistilBERT Transformer model
             distilbert_name = "DistilBERT"
+            raw_train_hash = checkpoint_mgr.compute_file_checksum(
+                self.transform_config.transform_train_raw_file
+            )
+            raw_test_hash = checkpoint_mgr.compute_file_checksum(
+                self.transform_config.transform_test_raw_file
+            )
+            distilbert_config_hash = checkpoint_mgr.compute_config_hash(
+                model_name=distilbert_name,
+                train_file_hash=raw_train_hash,
+                test_file_hash=raw_test_hash,
+                prep_file_hashes={},
+                metric=self.model_evaluate_metric,
+                params={
+                    "model_name": "distilbert-base-uncased",
+                    "epochs": 3,
+                    "batch_size": 16,
+                    "learning_rate": 2e-5,
+                },
+                search_space={},
+                tuner_config={},
+                framework="transformers",
+                serialization="huggingface",
+            )
+
             if state.is_completed(distilbert_name):
-                logger.info("%s already completed.", distilbert_name)
-                logger.info("Skipping...")
-                try:
-                    distilbert_eval = self._load_checkpoint(distilbert_name)
-                    evaluated_models[distilbert_name] = distilbert_eval
-                except Exception as load_err:
-                    logger.warning(
-                        "Checkpoint for %s is invalid or corrupt (%s). Retraining...",
-                        distilbert_name,
-                        load_err,
-                    )
+                if checkpoint_mgr.validate_checkpoint(distilbert_name, distilbert_config_hash):
+                    logger.info("Checkpoint validated for %s. Skipping...", distilbert_name)
+                    try:
+                        distilbert_eval = checkpoint_mgr.load_checkpoint(distilbert_name)
+                        evaluated_models[distilbert_name] = distilbert_eval
+                    except Exception as load_err:
+                        logger.warning(
+                            "Recovered from corrupted checkpoint for %s (%s). Deleting corrupted checkpoint...",
+                            distilbert_name,
+                            load_err,
+                        )
+                        self._train_and_checkpoint_distilbert(
+                            state, checkpoint_mgr, distilbert_config_hash, evaluated_models, evaluation_errors
+                        )
+                else:
+                    if checkpoint_mgr.checkpoint_exists(distilbert_name):
+                        logger.info(
+                            "Checkpoint hash mismatch or invalid for %s. Deleting stale checkpoint...",
+                            distilbert_name,
+                        )
+                        checkpoint_mgr.delete_checkpoint(distilbert_name)
+                    state.mark_pending(distilbert_name)
                     self._train_and_checkpoint_distilbert(
-                        state, evaluated_models, evaluation_errors
+                        state, checkpoint_mgr, distilbert_config_hash, evaluated_models, evaluation_errors
                     )
             else:
+                if checkpoint_mgr.checkpoint_exists(distilbert_name):
+                    checkpoint_mgr.delete_checkpoint(distilbert_name)
+                state.mark_pending(distilbert_name)
                 self._train_and_checkpoint_distilbert(
-                    state, evaluated_models, evaluation_errors
+                    state, checkpoint_mgr, distilbert_config_hash, evaluated_models, evaluation_errors
                 )
 
-            # 3. Select best candidate among all completed models (classical + transformer)
+            # 3. Select best candidate model
             if not evaluated_models:
                 raise ValueError(
                     "No models were successfully evaluated across all runs. Cannot select best model."
