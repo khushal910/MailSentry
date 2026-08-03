@@ -30,8 +30,11 @@ from src.services.model_saver import ModelSaverFactory, ModelLoaderFactory
 from src.components.benchmark import Benchmark
 from src.exception import MyException 
 from src.logger import logger
+from src.components.training_state_manager import TrainingStateManager
+from src.services.storage_service import LocalStorageService
 from src.utils.main_utils import (
     evaluate_classification_model,
+    read_yaml_file,
     write_yaml_file,
 )
 from src.utils.mlflow_utils import log_model_to_mlflow
@@ -400,62 +403,332 @@ class ModelTrainer:
                     if os.path.exists(staging_dir):
                         shutil.rmtree(staging_dir)
 
-                logger.info("Successfully persisted winning model '%s' to ModelRegistry.", winner.name)
+                    logger.info("Successfully persisted winning model '%s' to ModelRegistry.", winner.name)
             else:
                 logger.info("Keeping existing production model unchanged.")
         except Exception as exc:
             raise MyException(exc, sys) from exc
 
+    def _save_checkpoint(self, model_eval: _ModelEvaluation) -> str:
+        """
+        Immediately save a trained & evaluated model checkpoint into checkpoints/<model_name>/.
+
+        Parameters
+        ----------
+        model_eval : _ModelEvaluation
+            Model evaluation container with trained model object and metrics.
+
+        Returns
+        -------
+        str
+            Path to the saved checkpoint directory.
+        """
+        try:
+            checkpoint_dir = os.path.join(
+                self.train_model_config.checkpoints_dir, model_eval.name
+            )
+            os.makedirs(checkpoint_dir, exist_ok=True)
+
+            is_transformer = (
+                model_eval.name.lower().startswith("distilbert")
+                or hasattr(model_eval.model, "save_pretrained")
+            )
+
+            framework = "transformers" if is_transformer else "sklearn"
+            serialization = "huggingface" if is_transformer else "joblib"
+            input_type = "raw_text" if is_transformer else "tfidf"
+            preprocessor_name = "distilbert-tokenizer" if is_transformer else "tfidf"
+
+            metadata = ModelMetadata(
+                model_name=model_eval.name,
+                framework=framework,
+                serialization=serialization,
+                task="binary_classification",
+                input_type=input_type,
+                output_type="probability",
+                preprocessor=preprocessor_name,
+                metric=self.model_evaluate_metric,
+                score=float(model_eval.metrics.get(self.model_evaluate_metric, 0.0)),
+                metrics=model_eval.metrics,
+                trained_at=datetime.now(timezone.utc).isoformat(),
+            )
+
+            saver = ModelSaverFactory.create(metadata)
+            saver.save(model=model_eval.model, target_dir=checkpoint_dir, metadata=metadata)
+
+            write_yaml_file(
+                os.path.join(checkpoint_dir, "metrics.yaml"), model_eval.metrics
+            )
+            write_yaml_file(
+                os.path.join(checkpoint_dir, "params.yaml"), model_eval.params or {}
+            )
+            LocalStorageService().write_json(
+                os.path.join(checkpoint_dir, "metadata.json"), metadata.to_dict()
+            )
+
+            logger.info(
+                "Successfully saved checkpoint for model '%s' at: %s",
+                model_eval.name,
+                checkpoint_dir,
+            )
+            return checkpoint_dir
+        except Exception as exc:
+            raise MyException(exc, sys) from exc
+
+    def _load_checkpoint(self, model_name: str) -> _ModelEvaluation:
+        """
+        Load model checkpoint and reconstruct a complete _ModelEvaluation object.
+
+        Parameters
+        ----------
+        model_name : str
+            Name of the model to load from checkpoints/.
+
+        Returns
+        -------
+        _ModelEvaluation
+            Reconstructed evaluation object containing loaded model and metrics.
+        """
+        try:
+            checkpoint_dir = os.path.join(
+                self.train_model_config.checkpoints_dir, model_name
+            )
+            if not os.path.exists(checkpoint_dir):
+                raise FileNotFoundError(
+                    f"Checkpoint directory not found for model '{model_name}': {checkpoint_dir}"
+                )
+
+            metrics_path = os.path.join(checkpoint_dir, "metrics.yaml")
+            if not os.path.exists(metrics_path):
+                raise FileNotFoundError(
+                    f"Checkpoint metrics.yaml not found at: {metrics_path}"
+                )
+            metrics = read_yaml_file(metrics_path)
+
+            params_path = os.path.join(checkpoint_dir, "params.yaml")
+            params = read_yaml_file(params_path) if os.path.exists(params_path) else {}
+
+            meta_path = os.path.join(checkpoint_dir, "metadata.json")
+            if os.path.exists(meta_path):
+                meta_dict = LocalStorageService().read_json(meta_path)
+                metadata = ModelMetadata.from_dict(meta_dict)
+            else:
+                is_transformer = model_name.lower().startswith("distilbert")
+                serialization = "huggingface" if is_transformer else "joblib"
+                framework = "transformers" if is_transformer else "sklearn"
+                metadata = ModelMetadata(
+                    model_name=model_name,
+                    framework=framework,
+                    serialization=serialization,
+                    task="binary_classification",
+                    input_type="raw_text" if is_transformer else "tfidf",
+                    output_type="probability",
+                    preprocessor="distilbert-tokenizer" if is_transformer else "tfidf",
+                    metric=self.model_evaluate_metric,
+                    score=float(metrics.get(self.model_evaluate_metric, 0.0)),
+                    metrics=metrics,
+                    trained_at=datetime.now(timezone.utc).isoformat(),
+                )
+
+            loader = ModelLoaderFactory.create(metadata)
+            loaded_model = loader.load(checkpoint_dir, metadata)
+
+            logger.info("Successfully loaded checkpoint for model '%s'.", model_name)
+            return _ModelEvaluation(
+                name=model_name,
+                model=loaded_model,
+                params=params,
+                metrics=metrics,
+            )
+        except Exception as exc:
+            raise MyException(exc, sys) from exc
+
+    def _train_and_checkpoint_distilbert(
+        self,
+        state: TrainingStateManager,
+        evaluated_models: Dict[str, _ModelEvaluation],
+        evaluation_errors: Dict[str, str],
+    ) -> None:
+        """
+        Train, evaluate, checkpoint, and update state for DistilBERT transformer model.
+        """
+        distilbert_name = "DistilBERT"
+        logger.info("Training %s...", distilbert_name)
+        state.mark_pending(distilbert_name)
+        try:
+            from src.components.transformer_trainer import TransformerTrainer
+
+            transformer_trainer = TransformerTrainer()
+            distilbert_eval = transformer_trainer.train_and_evaluate()
+            if distilbert_eval is not None:
+                chk_dir = self._save_checkpoint(distilbert_eval)
+                state.mark_completed(
+                    distilbert_name,
+                    checkpoint=chk_dir,
+                    metrics=distilbert_eval.metrics,
+                )
+                evaluated_models[distilbert_name] = distilbert_eval
+                logger.info(
+                    "DistilBERT evaluated successfully and included in candidate list."
+                )
+            else:
+                err_msg = "DistilBERT training returned None."
+                evaluation_errors[distilbert_name] = err_msg
+                state.mark_failed(distilbert_name, reason=err_msg)
+        except Exception as trans_err:
+            error_msg = str(trans_err)
+            logger.error("DistilBERT training failed: %s", error_msg)
+            evaluation_errors[distilbert_name] = error_msg
+            state.mark_failed(distilbert_name, reason=error_msg)
 
     def initiate_model_training(self) -> ModelTrainerArtifact:
         """
-        Execute the full training pipeline with error‑tolerance and detailed reporting.
+        Execute the full training pipeline with per-model checkpoint/resume capability,
+        error tolerance, and comprehensive reporting.
         """
         try:
             logger.info("Starting model training pipeline.")
             setup_mlflow()
 
+            logger.info("Loading training state...")
+            state = TrainingStateManager(
+                self.train_model_config.training_state_file_path
+            )
+
             train_df, test_df = self.load_data()
             x_train, y_train = self._split_features_target(train_df)
             x_test, y_test = self._split_features_target(test_df)
 
-            models = self.get_model_list
+            models = self.get_model_list  # Dict[str, _ModelBundle]
 
-            # 1. Train candidate models (capture failures)
-            trained_models, training_errors = self.train_models(
-                models=models, x_train=x_train, y_train=y_train
+            evaluated_models: Dict[str, _ModelEvaluation] = {}
+            training_errors: Dict[str, str] = {}
+            evaluation_errors: Dict[str, str] = {}
+
+            tuner = HyperparameterTuner(
+                n_iter=20,
+                cv=5,
+                scoring=self.model_evaluate_metric,
+                random_state=42,
+                n_jobs=1,
             )
 
-            # 2. Evaluate candidate models (capture failures)
-            evaluated_models, evaluation_errors = self.evaluate_models(
-                trained_models=trained_models,
-                x_test=x_test,
-                y_test=y_test,
-            )
+            # 1. Process candidate classification models
+            for model_name, bundle in models.items():
+                if state.is_completed(model_name):
+                    logger.info("%s already completed.", model_name)
+                    logger.info("Skipping...")
+                    try:
+                        loaded_eval = self._load_checkpoint(model_name)
+                        evaluated_models[model_name] = loaded_eval
+                        continue
+                    except Exception as load_err:
+                        logger.warning(
+                            "Checkpoint for %s is invalid or corrupt (%s). Retraining...",
+                            model_name,
+                            load_err,
+                        )
 
-            # 3. Train & Evaluate DistilBERT Transformer (capture failures cleanly)
-            try:
-                from src.components.transformer_trainer import TransformerTrainer
-
-                transformer_trainer = TransformerTrainer()
-                distilbert_eval = transformer_trainer.train_and_evaluate()
-                if distilbert_eval is not None:
-                    evaluated_models["DistilBERT"] = distilbert_eval
-                    logger.info(
-                        "DistilBERT evaluated successfully and included in champion candidate list."
+                logger.info("Training %s...", model_name)
+                state.mark_pending(model_name)
+                try:
+                    is_tabpfn = (
+                        model_name.lower().startswith("tabpfn")
+                        or type(bundle.model).__name__ == "TabPFNClassifier"
                     )
-                else:
-                    evaluation_errors["DistilBERT"] = "DistilBERT training returned None."
-            except Exception as trans_err:
-                error_msg = str(trans_err)
-                logger.error("DistilBERT training failed: %s", error_msg)
-                evaluation_errors["DistilBERT"] = error_msg
 
-            # 4. Select best candidate among all evaluated models (classical + transformer)
+                    if is_tabpfn:
+                        logger.info(
+                            "Fitting TabPFN directly without RandomizedSearchCV: %s",
+                            model_name,
+                        )
+                        bundle.model.fit(x_train.to_numpy(), y_train.to_numpy())
+                        model_params = (
+                            getattr(bundle.model, "get_params", lambda: {})()
+                            or bundle.params
+                        )
+                        trained_model = bundle.model
+                        best_params = model_params
+                        best_cv_score = 0.0
+                    else:
+                        best_estimator, best_params, best_cv_score = tuner.tune(
+                            model_name=model_name,
+                            estimator=bundle.model,
+                            x_train=x_train,
+                            y_train=y_train,
+                        )
+                        trained_model = best_estimator
+
+                    # Evaluate model immediately
+                    logger.info("Evaluating model: %s", model_name)
+                    y_pred = trained_model.predict(x_test.to_numpy())
+                    y_score = self._get_model_scores(trained_model, x_test.to_numpy())
+
+                    metrics = evaluate_classification_model(
+                        y_true=y_test,
+                        y_pred=y_pred,
+                        y_score=y_score,
+                    )
+                    metrics["best_cv_score"] = float(best_cv_score)
+
+                    log_model_to_mlflow(
+                        model_name=model_name,
+                        model=trained_model,
+                        params=best_params,
+                        metrics=metrics,
+                    )
+
+                    eval_obj = _ModelEvaluation(
+                        name=model_name,
+                        model=trained_model,
+                        params=best_params,
+                        metrics=metrics,
+                    )
+
+                    # Save checkpoint immediately & update training state
+                    chk_dir = self._save_checkpoint(eval_obj)
+                    state.mark_completed(model_name, checkpoint=chk_dir, metrics=metrics)
+                    evaluated_models[model_name] = eval_obj
+
+                except Exception as e:
+                    error_msg = str(e)
+                    logger.error(
+                        f"Model {model_name} training/evaluation failed: {error_msg}"
+                    )
+                    training_errors[model_name] = error_msg
+                    state.mark_failed(model_name, reason=error_msg)
+
+            # 2. Process DistilBERT Transformer model
+            distilbert_name = "DistilBERT"
+            if state.is_completed(distilbert_name):
+                logger.info("%s already completed.", distilbert_name)
+                logger.info("Skipping...")
+                try:
+                    distilbert_eval = self._load_checkpoint(distilbert_name)
+                    evaluated_models[distilbert_name] = distilbert_eval
+                except Exception as load_err:
+                    logger.warning(
+                        "Checkpoint for %s is invalid or corrupt (%s). Retraining...",
+                        distilbert_name,
+                        load_err,
+                    )
+                    self._train_and_checkpoint_distilbert(
+                        state, evaluated_models, evaluation_errors
+                    )
+            else:
+                self._train_and_checkpoint_distilbert(
+                    state, evaluated_models, evaluation_errors
+                )
+
+            # 3. Select best candidate among all completed models (classical + transformer)
+            if not evaluated_models:
+                raise ValueError(
+                    "No models were successfully evaluated across all runs. Cannot select best model."
+                )
+
             best_candidate = self.select_best_model(evaluated_models)
 
-
-            # 4. Compare with production & save
+            # 4. Compare with production champion & persist winner
             winner, is_new_model_winner = self.compare_with_production_model(
                 candidate_model=best_candidate,
                 x_test=x_test,
@@ -468,28 +741,31 @@ class ModelTrainer:
                 x_test=x_test,
             )
 
-            # 5. Build comprehensive status report
+            # 5. Build comprehensive status report across all runs
             training_timestamp = datetime.now(timezone.utc).isoformat()
 
-            # Collect status for ALL models (including those that failed)
-            all_model_names = set(self.get_model_list.keys())
+            all_model_names = set(self.get_model_list.keys()) | {"DistilBERT"}
             model_status = {}
             for name in all_model_names:
                 if name in evaluated_models:
-                    model_status[name] = {"status": "success"}
+                    model_status[name] = {"status": "completed"}
                 elif name in training_errors:
                     model_status[name] = {"status": "failed", "reason": training_errors[name]}
                 elif name in evaluation_errors:
                     model_status[name] = {"status": "failed", "reason": evaluation_errors[name]}
                 else:
-                    # Should not happen, but keep as safeguard
-                    model_status[name] = {"status": "unknown"}
+                    status_in_state = state.get_model_status(name)
+                    if status_in_state:
+                        info = state.get_model_info(name)
+                        model_status[name] = info
+                    else:
+                        model_status[name] = {"status": "pending"}
 
             report = {
                 "best_model_name": winner.name,
                 "best_model_metric": self.model_evaluate_metric,
                 "winner_metrics": winner.metrics,
-                "model_status": model_status,                      # NEW: detailed status
+                "model_status": model_status,
                 "metrics_of_successful_models": {
                     name: result.metrics for name, result in evaluated_models.items()
                 },
@@ -498,7 +774,9 @@ class ModelTrainer:
             write_yaml_file(self.train_model_config.model_report_file_path, report)
 
             logger.info("Model training pipeline completed successfully.")
-            logger.info(f"Report saved at {self.train_model_config.model_report_file_path}")
+            logger.info(
+                f"Report saved at {self.train_model_config.model_report_file_path}"
+            )
 
             return ModelTrainerArtifact(
                 trained_model_file_path=self.train_model_config.trained_model_file_path,

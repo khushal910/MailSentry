@@ -50,6 +50,8 @@ class TrainModelConfig:
     trained_model_backend_path: str = os.path.join(training_pipeline_config.bakend_dir, BACKEND_MODEL_PATH_DIR_NAME, MODEL_FILE_NAME)
     model_evaluate_metric: str = MODEL_EVALUATE_METRIC
     model_registry_dir: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", MODEL_REGISTRY_DIR_NAME))
+    checkpoints_dir: str = os.path.join(model_trainer_dir, "checkpoints")
+    training_state_file_path: str = os.path.join(model_trainer_dir, "training_state.yaml")
 
    
    
