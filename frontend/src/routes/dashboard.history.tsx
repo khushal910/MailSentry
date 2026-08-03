@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Search, MailX, X, SearchX, RefreshCw } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { EmailLabelBadge } from "@/components/EmailLabelBadge";
@@ -186,42 +187,51 @@ function HistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                {emails.map((email, index) => {
-                  const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
-                  return (
-                    <tr key={email.message_id} className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors">
-                      <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground">
-                        {rowNumber}
-                      </td>
-                      <td className="py-3 text-muted-foreground text-xs font-medium pr-2">
-                        {email.sent_at || email.received_at ? formatDate(email.sent_at || email.received_at!) : "—"}
-                      </td>
-                      <td className="py-3 font-medium pr-2">
-                        <HighlightText
-                          text={truncate(email.subject || "(no subject)", 38)}
-                          query={debouncedSearch}
-                        />
-                      </td>
-                      <td className="py-3 text-muted-foreground pr-2">
-                        <HighlightText
-                          text={truncate(email.snippet || "—", 42)}
-                          query={debouncedSearch}
-                        />
-                      </td>
-                      <td className="py-3 pr-2">
-                        <EmailLabelBadge label={email.predicted_label} />
-                      </td>
-                      <td className="py-3 font-medium text-xs">
-                        {typeof email.predicted_score === "number"
-                          ? formatConfidence(email.predicted_score)
-                          : "—"}
-                      </td>
-                      <td className="py-3 text-right text-muted-foreground text-xs">
-                        {email.classified_at ? formatDate(email.classified_at) : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
+                <AnimatePresence mode="wait">
+                  {emails.map((email, index) => {
+                    const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
+                    return (
+                      <motion.tr
+                        key={email.message_id || index}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ delay: index * 0.02 }}
+                        className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
+                      >
+                        <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground">
+                          {rowNumber}
+                        </td>
+                        <td className="py-3 text-muted-foreground text-xs font-medium pr-2">
+                          {email.sent_at || email.received_at ? formatDate(email.sent_at || email.received_at!) : "—"}
+                        </td>
+                        <td className="py-3 font-medium pr-2">
+                          <HighlightText
+                            text={truncate(email.subject || "(no subject)", 38)}
+                            query={debouncedSearch}
+                          />
+                        </td>
+                        <td className="py-3 text-muted-foreground pr-2">
+                          <HighlightText
+                            text={truncate(email.snippet || "—", 42)}
+                            query={debouncedSearch}
+                          />
+                        </td>
+                        <td className="py-3 pr-2">
+                          <EmailLabelBadge label={email.predicted_label} />
+                        </td>
+                        <td className="py-3 font-medium text-xs">
+                          {typeof email.predicted_score === "number"
+                            ? formatConfidence(email.predicted_score)
+                            : "—"}
+                        </td>
+                        <td className="py-3 text-right text-muted-foreground text-xs">
+                          {email.classified_at ? formatDate(email.classified_at) : "—"}
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </AnimatePresence>
               </tbody>
             </table>
           )}
