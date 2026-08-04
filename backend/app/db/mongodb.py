@@ -1,3 +1,5 @@
+import os
+
 from pymongo import MongoClient
 from pymongo.database import Database
 
@@ -14,7 +16,6 @@ class MongoDB:
 
         @classmethod
         def connect(cls):
-            import os
             server_timeout = int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "3000"))
             cls.client = MongoClient(
                 settings.MONGO_URI,
