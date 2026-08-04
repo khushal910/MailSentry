@@ -69,6 +69,7 @@ jobs:
         env:
           JWT_SECRET_KEY: "ci-secret-key-for-testing-only-mail-sentry-jwt"
           MONGO_URI: "mongodb://localhost:27017/mailsentry_ci_db"
+          DATABASE_NAME: "mailsentry_ci_db"
           ENVIRONMENT: "testing"
         run: |
           mkdir -p reports htmlcov
@@ -94,6 +95,7 @@ jobs:
         env:
           JWT_SECRET_KEY: "ci-secret-key-for-testing-only-mail-sentry-jwt"
           MONGO_URI: "mongodb://localhost:27017/mailsentry_ci_db"
+          DATABASE_NAME: "mailsentry_ci_db"
           ENVIRONMENT: "testing"
         run: |
           python main.py &

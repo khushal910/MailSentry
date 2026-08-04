@@ -26,7 +26,7 @@ GOOGLE_ACCOUNT = {
 
 def run(coro):
     """Helper to run async coroutines in unittest."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def _make_service(
@@ -145,7 +145,7 @@ class TestGmailFetchServiceConcurrency(unittest.TestCase):
                     await svc.run_fetch_pipeline(USER_ID, GOOGLE_ACCOUNT)
                 self.assertEqual(ctx.exception.status_code, 429)
 
-        _asyncio.get_event_loop().run_until_complete(_run())
+        _asyncio.run(_run())
 
 
 class TestGmailFetchServiceTokenExpiry(unittest.TestCase):

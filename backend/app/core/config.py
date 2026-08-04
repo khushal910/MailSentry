@@ -52,7 +52,7 @@ class Settings:
     """This class loads environment variables from a .env file and provides access to them as attributes."""
 
     try:
-        APP_NAME = os.getenv("APP_NAME")
+        APP_NAME = os.getenv("APP_NAME", "MailSentry")
         DEBUG = os.getenv("DEBUG") == "True"
 
         raw_origins = (
@@ -64,8 +64,8 @@ class Settings:
         COSE_ORIGINS = CORS_ORIGINS  # Alias for backward compatibility
         CORS_ORIGIN_REGEX = os.getenv("CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app")
 
-        SECRET_KEY = os.getenv("SECRET_KEY")
-        ALGORITHM = os.getenv("ALGORITHM")
+        SECRET_KEY = os.getenv("SECRET_KEY", "mailsentry-default-secret-key")
+        ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
         ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
 
