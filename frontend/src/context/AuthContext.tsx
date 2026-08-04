@@ -92,6 +92,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string) => {
       const res = await authApi.login({ email, password });
       if (res.success) {
+        if ((res as unknown as { data?: { access_token?: string } }).data?.access_token) {
+          localStorage.setItem(
+            "token",
+            (res as unknown as { data: { access_token: string } }).data.access_token,
+          );
+        }
         setIsSessionExpired(false);
         await refresh();
       }
@@ -104,6 +110,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (name: string, email: string, password: string) => {
       const res = await authApi.register({ name, email, password });
       if (res.success) {
+        if ((res as unknown as { data?: { access_token?: string } }).data?.access_token) {
+          localStorage.setItem(
+            "token",
+            (res as unknown as { data: { access_token: string } }).data.access_token,
+          );
+        }
         setIsSessionExpired(false);
         await refresh();
       }

@@ -58,7 +58,11 @@ async def register_user(user: UserRegisterSchema, response: Response):
 
         set_auth_cookie(response, access_token)
 
-        return return_response(status_code=201, message="User registered successfully")
+        return return_response(
+            status_code=201,
+            message="User registered successfully",
+            data={"access_token": access_token},
+        )
 
     except Exception as e:
         return return_response(

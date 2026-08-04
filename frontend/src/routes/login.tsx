@@ -71,7 +71,8 @@ function LoginPage() {
       const res = await login(values.email, values.password);
       if (res.success) {
         toast.success(res.message);
-        navigate({ to: "/dashboard" });
+        const target = redirect && redirect.startsWith("/") ? redirect : "/dashboard";
+        window.location.href = target;
       } else {
         toast.error(res.message);
       }

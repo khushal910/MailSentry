@@ -33,7 +33,11 @@ async def login_user(user: UserLoginSchema, response: Response):
 
         set_auth_cookie(response, access_token)
 
-        return return_response(status_code=200, message="Login successful")
+        return return_response(
+            status_code=200,
+            message="Login successful",
+            data={"access_token": access_token},
+        )
 
     except Exception as e:
         return return_response(status_code=500, message=f"Error during login: {e!s}")
