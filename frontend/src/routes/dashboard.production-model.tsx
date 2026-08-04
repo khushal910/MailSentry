@@ -4,17 +4,19 @@ import { useState, useMemo } from "react";
 import {
   RefreshCw,
   AlertTriangle,
-  RotateCcw,
   Sparkles,
   MoreVertical,
   Download,
   Terminal,
   ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +43,7 @@ import { QuickActionsToolbarSection } from "@/components/mlops/QuickActionsToolb
 import { ModelComparisonDrawer } from "@/components/ModelComparisonDrawer";
 
 import { modelService } from "@/services/modelService";
+import { downloadPklFile } from "@/utils/downloadHelper";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -60,8 +63,6 @@ export const Route = createFileRoute("/dashboard/production-model")({
 function ProductionModelPage() {
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [selectedVersionForCompare, setSelectedVersionForCompare] = useState<string | null>(null);
-  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
-  const [isRollbackModalOpen, setIsRollbackModalOpen] = useState(false);
 
   // Query 1: Active Production Model
   const {
@@ -144,26 +145,39 @@ function ProductionModelPage() {
 
           {/* Sticky Actions Toolbar (Right side) */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              id="sticky-deploy-model-btn"
-              size="sm"
-              onClick={() => setIsDeployModalOpen(true)}
-              className="bg-brand text-brand-foreground hover:bg-brand/90 font-extrabold text-xs sm:text-sm h-9 px-4 rounded-lg shadow-xs"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              Deploy Model
-            </Button>
-
-            <Button
-              id="sticky-rollback-btn"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsRollbackModalOpen(true)}
-              className="border-amber-500/40 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 font-extrabold text-xs sm:text-sm h-9 px-4 rounded-lg"
-            >
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Rollback
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  id="sticky-download-artifacts-btn"
+                  size="sm"
+                  className="bg-brand text-brand-foreground hover:bg-brand/90 font-extrabold text-xs sm:text-sm h-9 px-4 rounded-lg shadow-xs"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Artifacts (.pkl)
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72 text-xs sm:text-sm font-semibold">
+                <DropdownMenuItem onClick={() => {
+                  const size = model?.model_size_mb || 0.05;
+                  downloadPklFile("model.pkl", "MailSentry Production Classifier Weights", size);
+                  toast.success(`Downloading Model (.pkl) artifact (${size.toFixed(2)} MB)...`);
+                }}>
+                  <Download className="mr-2.5 h-4 w-4 text-brand" /> Model File (.pkl) ({model?.model_size_mb ? model.model_size_mb.toFixed(2) : "0.05"} MB)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  downloadPklFile("preprocessing.pkl", "TF-IDF Vectorizer & Text Preprocessing Pipeline", 0.02);
+                  toast.success("Downloading Preprocessing (.pkl) artifact (0.02 MB)...");
+                }}>
+                  <Download className="mr-2.5 h-4 w-4 text-emerald-500" /> Preprocessing File (.pkl) (0.02 MB)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  downloadPklFile("embedding.pkl", "Label Encoder & Contextual Word Embeddings", 0.01);
+                  toast.success("Downloading Label Encoder & Embedding (.pkl) artifact (0.01 MB)...");
+                }}>
+                  <Download className="mr-2.5 h-4 w-4 text-amber-500" /> Label Encoder & Embedding (.pkl) (0.01 MB)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <Button
               id="sticky-refresh-btn"
@@ -191,7 +205,7 @@ function ProductionModelPage() {
                 <DropdownMenuItem onClick={() => window.open("http://localhost:5000", "_blank")}>
                   <ExternalLink className="mr-2.5 h-4 w-4" /> Open MLflow UI
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => alert("Model artifacts downloaded")}>
+                <DropdownMenuItem onClick={() => toast.success("Downloading Model (.pkl) artifact...")}>
                   <Download className="mr-2.5 h-4 w-4" /> Download Model (.pkl)
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => alert("Fetching logs...")}>
@@ -265,7 +279,7 @@ function ProductionModelPage() {
                     <MetaRow label="Model File Size" value={`${model.model_size_mb || 0.05} MB`} />
                     <MetaRow label="Dataset Version" value={model.dataset_version || "v1.0.0"} isMono />
                     <MetaRow label="Git Commit SHA" value="a1b2c3d" isMono />
-                    <MetaRow label="MLflow Run ID" value="1233668301d94c14a3c98f6a87d234a5" isMono isLink />
+                    <MetaRow label="MLflow Run ID" value={model.mlflow_run_id || "1233668301d94c14a3c98f6a87d234a5"} isMono isCopyable />
                     <MetaRow label="Docker Container Image" value="mailsentry/ml-service:v2.0" isMono />
                     <MetaRow label="Python Runtime" value="Python 3.13.1" />
                     <MetaRow label="Model SHA256" value={model.model_hash ? `${model.model_hash.slice(0, 16)}...` : "7f0e8e98ac1f14a7..."} isMono />
@@ -314,7 +328,7 @@ function ProductionModelPage() {
             <CandidateModelSection
               candidate={null}
               onCompare={(ver) => setSelectedVersionForCompare(ver)}
-              onDeploy={(ver) => setIsDeployModalOpen(true)}
+              onDeploy={() => toast.info("Run 'python scripts/deploy_production_model.py' in CLI to promote & deploy candidate models.")}
             />
 
             {/* TRAFFIC MONITORING TELEMETRY */}
@@ -336,79 +350,12 @@ function ProductionModelPage() {
 
             {/* QUICK ACTIONS TOOLBAR */}
             <QuickActionsToolbarSection
-              onDeploy={() => setIsDeployModalOpen(true)}
-              onRollback={() => setIsRollbackModalOpen(true)}
+              onDeploy={() => toast.info("Run 'python scripts/deploy_production_model.py' in CLI to deploy a model version.")}
               onRefresh={handleRefresh}
             />
           </div>
         )}
       </div>
-
-      {/* Deploy Model Confirmation Dialog */}
-      <Dialog open={isDeployModalOpen} onOpenChange={setIsDeployModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Promote Candidate to Production</DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
-              Are you sure you want to promote the latest candidate model to production serving?
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60 text-xs sm:text-sm space-y-1 font-mono">
-            <div>Current Production: <strong>{model?.version} ({model?.model_name})</strong></div>
-            <div>Promoting Target: <strong className="text-emerald-500">v3 (Candidate)</strong></div>
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" size="sm" onClick={() => setIsDeployModalOpen(false)} className="text-xs sm:text-sm font-semibold">
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setIsDeployModalOpen(false);
-                toast.success("Candidate model promoted to production successfully");
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold"
-            >
-              Confirm Promotion
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Rollback Model Confirmation Dialog */}
-      <Dialog open={isRollbackModalOpen} onOpenChange={setIsRollbackModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold">Rollback Production Model</DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm text-amber-600 dark:text-amber-400 font-semibold">
-              Warning: Rolling back will revert serving traffic to the previous model version.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs sm:text-sm space-y-1 font-mono">
-            <div>Active Version: <strong>{model?.version}</strong></div>
-            <div>Rollback Target: <strong>{previousModel ? previousModel.version : "v1.0.0"}</strong></div>
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" size="sm" onClick={() => setIsRollbackModalOpen(false)} className="text-xs sm:text-sm font-semibold">
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setIsRollbackModalOpen(false);
-                toast.success("Production model rolled back successfully");
-              }}
-              className="bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-bold"
-            >
-              Confirm Rollback
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Side-by-Side Model Comparison Drawer */}
       {selectedVersionForCompare && (
@@ -431,26 +378,52 @@ function MetaRow({
   isMono = false,
   isStatus = false,
   isLink = false,
+  isCopyable = false,
 }: {
   label: string;
   value: string;
   isMono?: boolean;
   isStatus?: boolean;
   isLink?: boolean;
+  isCopyable?: boolean;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-border/30">
       <span className="text-muted-foreground font-medium">{label}</span>
-      <span
-        className={cn(
-          "font-medium text-foreground/80 truncate max-w-[240px]",
-          isMono && "font-mono text-xs sm:text-sm text-foreground/75 font-normal",
-          isStatus && "text-emerald-500/90 font-medium",
-          isLink && "text-brand/90 hover:underline cursor-pointer font-medium"
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span
+          className={cn(
+            "font-medium text-foreground/80 truncate max-w-[220px]",
+            isMono && "font-mono text-xs sm:text-sm text-foreground/75 font-normal",
+            isStatus && "text-emerald-500/90 font-medium",
+            isLink && "text-brand/90 hover:underline cursor-pointer font-medium"
+          )}
+        >
+          {value}
+        </span>
+        {isCopyable && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            title="Copy value"
+            className="p-1 hover:bg-muted/80 rounded transition-colors text-muted-foreground hover:text-foreground shrink-0"
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+          </button>
         )}
-      >
-        {value}
-      </span>
+      </div>
     </div>
   );
 }

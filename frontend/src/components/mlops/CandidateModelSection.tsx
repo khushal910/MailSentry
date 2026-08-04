@@ -1,6 +1,8 @@
-import { Sparkles, Scale, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { Sparkles, Scale, ArrowUpRight, CheckCircle2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { downloadPklFile } from "@/utils/downloadHelper";
+import { toast } from "sonner";
 
 interface CandidateModelProps {
   candidate?: {
@@ -62,11 +64,14 @@ export function CandidateModelSection({
 
           <Button
             size="sm"
-            onClick={() => onDeploy(candidate.version)}
+            onClick={() => {
+              downloadPklFile(`candidate_model_${candidate.version}.pkl`, `MailSentry Candidate Model ${candidate.version}`, 0.08);
+              toast.success(`Downloading candidate model (${candidate.version}) .pkl artifact (0.08 MB)...`);
+            }}
             className="h-9 px-4 text-xs sm:text-sm font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             <Sparkles className="mr-2 h-4 w-4" />
-            Promote & Deploy Candidate
+            Download Candidate (.pkl) (0.08 MB)
           </Button>
         </div>
       </div>
@@ -82,7 +87,20 @@ export function CandidateModelSection({
         </div>
         <div>
           <span className="block text-xs text-muted-foreground font-medium">MLflow Run ID</span>
-          <span className="font-mono text-xs font-medium text-brand/90 truncate block">{candidate.mlflow_run_id}</span>
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-xs font-medium text-brand/90 truncate block">{candidate.mlflow_run_id}</span>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(candidate.mlflow_run_id);
+                toast.success("MLflow Run ID copied");
+              }}
+              className="p-1 hover:bg-muted/80 rounded transition-colors text-muted-foreground hover:text-foreground shrink-0"
+              title="Copy MLflow Run ID"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
         <div>
           <span className="block text-xs text-muted-foreground font-medium">Trained At</span>

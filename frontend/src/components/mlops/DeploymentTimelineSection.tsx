@@ -14,6 +14,17 @@ export interface TimelineEvent {
   details?: Record<string, any>;
 }
 
+function formatDDMMYY(timestamp: string) {
+  if (!timestamp) return "—";
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) return timestamp;
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = String(date.getFullYear()).slice(-2);
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `${day}/${month}/${year}, ${time}`;
+}
+
 export function DeploymentTimelineSection({ historyEvents = [] }: { historyEvents?: any[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -24,7 +35,7 @@ export function DeploymentTimelineSection({ historyEvents = [] }: { historyEvent
   // Build real timeline events dynamically from historyList
   const eventsToDisplay: TimelineEvent[] = historyEvents.length > 0
     ? historyEvents.map((item, idx) => ({
-        id: `evt-${item.version || idx}`,
+        id: `evt-${item.version || 'v'}-${idx}`,
         type: item.is_active ? "Promotion" : "Archive",
         version: item.version || `v${idx + 1}`,
         timestamp: item.deployment_date || item.trained_at || "2026-08-03T17:24:08Z",
@@ -112,17 +123,17 @@ export function DeploymentTimelineSection({ historyEvents = [] }: { historyEvent
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs sm:text-sm text-muted-foreground font-medium pt-1">
-                  <span className="flex items-center gap-1.5 font-bold text-foreground">
+                  <span className="flex items-center gap-1.5 font-medium text-foreground/80">
                     <User className="h-4 w-4 text-brand" /> {evt.user}
                   </span>
-                  <span className="flex items-center gap-1.5 font-mono font-bold text-foreground">
+                  <span className="flex items-center gap-1.5 font-mono font-medium text-foreground/80">
                     <GitCommit className="h-4 w-4 text-brand" /> {evt.commit}
                   </span>
-                  <span className="flex items-center gap-1.5 font-bold text-foreground">
+                  <span className="flex items-center gap-1.5 font-medium text-foreground/80">
                     <Tag className="h-4 w-4 text-brand" /> {evt.experiment}
                   </span>
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="h-4 w-4 text-muted-foreground" /> {new Date(evt.timestamp).toLocaleString()}
+                  <span className="flex items-center gap-1.5 font-mono font-medium text-foreground/80">
+                    <Calendar className="h-4 w-4 text-brand" /> {formatDDMMYY(evt.timestamp)}
                   </span>
                 </div>
 
