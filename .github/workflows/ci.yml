@@ -22,6 +22,11 @@ jobs:
   backend-ci:
     name: Backend CI (Quality, 80% Coverage, Security, ML & Startup)
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
     defaults:
       run:
         working-directory: backend
@@ -94,15 +99,51 @@ jobs:
       - name: "11. Stage 10: Backend Startup & Health Endpoint Probe"
         env:
           JWT_SECRET_KEY: "ci-secret-key-for-testing-only-mail-sentry-jwt"
-          MONGO_URI: "mongodb://localhost:27017/mailsentry_ci_db"
+          MONGO_URI: "mongodb://127.0.0.1:27017/mailsentry_ci_db"
           DATABASE_NAME: "mailsentry_ci_db"
           ENVIRONMENT: "testing"
+          DEBUG: "False"
         run: |
-          python main.py &
+          echo "Starting backend server..."
+          python main.py > server.log 2>&1 &
           SERVER_PID=$!
-          sleep 3
-          curl --retry 10 --retry-delay 1 --retry-connrefused -f http://127.0.0.1:8000/health || (kill $SERVER_PID && exit 1)
-          kill $SERVER_PID
+
+          echo "Backend server started with PID: $SERVER_PID. Polling health endpoint..."
+
+          MAX_RETRIES=30
+          RETRY_COUNT=0
+          HEALTH_URL="http://127.0.0.1:8000/health"
+          SUCCESS=0
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "❌ Server process crashed prematurely!"
+              echo "=== SERVER STACKTRACE / LOGS ==="
+              cat server.log
+              exit 1
+            fi
+
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "✅ Health check PASSED (HTTP 200) after ${RETRY_COUNT}s!"
+              SUCCESS=1
+              break
+            fi
+
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            sleep 1
+          done
+
+          if [ $SUCCESS -ne 1 ]; then
+            echo "❌ Health check TIMED OUT after 30 seconds!"
+            echo "=== SERVER LOGS ON TIMEOUT ==="
+            cat server.log
+            kill -9 $SERVER_PID 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Shutting down test backend server (PID: $SERVER_PID)..."
+          kill $SERVER_PID 2>/dev/null || true
 
       - name: 12. Extract & Display Coverage Summary in Step Summary
         if: always()

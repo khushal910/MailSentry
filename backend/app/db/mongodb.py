@@ -14,7 +14,12 @@ class MongoDB:
 
         @classmethod
         def connect(cls):
-            cls.client = MongoClient(settings.MONGO_URI)
+            import os
+            server_timeout = int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "3000"))
+            cls.client = MongoClient(
+                settings.MONGO_URI,
+                serverSelectionTimeoutMS=server_timeout,
+            )
             cls.database = cls.client[settings.DATABASE_NAME]
 
             print("MongoDB Connected")
