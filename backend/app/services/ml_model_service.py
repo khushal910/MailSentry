@@ -255,40 +255,61 @@ class MLModelService:
         """
         model = self.load_latest_model()
         if model is not None and not isinstance(model, PredictionEngine):
-            clean_text = MLPreprocessing.preprocess_email_text(subject, body)
-            preprocessor = self.load_preprocessor()
-            label_encoder = self.load_label_encoder()
+            try:
+                clean_text = MLPreprocessing.preprocess_email_text(subject, body)
+                preprocessor = self.load_preprocessor()
+                label_encoder = self.load_label_encoder()
 
-            if preprocessor is not None:
-                features = preprocessor.transform([clean_text])
-            else:
-                features = [clean_text]
+                if preprocessor is not None and hasattr(preprocessor, "transform"):
+                    features = preprocessor.transform([clean_text])
+                else:
+                    features = [clean_text]
 
-            preds = model.predict(features)
-            raw_label = preds[0] if len(preds) > 0 else "inbox"
-
-            if label_encoder is not None:
                 try:
-                    label = str(label_encoder.inverse_transform([raw_label])[0])
-                except Exception:
+                    preds = model.predict(features)
+                except ValueError as val_err:
+                    if "Expected 2D array" in str(val_err):
+                        import numpy as np
+                        arr = np.array(features).reshape(-1, 1)
+                        preds = model.predict(arr)
+                    else:
+                        raise val_err
+
+                raw_label = preds[0] if (preds is not None and len(preds) > 0) else "ham"
+
+                if label_encoder is not None and hasattr(label_encoder, "inverse_transform"):
+                    try:
+                        label = str(label_encoder.inverse_transform([raw_label])[0])
+                    except Exception:
+                        label = str(raw_label)
+                else:
                     label = str(raw_label)
-            else:
-                label = str(raw_label)
 
-            score = 0.85
-            if hasattr(model, "predict_proba"):
-                try:
-                    probas = model.predict_proba(features)[0]
-                    score = float(max(probas))
-                except Exception:
-                    pass
+                score = 0.85
+                if hasattr(model, "predict_proba"):
+                    try:
+                        probas = model.predict_proba(features)[0]
+                        score = float(max(probas))
+                    except ValueError as val_err:
+                        if "Expected 2D array" in str(val_err):
+                            try:
+                                import numpy as np
+                                arr = np.array(features).reshape(-1, 1)
+                                probas = model.predict_proba(arr)[0]
+                                score = float(max(probas))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
 
-            return {
-                "subject": (subject or "")[:255],
-                "predicted_label": label,
-                "predicted_score": score,
-                "classified_at": datetime.now(timezone.utc).isoformat(),
-            }
+                return {
+                    "subject": (subject or "")[:255],
+                    "predicted_label": label,
+                    "predicted_score": score,
+                    "classified_at": datetime.now(timezone.utc).isoformat(),
+                }
+            except Exception as exc:
+                logger.warning(f"ML classification failed on text ({exc}), delegating to PredictionEngine fallback.")
 
         engine = PredictionEngine(self.models_dir)
         return engine.predict(subject=subject, body=body)

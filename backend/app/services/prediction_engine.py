@@ -113,7 +113,15 @@ class SklearnPredictor(BasePredictor):
 
             # Predict class
             if hasattr(self.model, "predict"):
-                res = self.model.predict(X_features)
+                try:
+                    res = self.model.predict(X_features)
+                except ValueError as val_err:
+                    if "Expected 2D array" in str(val_err):
+                        arr = np.array(X_features).reshape(-1, 1)
+                        res = self.model.predict(arr)
+                    else:
+                        res = None
+
                 if res is not None and len(res) > 0:
                     raw_val = res[0]
                     if self.label_encoder is not None and hasattr(

@@ -70,9 +70,9 @@ class EmailRepository:
 
     def verify_user_exists(self, user_id: str) -> bool:
         """
-        Verifies if user_id exists in the users table/collection.
+        Verifies if user_id exists in users or google_accounts collection.
         """
-        if not user_id:
+        if not user_id or not str(user_id).strip():
             return False
         try:
             users_col_name = getattr(settings, "USER_COLLECTION_NAME", "users")
@@ -82,8 +82,22 @@ class EmailRepository:
                 if ObjectId.is_valid(user_id)
                 else {"_id": str(user_id)}
             )
-            user = users_col.find_one(query)
-            return user is not None
+            user_doc = users_col.find_one(query)
+            if user_doc:
+                return True
+
+            google_col_name = getattr(settings, "GOOGLE_ACCOUNT_COLLECTION_NAME", "google_accounts")
+            google_col = self.db[google_col_name]
+            g_query = (
+                {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]}
+                if ObjectId.is_valid(user_id)
+                else {"user_id": str(user_id)}
+            )
+            acc_doc = google_col.find_one(g_query)
+            if isinstance(acc_doc, dict) and acc_doc:
+                return True
+
+            return False
         except Exception as e:
             logger.error(f"Error verifying user existence for user_id={user_id}: {str(e)}")
             return False

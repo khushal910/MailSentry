@@ -325,6 +325,18 @@ class GmailFetchService:
                     skipped_count += 1
                 else:
                     now = datetime.now(timezone.utc)
+                    class_at_str = classified.get("classified_at")
+                    if isinstance(class_at_str, datetime):
+                        classified_dt = class_at_str
+                    elif isinstance(class_at_str, str) and class_at_str.strip():
+                        try:
+                            s = class_at_str.strip().replace("Z", "+00:00")
+                            classified_dt = datetime.fromisoformat(s)
+                        except Exception:
+                            classified_dt = now
+                    else:
+                        classified_dt = now
+
                     email_doc = {
                         "user_id": user_id,
                         "message_id": message_id,
@@ -333,12 +345,12 @@ class GmailFetchService:
                         "subject": subject,
                         "snippet": raw.get("snippet", ""),
                         "sender": raw.get("sender") or raw.get("from") or raw.get("received_at"),
-                        "predicted_label": classified["predicted_label"],
-                        "prediction": classified["predicted_label"],
-                        "predicted_score": classified["predicted_score"],
-                        "confidence": classified["predicted_score"],
+                        "predicted_label": classified.get("predicted_label", "ham"),
+                        "prediction": classified.get("predicted_label", "ham"),
+                        "predicted_score": classified.get("predicted_score", 0.85),
+                        "confidence": classified.get("predicted_score", 0.85),
                         "fetch_time": now,
-                        "classified_at": datetime.fromisoformat(classified["classified_at"]),
+                        "classified_at": classified_dt,
                         "created_at": now,
                         "received_at": raw.get("received_at") or raw.get("sent_at"),
                         "sent_at": raw.get("sent_at") or raw.get("received_at"),

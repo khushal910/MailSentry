@@ -138,25 +138,37 @@ function AutoClassifierPage() {
 
             if (statusRes.status === "completed") {
               clearInterval(pollInterval);
-              const count = statusRes.classified || statusRes.processed;
-              setUnclassifiedEmails([]);
-              setSearchTerm("");
-              setPage(1);
+              const count = statusRes.classified ?? 0;
+              const skipped = statusRes.skipped ?? 0;
 
-              // Invalidate TanStack Query caches so History and Dashboard Stats auto-update immediately!
-              queryClient.invalidateQueries({ queryKey: ["history"] });
-              queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
+              // Force refetch and invalidate history query cache immediately!
+              await queryClient.resetQueries({ queryKey: ["history"] });
+              await queryClient.invalidateQueries({ queryKey: ["history"] });
+              await queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
 
-              toast.success(
-                `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
-                {
-                  duration: 5000,
-                  action: {
-                    label: "View History",
-                    onClick: () => navigate({ to: "/dashboard/history" }),
-                  },
-                }
-              );
+              if (count > 0) {
+                setUnclassifiedEmails([]);
+                setSearchTerm("");
+                setPage(1);
+
+                toast.success(
+                  `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
+                  {
+                    duration: 5000,
+                    action: {
+                      label: "View History",
+                      onClick: () => navigate({ to: "/dashboard/history" }),
+                    },
+                  }
+                );
+              } else if (skipped > 0) {
+                toast.error(
+                  `Classification completed, but ${skipped} email(s) failed to save. Please try again.`,
+                  { duration: 5000 }
+                );
+              } else {
+                toast.info("No emails were classified.");
+              }
               resolve();
             } else if (statusRes.status === "failed") {
               clearInterval(pollInterval);
