@@ -48,23 +48,23 @@ jobs:
           uv pip install --system -r requirements.txt
           uv pip install --system black isort ruff mypy pytest pytest-cov bandit pip-audit
 
-      - name: 5. Stage 3: Code Formatting Check (Black & isort)
+      - name: "5. Stage 3: Code Formatting Check (Black & isort)"
         run: |
           echo "Checking Python formatting with Black and isort..."
           black --check app tests
           isort --check-only app tests
 
-      - name: 6. Stage 4: Code Linting (Ruff)
+      - name: "6. Stage 4: Code Linting (Ruff)"
         run: |
           mkdir -p reports
           ruff check app tests | tee reports/ruff-report.txt
 
-      - name: 7. Stage 5: Type Checking (mypy)
+      - name: "7. Stage 5: Type Checking (mypy)"
         run: |
           mkdir -p reports
           mypy app --ignore-missing-imports | tee reports/mypy-report.txt || true
 
-      - name: 8. Stage 6: Automated Testing & Coverage (80% Minimum Threshold)
+      - name: "8. Stage 6: Automated Testing & Coverage (80% Minimum Threshold)"
         env:
           JWT_SECRET_KEY: "ci-secret-key-for-testing-only-mail-sentry-jwt"
           MONGO_URI: "mongodb://localhost:27017/mailsentry_ci_db"
@@ -78,18 +78,18 @@ jobs:
             --cov-report=xml:coverage.xml \
             --cov-fail-under=80 | tee reports/pytest-report.txt
 
-      - name: 9. Stage 7: Security Audit (Bandit & pip-audit)
+      - name: "9. Stage 7: Security Audit (Bandit & pip-audit)"
         run: |
           mkdir -p reports
           bandit -r app -ll --exclude tests | tee reports/bandit-report.txt
           pip-audit --desc on | tee reports/pip-audit-report.txt || echo "Non-critical dependency advisory logged"
 
-      - name: 10. Stage 8: ML Artifact & Pipeline Validation
+      - name: "10. Stage 8: ML Artifact & Pipeline Validation"
         run: |
           mkdir -p reports
           python scripts/validate_ml_artifacts.py | tee reports/ml-validation-report.txt
 
-      - name: 11. Stage 10: Backend Startup & Health Endpoint Probe
+      - name: "11. Stage 10: Backend Startup & Health Endpoint Probe"
         env:
           JWT_SECRET_KEY: "ci-secret-key-for-testing-only-mail-sentry-jwt"
           MONGO_URI: "mongodb://localhost:27017/mailsentry_ci_db"
@@ -167,26 +167,26 @@ jobs:
       - name: 3. Install Dependencies
         run: npm ci || npm install
 
-      - name: 4. Stage 3: Code Formatting Check (Prettier)
+      - name: "4. Stage 3: Code Formatting Check (Prettier)"
         run: npx prettier --check "src/**/*.{ts,tsx,css,json}"
 
-      - name: 5. Stage 4: Code Linting (ESLint)
+      - name: "5. Stage 4: Code Linting (ESLint)"
         run: |
           mkdir -p reports
           npm run lint | tee reports/eslint-report.txt
 
-      - name: 6. Stage 5: Type Checking (TypeScript tsc)
+      - name: "6. Stage 5: Type Checking (TypeScript tsc)"
         run: npx tsc --noEmit
 
-      - name: 7. Stage 6: Frontend Tests
+      - name: "7. Stage 6: Frontend Tests"
         run: npm run test
 
-      - name: 8. Stage 7: Dependency Security Audit (npm audit)
+      - name: "8. Stage 7: Dependency Security Audit (npm audit)"
         run: |
           mkdir -p reports
           npm audit --audit-level=high | tee reports/npm-audit-report.txt || true
 
-      - name: 9. Stage 9: Production Frontend Build
+      - name: "9. Stage 9: Production Frontend Build"
         run: npm run build
 
       - name: 10. Upload Frontend Reports Artifact
