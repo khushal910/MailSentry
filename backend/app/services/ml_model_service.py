@@ -136,40 +136,72 @@ class MLModelService:
 
     def load_latest_model(self, force_reload: bool = False) -> Optional[Any]:
         """
-        Loads the latest model file from disk.
+        Loads the latest model file from disk or PredictionEngine.
         Returns None if model file is missing or corrupted.
         """
         if not force_reload and MLModelService._cached_model is not None:
             return MLModelService._cached_model
 
+        # 1. Check latest_model.pkl or versioned *.pkl in models_dir root
         latest_filepath = os.path.join(self.models_dir, "latest_model.pkl")
-
-        # Find latest model file if latest_model.pkl is missing
         target_path = latest_filepath
         if not os.path.exists(target_path):
             pattern = os.path.join(self.models_dir, "*.pkl")
             all_files = glob.glob(pattern)
-            # Exclude auxiliary artifact files (preprocessing.pkl and label_encoder.pkl)
             files = [
                 f for f in all_files
                 if not os.path.basename(f).startswith("preprocessing")
                 and not os.path.basename(f).startswith("label_encoder")
             ]
-            if not files:
-                logger.warning(f"No model files found in '{self.models_dir}'.")
-                return None
-            files.sort(key=lambda f: os.path.getmtime(f), reverse=True)
-            target_path = files[0]
+            if files:
+                files.sort(key=lambda f: os.path.getmtime(f), reverse=True)
+                target_path = files[0]
 
+        if os.path.exists(target_path):
+            try:
+                model_obj = self.verify_model_integrity(target_path)
+                MLModelService._cached_model = model_obj
+                logger.info(f"Successfully loaded latest model from '{target_path}'.")
+                return model_obj
+            except Exception as e:
+                logger.error(f"Error loading model from '{target_path}': {str(e)}")
+
+        # 2. Check production directory (model.joblib or model.pkl)
+        prod_paths = [
+            os.path.join(self.models_dir, "production", "model", "model.joblib"),
+            os.path.join(self.models_dir, "production", "model", "model.pkl"),
+            os.path.join(self.models_dir, "production", "model.joblib"),
+            os.path.join(self.models_dir, "production", "model.pkl"),
+        ]
+        for p_path in prod_paths:
+            if os.path.exists(p_path):
+                try:
+                    model_obj = joblib.load(p_path)
+                    MLModelService._cached_model = model_obj
+                    logger.info(f"Successfully loaded production model from '{p_path}'.")
+                    return model_obj
+                except Exception as e:
+                    logger.error(f"Error loading model from '{p_path}': {str(e)}")
+
+        # 3. Try PredictionEngine singleton if metadata exists in models_dir
         try:
-            model_obj = self.verify_model_integrity(target_path)
-            MLModelService._cached_model = model_obj
-            logger.info(f"Successfully loaded latest model from '{target_path}'.")
-            return model_obj
+            has_meta = (
+                os.path.exists(os.path.join(self.models_dir, "metadata.json")) or
+                os.path.exists(os.path.join(self.models_dir, "production", "metadata.json")) or
+                os.path.exists(os.path.join(self.models_dir, "champion", "metadata.json"))
+            )
+            if has_meta:
+                engine = PredictionEngine(self.models_dir)
+                if engine.predictor is not None:
+                    predictor_model = getattr(engine.predictor, "model", engine.predictor)
+                    MLModelService._cached_model = predictor_model
+                    return predictor_model
         except Exception as e:
-            logger.error(f"Error loading model from '{target_path}': {str(e)}")
-            MLModelService._cached_model = None
-            return None
+            logger.debug(f"PredictionEngine lookup attempt: {e}")
+
+        logger.warning(f"No model files found in '{self.models_dir}'.")
+        MLModelService._cached_model = None
+        return None
 
     def get_model_or_raise(self) -> Any:
         """
@@ -218,9 +250,46 @@ class MLModelService:
 
     def classify_text(self, subject: str, body: str) -> Dict[str, Any]:
         """
-        Classifies email content using PredictionEngine singleton cached instance.
+        Classifies email content using active ML model or PredictionEngine singleton.
         Returns predicted_label, predicted_score, subject, and classified_at timestamp.
         """
+        model = self.load_latest_model()
+        if model is not None and not isinstance(model, PredictionEngine):
+            clean_text = MLPreprocessing.preprocess_email_text(subject, body)
+            preprocessor = self.load_preprocessor()
+            label_encoder = self.load_label_encoder()
+
+            if preprocessor is not None:
+                features = preprocessor.transform([clean_text])
+            else:
+                features = [clean_text]
+
+            preds = model.predict(features)
+            raw_label = preds[0] if len(preds) > 0 else "inbox"
+
+            if label_encoder is not None:
+                try:
+                    label = str(label_encoder.inverse_transform([raw_label])[0])
+                except Exception:
+                    label = str(raw_label)
+            else:
+                label = str(raw_label)
+
+            score = 0.85
+            if hasattr(model, "predict_proba"):
+                try:
+                    probas = model.predict_proba(features)[0]
+                    score = float(max(probas))
+                except Exception:
+                    pass
+
+            return {
+                "subject": (subject or "")[:255],
+                "predicted_label": label,
+                "predicted_score": score,
+                "classified_at": datetime.now(timezone.utc).isoformat(),
+            }
+
         engine = PredictionEngine(self.models_dir)
         return engine.predict(subject=subject, body=body)
 

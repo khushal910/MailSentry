@@ -19,6 +19,7 @@ async def classify_email_endpoint(
     Requires valid JWT authentication.
     """
     model_service = MLModelService()
+    model_service.get_model_or_raise()
     result = model_service.classify_text(subject=request.subject, body=request.email_body)
 
     return return_response(

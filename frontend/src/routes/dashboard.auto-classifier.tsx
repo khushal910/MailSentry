@@ -481,7 +481,7 @@ function AutoClassifierPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    <AnimatePresence mode="wait">
+                    <AnimatePresence>
                       {paginatedEmails.map((email, index) => {
                         const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
                         return (

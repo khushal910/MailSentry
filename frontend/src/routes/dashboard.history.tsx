@@ -187,7 +187,7 @@ function HistoryPage() {
                 </tr>
               </thead>
               <tbody>
-                <AnimatePresence mode="wait">
+                <AnimatePresence>
                   {emails.map((email, index) => {
                     const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
                     return (
