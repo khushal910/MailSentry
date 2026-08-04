@@ -69,12 +69,12 @@ jobs:
       - name: 1. Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 2. Setup Node.js (20) & Cache
+      - name: 2. Setup Node.js (22) & Cache
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: "frontend/package*.json"
 
       - name: 3. Install Dependencies & Deploy via Official Vercel CLI
         working-directory: ./frontend
