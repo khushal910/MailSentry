@@ -17,6 +17,8 @@ import { formatConfidence, formatDate, truncate } from "@/utils/format";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePredictiveHistory } from "@/hooks/usePredictiveHistory";
 import { HighlightText } from "@/components/HighlightText";
+import { GmailOpenButton } from "@/components/GmailOpenButton";
+import { getGmailUrl, openGmailInNewTab } from "@/utils/gmail";
 
 export const Route = createFileRoute("/dashboard/history")({
   head: () => ({
@@ -178,18 +180,20 @@ function HistoryPage() {
               <thead>
                 <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
                   <th className="pb-3 text-left font-medium w-[5%]">#</th>
-                  <th className="pb-3 text-left font-medium w-[17%]">Email Sent Date</th>
-                  <th className="pb-3 text-left font-medium w-[26%]">Subject</th>
-                  <th className="pb-3 text-left font-medium w-[24%]">Snippet</th>
-                  <th className="pb-3 text-left font-medium w-[12%]">Category</th>
+                  <th className="pb-3 text-left font-medium w-[16%]">Email Sent Date</th>
+                  <th className="pb-3 text-left font-medium w-[24%]">Subject</th>
+                  <th className="pb-3 text-left font-medium w-[22%]">Snippet</th>
+                  <th className="pb-3 text-left font-medium w-[11%]">Category</th>
                   <th className="pb-3 text-left font-medium w-[8%]">Score</th>
-                  <th className="pb-3 text-right font-medium w-[8%]">Classified</th>
+                  <th className="pb-3 text-left font-medium w-[8%]">Classified</th>
+                  <th className="pb-3 text-center font-medium w-[6%]">Open</th>
                 </tr>
               </thead>
               <tbody>
                 <AnimatePresence>
                   {emails.map((email, index) => {
                     const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
+                    const gmailUrl = getGmailUrl(email.message_id, email.thread_id);
                     return (
                       <motion.tr
                         key={email.message_id || index}
@@ -197,7 +201,15 @@ function HistoryPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ delay: index * 0.02 }}
-                        className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
+                        onClick={(e) => {
+                          // Prevent triggering if user clicked a button or interactive child
+                          const target = e.target as HTMLElement;
+                          if (target.closest("button, a, input, select, [role='button']")) return;
+                          if (gmailUrl) openGmailInNewTab(gmailUrl);
+                        }}
+                        className={`border-b border-border/40 last:border-0 transition-colors group ${
+                          gmailUrl ? "hover:bg-muted/30 cursor-pointer" : "hover:bg-muted/10"
+                        }`}
                       >
                         <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground">
                           {rowNumber}
@@ -225,8 +237,14 @@ function HistoryPage() {
                             ? formatConfidence(email.predicted_score)
                             : "—"}
                         </td>
-                        <td className="py-3 text-right text-muted-foreground text-xs">
+                        <td className="py-3 text-left text-muted-foreground text-xs">
                           {email.classified_at ? formatDate(email.classified_at) : "—"}
+                        </td>
+                        <td className="py-3 text-center">
+                          <GmailOpenButton
+                            messageId={email.message_id}
+                            threadId={email.thread_id}
+                          />
                         </td>
                       </motion.tr>
                     );

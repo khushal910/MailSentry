@@ -25,6 +25,8 @@ import { googleAuthApi } from "@/services/googleAuthApi";
 import { formatDate, truncate } from "@/utils/format";
 import { useDebounce } from "@/hooks/useDebounce";
 import { HighlightText } from "@/components/HighlightText";
+import { GmailOpenButton } from "@/components/GmailOpenButton";
+import { getGmailUrl, openGmailInNewTab } from "@/utils/gmail";
 
 export const Route = createFileRoute("/dashboard/auto-classifier")({
   head: () => ({
@@ -486,24 +488,35 @@ function AutoClassifierPage() {
                   <thead>
                     <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
                       <th className="pb-3 text-left font-medium w-[6%]">#</th>
-                      <th className="pb-3 text-left font-medium w-[30%]">Subject</th>
-                      <th className="pb-3 text-left font-medium w-[34%]">Preview</th>
-                      <th className="pb-3 text-left font-medium w-[14%]">Status</th>
-                      <th className="pb-3 text-right font-medium w-[16%]">Email Sent Date</th>
+                      <th className="pb-3 text-left font-medium w-[28%]">Subject</th>
+                      <th className="pb-3 text-left font-medium w-[30%]">Preview</th>
+                      <th className="pb-3 text-left font-medium w-[12%]">Status</th>
+                      <th className="pb-3 text-left font-medium w-[18%]">Email Sent Date</th>
+                      <th className="pb-3 text-center font-medium w-[6%]">Open</th>
                     </tr>
                   </thead>
                   <tbody>
                     <AnimatePresence>
                       {paginatedEmails.map((email, index) => {
                         const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
+                        const msgId = email.message_id || email.gmail_message_id;
+                        const gmailUrl = getGmailUrl(msgId, email.thread_id);
                         return (
                           <motion.tr
-                            key={email.message_id}
+                            key={msgId || index}
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ delay: index * 0.02 }}
-                            className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
+                            onClick={(e) => {
+                              // Prevent triggering if user clicked an interactive child element
+                              const target = e.target as HTMLElement;
+                              if (target.closest("button, a, input, select, [role='button']")) return;
+                              if (gmailUrl) openGmailInNewTab(gmailUrl);
+                            }}
+                            className={`border-b border-border/40 last:border-0 transition-colors group ${
+                              gmailUrl ? "hover:bg-muted/30 cursor-pointer" : "hover:bg-muted/10"
+                            }`}
                           >
                             <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground">
                               {rowNumber}
@@ -527,8 +540,14 @@ function AutoClassifierPage() {
                                 Unclassified
                               </Badge>
                             </td>
-                            <td className="py-3 text-right text-muted-foreground text-xs">
+                            <td className="py-3 text-left text-muted-foreground text-xs pr-2">
                               {email.sent_at || email.received_at ? formatDate(email.sent_at || email.received_at!) : "—"}
+                            </td>
+                            <td className="py-3 text-center">
+                              <GmailOpenButton
+                                messageId={msgId}
+                                threadId={email.thread_id}
+                              />
                             </td>
                           </motion.tr>
                         );
