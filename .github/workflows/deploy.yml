@@ -58,26 +58,39 @@ jobs:
           fi
 
   # =========================================================================
-  # JOB 3: AUTOMATED FRONTEND DEPLOYMENT TO VERCEL
+  # JOB 3: AUTOMATED FRONTEND DEPLOYMENT VIA OFFICIAL VERCEL CLI
   # =========================================================================
   deploy-frontend:
-    name: Deploy Frontend Application (Vercel)
+    name: Deploy Frontend Application (Official Vercel CLI)
     needs: [pre-deploy-ci]
     runs-on: ubuntu-latest
 
     steps:
       - name: 1. Checkout Repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2 - Official GitHub checkout action
 
-      - name: 2. Deploy Frontend to Vercel Production
-        uses: amondnet/vercel-action@fe89b43d528b12e3e15b3c58f0bc2754fa7845ec # v25.2.0 - Vercel deployment action pinned to commit SHA
+      - name: 2. Setup Node.js (20) & Cache
+        uses: actions/setup-node@39370e3970a688276ed703d6388b27295da39454 # v4.1.0 - Official setup-node action
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: "--prod"
-          working-directory: ./frontend
-        continue-on-error: true
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 3. Install Dependencies & Deploy via Official Vercel CLI
+        working-directory: ./frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "VERCEL_TOKEN secret is not set. Vercel's automatic GitHub integration handles deployment automatically."
+          else
+            echo "Deploying frontend via Official Vercel CLI..."
+            npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+            npx vercel build --prod --token=$VERCEL_TOKEN
+            npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+          fi
 
   # =========================================================================
   # JOB 4: POST-DEPLOYMENT HEALTH & INFERENCE VERIFICATION
@@ -131,7 +144,7 @@ jobs:
           echo "| Component | Status | Environment | Target |" >> $GITHUB_STEP_SUMMARY
           echo "| --- | --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
           echo "| **Backend API** | ✅ Deployed | Production | Render Cloud |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Frontend Web App** | ✅ Deployed | Production | Vercel Edge |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Frontend Web App** | ✅ Deployed | Production | Vercel Edge (Official CLI) |" >> $GITHUB_STEP_SUMMARY
           echo "| **ML Model Engine** | ✅ Validated | Production | In-Memory Cached |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Commit SHA:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
