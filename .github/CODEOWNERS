@@ -1,0 +1,22 @@
+# =========================================================================
+# MailSentry Enterprise Code Owners & Security Reviewers
+# =========================================================================
+
+# Global Default Owner
+*                   @khushal910
+
+# Backend Services & FastAPI Core
+/backend/           @khushal910
+/backend/app/       @khushal910
+
+# Machine Learning Models, Training & Inference Engine
+/backend/models/    @khushal910
+/backend/scripts/   @khushal910
+
+# Frontend Web Application (React, Vite, TanStack)
+/frontend/          @khushal910
+/frontend/src/      @khushal910
+
+# DevOps, CI/CD Workflows & Security Policies
+/.github/           @khushal910
+/.github/workflows/ @khushal910

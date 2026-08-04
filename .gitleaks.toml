@@ -1,0 +1,40 @@
+# =========================================================================
+# MailSentry Gitleaks Secret Detection Configuration
+# =========================================================================
+# Documentation & Maintenance Guide:
+# - To ignore a specific false positive secret fingerprint across commits:
+#   Add the fingerprint string to [allowlist.fingerprints] below.
+# - To exclude specific files or directories from secret scanning:
+#   Add regex patterns to [allowlist.paths] below.
+# - Run locally via Docker/CLI: gitleaks detect --config=.gitleaks.toml -v
+# =========================================================================
+
+title = "MailSentry Gitleaks Configuration"
+
+[allowlist]
+description = "Global allowlist for documentation, sample files, and mock unit test fixtures"
+
+# File paths to exclude from secret scanning
+paths = [
+  '''^\.env\.example$''',
+  '''^README\.md$''',
+  '''^\.github/.*\.md$''',
+  '''^docs/.*''',
+  '''^backend/tests/.*''',
+  '''^frontend/package-lock\.json$''',
+  '''^backend/requirements\.txt$''',
+]
+
+# Regex patterns for mock strings, placeholders, and synthetic test tokens
+regexes = [
+  '''ci-secret-key-for-testing-only-mail-sentry-jwt''',
+  '''mongodb://localhost:27017/.*''',
+  '''YOUR_.*_HERE''',
+  '''00000000-0000-0000-0000-000000000000''',
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\..*''',
+]
+
+# Specific commit fingerprints to ignore if false positives arise
+fingerprints = [
+  # Example: "a1b2c3d4e5f6..."
+]

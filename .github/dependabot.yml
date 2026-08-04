@@ -1,0 +1,46 @@
+# =========================================================================
+# MailSentry Dependabot Dependency Update Configuration
+# =========================================================================
+
+version: 2
+updates:
+  # 1. Frontend npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "khushal910"
+    commit-message:
+      prefix: "chore(deps-frontend)"
+      include: "scope"
+
+  # 2. Backend Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:30"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "khushal910"
+    commit-message:
+      prefix: "chore(deps-backend)"
+      include: "scope"
+
+  # 3. GitHub Actions Workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "khushal910"
+    commit-message:
+      prefix: "ci(github-actions)"

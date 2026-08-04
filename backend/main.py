@@ -69,5 +69,16 @@ app.include_router(model_router, prefix="/api", tags=["Production Model Base"])
 
 
 
+@app.get("/health", tags=["Health"])
+@app.get("/api/health", tags=["Health"])
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "MailSentry API",
+        "version": "1.0.0",
+        "database": MongoDB.client is not None
+    }
+
+
 if(__name__ == "__main__"):
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

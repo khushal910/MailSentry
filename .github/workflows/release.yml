@@ -1,0 +1,47 @@
+# =========================================================================
+# MailSentry Enterprise Release & Tagging Workflow
+# =========================================================================
+
+name: MailSentry Production Tag & Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release Version Tag (e.g. v1.2.0)"
+        required: true
+        default: "v1.2.0"
+
+jobs:
+  create-release:
+    name: Generate Production GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2 - Official GitHub checkout action pinned to commit SHA
+        with:
+          fetch-depth: 0
+
+      - name: 2. Determine Release Tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "RELEASE_TAG=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_TAG=${github_ref#refs/tags/}" >> $GITHUB_ENV
+          fi
+
+      - name: 3. Generate Changelog & Create GitHub Release
+        uses: softprops/action-gh-release@c95fe0f26b377c9cb6211cf4e334a1796d13d7c5 # v2.2.1 - Release action pinned to commit SHA
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "MailSentry Security & Classifier Release ${{ env.RELEASE_TAG }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
