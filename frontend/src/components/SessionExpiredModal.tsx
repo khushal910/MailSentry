@@ -7,11 +7,7 @@ interface SessionExpiredModalProps {
   onConfirm: () => void;
 }
 
-export function SessionExpiredModal({
-  isOpen,
-  redirectUrl,
-  onConfirm,
-}: SessionExpiredModalProps) {
+export function SessionExpiredModal({ isOpen, redirectUrl, onConfirm }: SessionExpiredModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -27,7 +23,8 @@ export function SessionExpiredModal({
           </h3>
 
           <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-            Your login session has expired or your security token is no longer valid. Please sign in again to continue using MailSentry.
+            Your login session has expired or your security token is no longer valid. Please sign in
+            again to continue using MailSentry.
           </p>
 
           {redirectUrl && (

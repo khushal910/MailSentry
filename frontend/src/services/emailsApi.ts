@@ -14,7 +14,6 @@ export interface ClassifiedEmail {
   sent_at?: string | null;
 }
 
-
 export interface GetEmailsResponse {
   emails: ClassifiedEmail[];
   page: number;
@@ -30,7 +29,6 @@ export interface FetchResult {
   skipped: number;
   new_emails?: ClassifiedEmail[];
 }
-
 
 export interface UnclassifiedEmail {
   message_id: string;
@@ -65,14 +63,15 @@ export interface JobStatusResponse {
   error?: string | null;
 }
 
-
 export const emailsApi = {
   /**
    * POST /api/gmail/fetch-unclassified
    * Fetches unclassified raw emails from Gmail (emails not yet in MongoDB).
    */
   async fetchUnclassifiedEmails(): Promise<FetchUnclassifiedResult> {
-    const { data } = await apiClient.post<{ data: FetchUnclassifiedResult }>("/api/gmail/fetch-unclassified");
+    const { data } = await apiClient.post<{ data: FetchUnclassifiedResult }>(
+      "/api/gmail/fetch-unclassified",
+    );
     return data.data ?? { fetched: 0, unclassified_emails: [] };
   },
 
@@ -81,7 +80,9 @@ export const emailsApi = {
    * Starts an asynchronous background classification job and returns immediately with job_id.
    */
   async startClassifyJob(emails: UnclassifiedEmail[]): Promise<JobStatusResponse> {
-    const { data } = await apiClient.post<{ data: JobStatusResponse }>("/api/gmail/classify-job", { emails });
+    const { data } = await apiClient.post<{ data: JobStatusResponse }>("/api/gmail/classify-job", {
+      emails,
+    });
     return data.data;
   },
 
@@ -99,7 +100,9 @@ export const emailsApi = {
    * Classifies specified unclassified emails using ML model, saves predictions to MongoDB, and returns classified records.
    */
   async classifyEmails(emails: UnclassifiedEmail[]): Promise<ClassifyBatchResult> {
-    const { data } = await apiClient.post<{ data: ClassifyBatchResult }>("/api/gmail/classify", { emails });
+    const { data } = await apiClient.post<{ data: ClassifyBatchResult }>("/api/gmail/classify", {
+      emails,
+    });
     return data.data ?? { classified: 0, skipped: 0, classified_emails: [] };
   },
 
@@ -116,7 +119,12 @@ export const emailsApi = {
    * GET /api/emails
    * Returns paginated list of classified emails for the authenticated user with optional search query.
    */
-  async getEmails(params?: { limit?: number; page?: number; label?: string; search?: string }): Promise<GetEmailsResponse> {
+  async getEmails(params?: {
+    limit?: number;
+    page?: number;
+    label?: string;
+    search?: string;
+  }): Promise<GetEmailsResponse> {
     const { data } = await apiClient.get<{ data: GetEmailsResponse }>("/api/emails", {
       params: {
         limit: params?.limit ?? 20,
@@ -128,4 +136,3 @@ export const emailsApi = {
     return data.data;
   },
 };
-

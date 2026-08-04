@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+
 from app.repositories.dashboard_repository import DashboardRepository
 from app.schemas.dashboard import DashboardStatsResponse
 
@@ -11,7 +11,7 @@ class DashboardService:
     Service layer for retrieving and preparing dashboard statistics for authenticated users.
     """
 
-    def __init__(self, repo: Optional[DashboardRepository] = None):
+    def __init__(self, repo: DashboardRepository | None = None):
         self.repo = repo if repo is not None else DashboardRepository()
 
     def get_dashboard_stats(self, user_id: str) -> DashboardStatsResponse:

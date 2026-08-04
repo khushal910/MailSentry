@@ -54,25 +54,22 @@ export function useGlobalSearch() {
     }
   }, []);
 
-  const addRecentSearch = useCallback(
-    (term: string) => {
-      const clean = term.trim();
-      if (!clean) return;
-      setRecentSearches((prev) => {
-        const filtered = prev.filter((s) => s.toLowerCase() !== clean.toLowerCase());
-        const updated = [clean, ...filtered].slice(0, MAX_RECENT_SEARCHES);
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
-          } catch {
-            // ignore
-          }
+  const addRecentSearch = useCallback((term: string) => {
+    const clean = term.trim();
+    if (!clean) return;
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((s) => s.toLowerCase() !== clean.toLowerCase());
+      const updated = [clean, ...filtered].slice(0, MAX_RECENT_SEARCHES);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+        } catch {
+          // ignore
         }
-        return updated;
-      });
-    },
-    []
-  );
+      }
+      return updated;
+    });
+  }, []);
 
   const clearRecentSearches = useCallback(() => {
     saveRecentSearches([]);
@@ -105,34 +102,44 @@ export function useGlobalSearch() {
 
   // Execute Search
   useEffect(() => {
-    if (!debouncedQuery.trim()) {
-      setGroups([]);
-      setIsLoading(false);
-      setSelectedIndex(0);
-      return;
-    }
-
     let isMounted = true;
-    setIsLoading(true);
 
-    executeGlobalSearch(debouncedQuery, {
-      navigate,
-      logout,
-      theme,
-      toggleTheme,
-    })
-      .then((resGroups) => {
+    if (!debouncedQuery.trim()) {
+      queueMicrotask(() => {
         if (isMounted) {
-          setGroups(resGroups);
+          setGroups([]);
+          setIsLoading(false);
           setSelectedIndex(0);
         }
-      })
-      .catch((err) => {
-        console.error("Global search error:", err);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
       });
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    queueMicrotask(() => {
+      if (!isMounted) return;
+      setIsLoading(true);
+
+      void executeGlobalSearch(debouncedQuery, {
+        navigate,
+        logout,
+        theme,
+        toggleTheme,
+      })
+        .then((resGroups) => {
+          if (isMounted) {
+            setGroups(resGroups);
+            setSelectedIndex(0);
+          }
+        })
+        .catch((err) => {
+          console.error("Global search error:", err);
+        })
+        .finally(() => {
+          if (isMounted) setIsLoading(false);
+        });
+    });
 
     return () => {
       isMounted = false;
@@ -178,7 +185,7 @@ export function useGlobalSearch() {
         }
       }
     },
-    [isOpen, flatItems, selectedIndex, query, addRecentSearch, closeSearch]
+    [isOpen, flatItems, selectedIndex, query, addRecentSearch, closeSearch],
   );
 
   const selectAndExecute = useCallback(
@@ -187,7 +194,7 @@ export function useGlobalSearch() {
       closeSearch();
       item.action();
     },
-    [query, addRecentSearch, closeSearch]
+    [query, addRecentSearch, closeSearch],
   );
 
   return {

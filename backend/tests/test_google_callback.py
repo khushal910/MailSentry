@@ -1,10 +1,12 @@
 import unittest
 from unittest.mock import MagicMock
-from fastapi.testclient import TestClient
+
 from fastapi import HTTPException
-from main import app
+from fastapi.testclient import TestClient
+
 from app.dependencies.google_auth_deps import get_google_oauth_service
 from app.services.auth.google_oauth_service import GoogleOAuthService
+from main import app
 
 
 class TestGoogleCallbackValidation(unittest.TestCase):
@@ -33,7 +35,9 @@ class TestGoogleCallbackValidation(unittest.TestCase):
         mock_service.exchange_code_for_tokens = mock_exchange
         app.dependency_overrides[get_google_oauth_service] = lambda: mock_service
 
-        response = self.client.get("/auth/google/callback?code=invalid_code_123&format=json")
+        response = self.client.get(
+            "/auth/google/callback?code=invalid_code_123&format=json"
+        )
         self.assertEqual(response.status_code, 400)
 
     def test_callback_invalid_id_token(self):

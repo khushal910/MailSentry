@@ -51,12 +51,8 @@ function ContactPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand">
-            Contact
-          </p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
-            Get in touch
-          </h1>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand">Contact</p>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">Get in touch</h1>
           <p className="mt-4 text-muted-foreground leading-relaxed">
             Questions, partnerships, security disclosures — we read everything.
           </p>
@@ -88,9 +84,7 @@ function ContactPage() {
               className="bg-background/50 border-border/60 focus:border-brand"
               {...register("name", { required: "Name is required", maxLength: 100 })}
             />
-            {errors.name && (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
-            )}
+            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -104,9 +98,7 @@ function ContactPage() {
                 pattern: { value: /^\S+@\S+\.\S+$/, message: "Invalid email" },
               })}
             />
-            {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
-            )}
+            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="message">Message</Label>
@@ -120,9 +112,7 @@ function ContactPage() {
                 maxLength: 1000,
               })}
             />
-            {errors.message && (
-              <p className="text-xs text-destructive">{errors.message.message}</p>
-            )}
+            {errors.message && <p className="text-xs text-destructive">{errors.message.message}</p>}
           </div>
           <Button
             type="submit"

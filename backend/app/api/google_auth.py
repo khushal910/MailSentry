@@ -1,12 +1,13 @@
 import logging
 import urllib.parse
-from fastapi import APIRouter, Request, Response, Query, Depends, HTTPException, status
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.core.config import settings
 from app.dependencies.google_auth_deps import get_google_oauth_service
 from app.services.auth.google_oauth_service import GoogleOAuthService
-from app.utils.main_utile import return_response, create_access_token, set_auth_cookie
+from app.utils.main_utile import create_access_token, return_response, set_auth_cookie
 
 logger = logging.getLogger("mailsentry.google_oauth.router")
 
@@ -37,7 +38,7 @@ async def google_login(
     request: Request,
     user_id: str | None = Query(None),
     google_email: str | None = Query(None),
-    service: GoogleOAuthService = Depends(get_google_oauth_service)
+    service: GoogleOAuthService = Depends(get_google_oauth_service),
 ):
     """
     GET /auth/google/login
@@ -55,13 +56,16 @@ async def google_login(
             if token:
                 try:
                     from app.utils.main_utile import decode_token
+
                     payload = decode_token(token)
                     user_id = payload.get("user_id") or payload.get("sub")
                 except Exception:
                     pass
 
         # 1. Build the Google authorization URL (also returns the raw state string)
-        state, auth_url = service.generate_auth_url_with_state(user_id=user_id, google_email=google_email)
+        state, auth_url = service.generate_auth_url_with_state(
+            user_id=user_id, google_email=google_email
+        )
 
         # 2. Redirect the browser to Google's consent screen / sign-in screen
         redirect = RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
@@ -71,10 +75,10 @@ async def google_login(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error initiating Google OAuth login: {str(e)}", exc_info=True)
+        logger.error(f"Error initiating Google OAuth login: {e!s}", exc_info=True)
         return return_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Error initiating Google OAuth login: {str(e)}"
+            message=f"Error initiating Google OAuth login: {e!s}",
         )
 
 
@@ -106,9 +110,11 @@ async def google_callback(
         if format == "json":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Google authorization failed: {error}"
+                detail=f"Google authorization failed: {error}",
             )
-        error_url = f"{frontend_base}/login?oauth_error={urllib.parse.quote(str(error))}"
+        error_url = (
+            f"{frontend_base}/login?oauth_error={urllib.parse.quote(str(error))}"
+        )
         return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
 
     if not code or not code.strip():
@@ -116,7 +122,7 @@ async def google_callback(
         if format == "json":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Authorization code is missing"
+                detail="Authorization code is missing",
             )
         error_url = f"{frontend_base}/login?oauth_error=missing_code"
         return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
@@ -150,12 +156,15 @@ async def google_callback(
         if token:
             try:
                 from app.utils.main_utile import decode_token
+
                 payload = decode_token(token)
                 logged_in_user_id = payload.get("user_id") or payload.get("sub")
             except Exception:
                 pass
 
-        user_doc = service.find_or_create_user(user_info, current_user_id=logged_in_user_id)
+        user_doc = service.find_or_create_user(
+            user_info, current_user_id=logged_in_user_id
+        )
         user_id = str(user_doc["_id"])
         username = user_doc["username"]
         logger.info("Step 4 OK: user_id=%s username=%s", user_id, username)
@@ -189,7 +198,7 @@ async def google_callback(
                         "role": user_doc.get("role", "user"),
                         "google_connected": True,
                     }
-                }
+                },
             )
             set_auth_cookie(response, jwt_token)
             return res
@@ -198,7 +207,9 @@ async def google_callback(
         encoded_token = urllib.parse.quote(jwt_token, safe="")
         redirect_url = f"{frontend_base}/auth/callback?token={encoded_token}"
 
-        redirect_resp = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+        redirect_resp = RedirectResponse(
+            url=redirect_url, status_code=status.HTTP_302_FOUND
+        )
         logger.info(
             f"Google OAuth successful for user_id={user_id}. "
             f"Redirecting to frontend callback at {frontend_base}/auth/callback"
@@ -210,14 +221,22 @@ async def google_callback(
             raise he
         logger.warning(
             "HTTPException in Google OAuth callback: status=%s detail=%s",
-            he.status_code, he.detail
+            he.status_code,
+            he.detail,
         )
-        error_url = f"{frontend_base}/login?oauth_error={urllib.parse.quote(str(he.detail))}"
+        error_url = (
+            f"{frontend_base}/login?oauth_error={urllib.parse.quote(str(he.detail))}"
+        )
         return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
     except Exception as e:
         if format == "json":
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Google server error: {str(e)}")
-        logger.error("Unexpected error in Google OAuth callback: %s", str(e), exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Google server error: {e!s}",
+            )
+        logger.error(
+            "Unexpected error in Google OAuth callback: %s", str(e), exc_info=True
+        )
         error_url = f"{frontend_base}/login?oauth_error=server_error"
         return RedirectResponse(url=error_url, status_code=status.HTTP_302_FOUND)
 
@@ -247,6 +266,7 @@ async def set_token(
 
         # Validate the token is a real, unexpired JWT before setting it as a cookie
         from app.utils.main_utile import decode_token
+
         decode_token(token)  # raises HTTPException 401 if invalid/expired
 
         set_auth_cookie(response, token)
@@ -256,7 +276,7 @@ async def set_token(
     except HTTPException as he:
         return return_response(status_code=he.status_code, message=he.detail)
     except Exception as e:
-        logger.error(f"Error in /auth/google/set-token: {str(e)}")
+        logger.error(f"Error in /auth/google/set-token: {e!s}")
         return return_response(status_code=500, message="Failed to set token")
 
 
@@ -264,7 +284,7 @@ async def set_token(
 async def refresh_google_token(
     request: Request,
     google_email: str | None = Query(None),
-    service: GoogleOAuthService = Depends(get_google_oauth_service)
+    service: GoogleOAuthService = Depends(get_google_oauth_service),
 ):
     """
     POST /auth/google/refresh-token
@@ -288,10 +308,12 @@ async def refresh_google_token(
         return return_response(
             status_code=200,
             message="Google access token refreshed successfully",
-            data={"access_token": fresh_access_token, "google_email": email}
+            data={"access_token": fresh_access_token, "google_email": email},
         )
     except HTTPException as he:
         return return_response(status_code=he.status_code, message=he.detail)
     except Exception as e:
-        logger.error(f"Error in /auth/google/refresh-token: {str(e)}")
-        return return_response(status_code=500, message="Failed to refresh Google access token")
+        logger.error(f"Error in /auth/google/refresh-token: {e!s}")
+        return return_response(
+            status_code=500, message="Failed to refresh Google access token"
+        )

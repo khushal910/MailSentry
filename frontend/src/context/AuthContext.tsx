@@ -18,7 +18,11 @@ interface AuthContextValue {
   isLoading: boolean;
   isSessionExpired: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
-  signup: (name: string, email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  signup: (
+    name: string,
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   setUser: (user: AuthUser | null) => void;
@@ -34,17 +38,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [redirectUrl, setRedirectUrl] = useState<string>("");
   const queryClient = useQueryClient();
 
-  const triggerSessionExpired = useCallback((expiredUrl?: string) => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-    }
-    queryClient.clear();
-    setUser(null);
-    if (expiredUrl && !expiredUrl.includes("/login")) {
-      setRedirectUrl(expiredUrl);
-    }
-    setIsSessionExpired(true);
-  }, [queryClient]);
+  const triggerSessionExpired = useCallback(
+    (expiredUrl?: string) => {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+      }
+      queryClient.clear();
+      setUser(null);
+      if (expiredUrl && !expiredUrl.includes("/login")) {
+        setRedirectUrl(expiredUrl);
+      }
+      setIsSessionExpired(true);
+    },
+    [queryClient],
+  );
 
   useEffect(() => {
     setSessionExpiredHandler((expiredPath) => {
@@ -70,26 +77,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    let isMounted = true;
+    void (async () => {
+      if (isMounted) {
+        await refresh();
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
   }, [refresh]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await authApi.login({ email, password });
-    if (res.success) {
-      setIsSessionExpired(false);
-      await refresh();
-    }
-    return { success: res.success, message: res.message };
-  }, [refresh]);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const res = await authApi.login({ email, password });
+      if (res.success) {
+        setIsSessionExpired(false);
+        await refresh();
+      }
+      return { success: res.success, message: res.message };
+    },
+    [refresh],
+  );
 
-  const signup = useCallback(async (name: string, email: string, password: string) => {
-    const res = await authApi.register({ name, email, password });
-    if (res.success) {
-      setIsSessionExpired(false);
-      await refresh();
-    }
-    return { success: res.success, message: res.message };
-  }, [refresh]);
+  const signup = useCallback(
+    async (name: string, email: string, password: string) => {
+      const res = await authApi.register({ name, email, password });
+      if (res.success) {
+        setIsSessionExpired(false);
+        await refresh();
+      }
+      return { success: res.success, message: res.message };
+    },
+    [refresh],
+  );
 
   const logout = useCallback(async () => {
     try {

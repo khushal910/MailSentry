@@ -1,7 +1,9 @@
 import unittest
-from datetime import datetime, timezone, timedelta
-from unittest.mock import MagicMock, patch
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock
+
 from bson import ObjectId
+
 from app.repositories.google_account_repository import GoogleAccountRepository
 
 
@@ -25,7 +27,7 @@ class TestGoogleAccountPersistence(unittest.TestCase):
         self.mock_accounts_col.insert_one.return_value = MagicMock(inserted_id=fake_id)
 
         now = datetime.now(timezone.utc)
-        result = self.repo.upsert_account(
+        self.repo.upsert_account(
             google_email="user@gmail.com",
             google_user_id="g_12345",
             user_id="user_6789",

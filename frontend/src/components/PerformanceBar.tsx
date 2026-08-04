@@ -63,11 +63,13 @@ export function VerticalPerformanceChart({
                   <span className="font-extrabold text-white">{m.label} Comparison</span>
                   {isCurrentBetter ? (
                     <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Trophy className="h-3 w-3 text-emerald-400" /> Current Wins (+{diff.toFixed(2)}%)
+                      <Trophy className="h-3 w-3 text-emerald-400" /> Current Wins (+
+                      {diff.toFixed(2)}%)
                     </span>
                   ) : isPrevBetter ? (
                     <span className="text-[10px] font-black text-indigo-400 bg-indigo-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Scale className="h-3 w-3 text-indigo-400" /> Previous Higher ({diff.toFixed(2)}%)
+                      <Scale className="h-3 w-3 text-indigo-400" /> Previous Higher (
+                      {diff.toFixed(2)}%)
                     </span>
                   ) : (
                     <span className="text-[10px] font-black text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
@@ -78,11 +80,13 @@ export function VerticalPerformanceChart({
 
                 <div className="flex items-center gap-4 text-[11px] font-mono pt-0.5">
                   <span className="text-slate-300">
-                    {previousVersionTag}: <strong className="text-indigo-300">{prevVal.toFixed(2)}%</strong>
+                    {previousVersionTag}:{" "}
+                    <strong className="text-indigo-300">{prevVal.toFixed(2)}%</strong>
                   </span>
                   <span className="text-slate-500">vs</span>
                   <span className="text-emerald-400">
-                    {currentVersionTag}: <strong className="text-emerald-300">{currVal.toFixed(2)}%</strong>
+                    {currentVersionTag}:{" "}
+                    <strong className="text-emerald-300">{currVal.toFixed(2)}%</strong>
                   </span>
                 </div>
               </div>

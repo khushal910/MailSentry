@@ -22,10 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export const Route = createFileRoute("/auth/callback")({
   head: () => ({
-    meta: [
-      { title: "Signing in… — MailSentry" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Signing in… — MailSentry" }, { name: "robots", content: "noindex" }],
   }),
   component: OAuthCallbackPage,
 });
@@ -89,10 +86,9 @@ function OAuthCallbackPage() {
         // so /auth/me returns the user, isAuthenticated becomes true before any route
         // guard runs, and the dashboard renders correctly.
         window.location.replace("/dashboard");
-
-      } catch (err: any) {
+      } catch (err: unknown) {
         const message =
-          err?.message || "Something went wrong during Google sign-in.";
+          err instanceof Error ? err.message : "Something went wrong during Google sign-in.";
         console.error("[OAuthCallback] error:", err);
         toast.error(message);
         navigate({ to: "/login" });
@@ -103,7 +99,6 @@ function OAuthCallbackPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4 text-center">
@@ -112,9 +107,7 @@ function OAuthCallbackPage() {
           <div className="absolute inset-0 rounded-full border-4 border-muted" />
           <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-brand" />
         </div>
-        <p className="text-sm font-medium text-muted-foreground">
-          Completing Google sign-in…
-        </p>
+        <p className="text-sm font-medium text-muted-foreground">Completing Google sign-in…</p>
       </div>
     </div>
   );

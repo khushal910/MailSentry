@@ -1,14 +1,13 @@
-import sys
 import os
+import sys
 import unittest
 from unittest.mock import MagicMock
 
 # Ensure backend root directory is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.services.ml_preprocessing import MLPreprocessing
 from app.services.ml_model_service import MLModelService
-
+from app.services.ml_preprocessing import MLPreprocessing
 
 
 class TestBackendStandaloneML(unittest.TestCase):
@@ -50,7 +49,7 @@ class TestBackendStandaloneML(unittest.TestCase):
 
         res = service.classify_text(
             subject="Claim free prize",
-            body="Congratulations you won a gift card at http://prize.com/win?id=99"
+            body="Congratulations you won a gift card at http://prize.com/win?id=99",
         )
 
         self.assertEqual(res["predicted_label"], "spam")
@@ -76,7 +75,7 @@ class TestBackendStandaloneML(unittest.TestCase):
 
         res = service.classify_text(
             subject="Account update",
-            body="Please update credentials at http://phish.net/login"
+            body="Please update credentials at http://phish.net/login",
         )
 
         mock_preprocessor.transform.assert_called_once()

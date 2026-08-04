@@ -1,8 +1,9 @@
-import hmac
 import hashlib
+import hmac
 import logging
 import secrets
 import time
+
 from fastapi import HTTPException, status
 
 logger = logging.getLogger("mailsentry.google_oauth.state")
@@ -10,9 +11,11 @@ logger = logging.getLogger("mailsentry.google_oauth.state")
 # Maximum age of a state token in seconds (10 minutes)
 _STATE_MAX_AGE = 600
 
+
 def _get_secret() -> bytes:
     """Lazily imports the app SECRET_KEY to avoid circular import at module level."""
     from app.core.config import settings
+
     return settings.SECRET_KEY.encode("utf-8")
 
 
@@ -55,7 +58,7 @@ def validate_oauth_state(cookie_state: str | None, param_state: str | None) -> N
         logger.warning("CSRF validation failed: state parameter is missing.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OAuth state parameter: state parameter or cookie missing."
+            detail="Invalid OAuth state parameter: state parameter or cookie missing.",
         )
 
     parts = param_state.split("|")
@@ -63,7 +66,7 @@ def validate_oauth_state(cookie_state: str | None, param_state: str | None) -> N
         logger.warning("CSRF validation failed: malformed state token.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OAuth state parameter: state parameter or cookie missing."
+            detail="Invalid OAuth state parameter: state parameter or cookie missing.",
         )
 
     nonce, timestamp_str, received_sig = parts
@@ -75,7 +78,7 @@ def validate_oauth_state(cookie_state: str | None, param_state: str | None) -> N
         logger.warning("CSRF validation failed: HMAC signature mismatch.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OAuth state parameter: state mismatch. Potential CSRF attack."
+            detail="Invalid OAuth state parameter: state mismatch. Potential CSRF attack.",
         )
 
     # Verify the token has not expired
@@ -84,14 +87,16 @@ def validate_oauth_state(cookie_state: str | None, param_state: str | None) -> N
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OAuth state parameter: state parameter or cookie missing."
+            detail="Invalid OAuth state parameter: state parameter or cookie missing.",
         )
 
     if token_age > _STATE_MAX_AGE:
-        logger.warning("CSRF validation failed: state token has expired (age=%ds).", token_age)
+        logger.warning(
+            "CSRF validation failed: state token has expired (age=%ds).", token_age
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="OAuth state token has expired. Please try signing in again."
+            detail="OAuth state token has expired. Please try signing in again.",
         )
 
     logger.debug("HMAC state validation successful (token age=%ds).", token_age)

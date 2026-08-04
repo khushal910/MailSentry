@@ -19,15 +19,12 @@ export function HighlightText({ text, query, className }: HighlightTextProps) {
     <span className={className}>
       {parts.map((part, i) =>
         part.toLowerCase() === trimmedQuery.toLowerCase() ? (
-          <mark
-            key={i}
-            className="bg-brand/20 text-brand font-semibold rounded px-0.5 py-0 mx-0"
-          >
+          <mark key={i} className="bg-brand/20 text-brand font-semibold rounded px-0.5 py-0 mx-0">
             {part}
           </mark>
         ) : (
           part
-        )
+        ),
       )}
     </span>
   );

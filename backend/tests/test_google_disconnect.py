@@ -1,19 +1,22 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.testclient import TestClient
-from fastapi import HTTPException, Depends, APIRouter
-from main import app
+
 from app.dependencies.auth import get_current_user
 from app.dependencies.google_auth_deps import require_google_connected
 from app.utils.main_utile import create_access_token
-
+from main import app
 
 # Test router to verify 403 response on future Gmail APIs
 test_gmail_router = APIRouter()
 
+
 @test_gmail_router.get("/api/gmail/messages")
 async def get_gmail_messages(account: dict = Depends(require_google_connected)):
     return {"status": "ok", "email": account.get("google_email")}
+
 
 app.include_router(test_gmail_router)
 
@@ -37,15 +40,23 @@ class TestGoogleDisconnectEndpoint(unittest.TestCase):
         mock_repo.delete_account.return_value = True
         mock_repo.update_user_google_connected.return_value = None
 
-        mock_user = {"_id": self.user_id, "username": "testuser", "google_connected": True}
+        mock_user = {
+            "_id": self.user_id,
+            "username": "testuser",
+            "google_connected": True,
+        }
 
         with patch("app.api.google_status.disconnect_google_service") as mock_service:
-            mock_service.return_value = {"success": True, "connected": False, "message": "Gmail account disconnected successfully"}
+            mock_service.return_value = {
+                "success": True,
+                "connected": False,
+                "message": "Gmail account disconnected successfully",
+            }
             app.dependency_overrides[get_current_user] = lambda: mock_user
 
             response = self.client.post(
                 "/api/google/disconnect",
-                headers={"Authorization": f"Bearer {self.token}"}
+                headers={"Authorization": f"Bearer {self.token}"},
             )
 
         self.assertEqual(response.status_code, 200)
@@ -101,8 +112,7 @@ class TestGoogleDisconnectEndpoint(unittest.TestCase):
         app.dependency_overrides[get_google_account_repository] = lambda: mock_repo
 
         response = self.client.get(
-            "/api/gmail/messages",
-            headers={"Authorization": f"Bearer {self.token}"}
+            "/api/gmail/messages", headers={"Authorization": f"Bearer {self.token}"}
         )
 
         self.assertEqual(response.status_code, 403)

@@ -1,13 +1,14 @@
 import logging
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
-from pymongo import DESCENDING
-from pymongo.errors import OperationFailure
-from pymongo.database import Database
+from typing import Any
 from unittest.mock import MagicMock
 
-from app.db.mongodb import get_database
+from pymongo import DESCENDING
+from pymongo.database import Database
+from pymongo.errors import OperationFailure
+
 from app.core.config import settings
+from app.db.mongodb import get_database
 
 logger = logging.getLogger(__name__)
 
@@ -34,25 +35,31 @@ class ModelRepository:
         - Index on created_at for chronological lookups
         """
         try:
-            self.collection.create_index("version", unique=True, sparse=True, name="uniq_model_version")
+            self.collection.create_index(
+                "version", unique=True, sparse=True, name="uniq_model_version"
+            )
             self.collection.create_index("status", name="idx_model_status")
-            self.collection.create_index([("created_at", DESCENDING)], name="idx_model_created_at")
+            self.collection.create_index(
+                [("created_at", DESCENDING)], name="idx_model_created_at"
+            )
             logger.info("Indexes ensured on models collection.")
         except OperationFailure as e:
             if e.code == 85:
-                logger.info(f"Model index already exists on collection: {e.details.get('errmsg', str(e))}")
+                logger.info(
+                    f"Model index already exists on collection: {e.details.get('errmsg', str(e))}"
+                )
             else:
-                logger.error(f"Error creating indexes on models collection: {str(e)}")
+                logger.error(f"Error creating indexes on models collection: {e!s}")
         except Exception as e:
-            logger.error(f"Error creating indexes on models collection: {str(e)}")
+            logger.error(f"Error creating indexes on models collection: {e!s}")
 
     def record_model(
         self,
         model_name: str,
         version: str,
         file_path: str,
-        metrics: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        metrics: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Records a newly saved ML model in MongoDB:
         1. Archives any existing 'active' model records.
@@ -63,10 +70,10 @@ class ModelRepository:
             # Mark previous active models as archived
             self.collection.update_many(
                 {"status": "active"},
-                {"$set": {"status": "archived", "archived_at": now}}
+                {"$set": {"status": "archived", "archived_at": now}},
             )
         except Exception as e:
-            logger.warning(f"Failed to archive previous active models: {str(e)}")
+            logger.warning(f"Failed to archive previous active models: {e!s}")
 
         model_doc = {
             "model_name": model_name,
@@ -75,13 +82,13 @@ class ModelRepository:
             "metrics": metrics or {},
             "status": "active",
             "created_at": now,
-            "updated_at": now
+            "updated_at": now,
         }
 
         self.collection.insert_one(model_doc)
         return model_doc
 
-    def get_active_model_record(self) -> Optional[Dict[str, Any]]:
+    def get_active_model_record(self) -> dict[str, Any] | None:
         """
         Retrieves the currently active ML model record.
         """
@@ -91,7 +98,7 @@ class ModelRepository:
             record = self.collection.find_one(sort=[("created_at", DESCENDING)])
         return record
 
-    def get_all_model_records(self) -> List[Dict[str, Any]]:
+    def get_all_model_records(self) -> list[dict[str, Any]]:
         """
         Retrieves all model records chronologically descending.
         """

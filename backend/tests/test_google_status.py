@@ -1,13 +1,14 @@
 import unittest
-from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock
-from fastapi.testclient import TestClient
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
+
 from bson import ObjectId
+from fastapi.testclient import TestClient
 from jose import jwt
 
-from main import app
 from app.core.config import settings
 from app.utils.main_utile import create_access_token
+from main import app
 
 
 class TestGoogleStatusEndpoint(unittest.TestCase):
@@ -62,11 +63,12 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
 
         token = create_access_token(user_id=user_id, username="testuser")
 
-        with patch("app.dependencies.auth.get_database", return_value=mock_db), \
-             patch("app.repositories.google_account_repository.get_database", return_value=mock_db):
+        with patch("app.dependencies.auth.get_database", return_value=mock_db), patch(
+            "app.repositories.google_account_repository.get_database",
+            return_value=mock_db,
+        ):
             response = self.client.get(
-                "/api/google/status",
-                headers={"Authorization": f"Bearer {token}"}
+                "/api/google/status", headers={"Authorization": f"Bearer {token}"}
             )
 
         self.assertEqual(response.status_code, 200)
@@ -105,11 +107,12 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
 
         token = create_access_token(user_id=user_id, username="testuser")
 
-        with patch("app.dependencies.auth.get_database", return_value=mock_db), \
-             patch("app.repositories.google_account_repository.get_database", return_value=mock_db):
+        with patch("app.dependencies.auth.get_database", return_value=mock_db), patch(
+            "app.repositories.google_account_repository.get_database",
+            return_value=mock_db,
+        ):
             response = self.client.get(
-                "/api/google/status",
-                cookies={"access_token": token}
+                "/api/google/status", cookies={"access_token": token}
             )
 
         self.assertEqual(response.status_code, 200)
@@ -122,8 +125,7 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
 
     def test_google_status_invalid_jwt(self):
         response = self.client.get(
-            "/api/google/status",
-            headers={"Authorization": "Bearer invalid_token_xyz"}
+            "/api/google/status", headers={"Authorization": "Bearer invalid_token_xyz"}
         )
         self.assertEqual(response.status_code, 401)
 
@@ -131,8 +133,7 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
         user_id = str(ObjectId())
         expired_token = self.generate_expired_token(user_id=user_id)
         response = self.client.get(
-            "/api/google/status",
-            headers={"Authorization": f"Bearer {expired_token}"}
+            "/api/google/status", headers={"Authorization": f"Bearer {expired_token}"}
         )
         self.assertEqual(response.status_code, 401)
 
@@ -149,8 +150,7 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
 
         with patch("app.dependencies.auth.get_database", return_value=mock_db):
             response = self.client.get(
-                "/api/google/status",
-                headers={"Authorization": f"Bearer {token}"}
+                "/api/google/status", headers={"Authorization": f"Bearer {token}"}
             )
 
         self.assertEqual(response.status_code, 404)
@@ -181,12 +181,12 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
 
         token = create_access_token(user_id=user_id, username="testuser")
 
-        with patch("app.dependencies.auth.get_database", return_value=mock_db), \
-             patch("app.repositories.google_account_repository.get_database", return_value=mock_db), \
-             patch("app.db.mongodb.get_database", return_value=mock_db):
+        with patch("app.dependencies.auth.get_database", return_value=mock_db), patch(
+            "app.repositories.google_account_repository.get_database",
+            return_value=mock_db,
+        ), patch("app.db.mongodb.get_database", return_value=mock_db):
             response = self.client.post(
-                "/api/google/disconnect",
-                headers={"Authorization": f"Bearer {token}"}
+                "/api/google/disconnect", headers={"Authorization": f"Bearer {token}"}
             )
 
         self.assertEqual(response.status_code, 200)
@@ -198,13 +198,17 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
         mock_col = MagicMock()
         mock_db.__getitem__.return_value = mock_col
 
-        with patch.object(settings, "GOOGLE_CLIENT_ID", "mock_client_id"), \
-             patch("app.repositories.google_account_repository.get_database", return_value=mock_db):
+        with patch.object(settings, "GOOGLE_CLIENT_ID", "mock_client_id"), patch(
+            "app.repositories.google_account_repository.get_database",
+            return_value=mock_db,
+        ):
             response = self.client.get("/api/google/connect", follow_redirects=False)
 
         self.assertEqual(response.status_code, 302)
         location = response.headers.get("location", "")
-        self.assertTrue(location.startswith("https://accounts.google.com/o/oauth2/v2/auth"))
+        self.assertTrue(
+            location.startswith("https://accounts.google.com/o/oauth2/v2/auth")
+        )
         self.assertIn("access_type=offline", location)
         self.assertIn("prompt=consent", location)
 
@@ -213,8 +217,10 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
         mock_col = MagicMock()
         mock_db.__getitem__.return_value = mock_col
 
-        with patch.object(settings, "GOOGLE_CLIENT_ID", "mock_client_id"), \
-             patch("app.repositories.google_account_repository.get_database", return_value=mock_db):
+        with patch.object(settings, "GOOGLE_CLIENT_ID", "mock_client_id"), patch(
+            "app.repositories.google_account_repository.get_database",
+            return_value=mock_db,
+        ):
             response = self.client.get("/api/google/connect?format=json")
 
         self.assertEqual(response.status_code, 200)

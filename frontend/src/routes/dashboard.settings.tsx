@@ -219,7 +219,11 @@ function SettingsPage() {
             </div>
 
             <div className="sm:col-span-2 pt-1">
-              <Button type="submit" disabled={isUpdatingPassword} className="bg-gradient-brand shadow-elegant">
+              <Button
+                type="submit"
+                disabled={isUpdatingPassword}
+                className="bg-gradient-brand shadow-elegant"
+              >
                 {isUpdatingPassword ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Updating…
@@ -250,8 +254,7 @@ function SettingsPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete your account?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This is permanent. All predictions, history, and settings
-                      will be erased.
+                      This is permanent. All predictions, history, and settings will be erased.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

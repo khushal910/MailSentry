@@ -53,7 +53,7 @@ export function getRealtimeSuggestions(query: string): string[] {
   }
 
   const matches = dictionary.filter(
-    (item) => item.toLowerCase().includes(q) && item.toLowerCase() !== q
+    (item) => item.toLowerCase().includes(q) && item.toLowerCase() !== q,
   );
 
   if (matches.length > 0) {
@@ -72,7 +72,7 @@ export function getRealtimeSuggestions(query: string): string[] {
  */
 export async function executeGlobalSearch(
   query: string,
-  ctx: GlobalSearchContext
+  ctx: GlobalSearchContext,
 ): Promise<SearchGroup[]> {
   const q = query.toLowerCase().trim();
   const results: SearchResultItem[] = [];
@@ -301,8 +301,10 @@ export async function executeGlobalSearch(
           const label = email.predicted_label || "inbox";
 
           let score = 110;
-          if (subject.toLowerCase() === q) score = 150; // Exact subject match
-          else if (subject.toLowerCase().includes(q)) score = 130; // Partial subject match
+          if (subject.toLowerCase() === q)
+            score = 150; // Exact subject match
+          else if (subject.toLowerCase().includes(q))
+            score = 130; // Partial subject match
           else if ((email.sender || "").toLowerCase().includes(q)) score = 120;
 
           results.push({

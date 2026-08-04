@@ -118,7 +118,10 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased transition-colors duration-300" suppressHydrationWarning>
+      <body
+        className="min-h-screen bg-background text-foreground antialiased transition-colors duration-300"
+        suppressHydrationWarning
+      >
         {children}
         <Scripts />
       </body>

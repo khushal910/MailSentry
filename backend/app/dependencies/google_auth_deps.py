@@ -1,7 +1,9 @@
 from fastapi import Depends, HTTPException, status
+
 from app.dependencies.auth import get_current_user
 from app.repositories.google_account_repository import GoogleAccountRepository
 from app.services.auth.google_oauth_service import GoogleOAuthService
+
 
 def get_google_account_repository() -> GoogleAccountRepository:
     """
@@ -9,14 +11,16 @@ def get_google_account_repository() -> GoogleAccountRepository:
     """
     return GoogleAccountRepository()
 
+
 def get_google_oauth_service(
-    repo: GoogleAccountRepository = Depends(get_google_account_repository)
+    repo: GoogleAccountRepository = Depends(get_google_account_repository),
 ) -> GoogleOAuthService:
     """
     FastAPI Dependency Provider for GoogleOAuthService.
     Injects GoogleAccountRepository.
     """
     return GoogleOAuthService(repo=repo)
+
 
 def require_google_connected(
     current_user: dict = Depends(get_current_user),
@@ -45,25 +49,24 @@ def require_google_connected(
     if not account:
         # Rule 4: If user.google_connected = true but google_account missing -> automatically fix to false
         if current_user.get("google_connected") is True:
-            repo.update_user_google_connected(user_id, False, datetime.now(timezone.utc))
+            repo.update_user_google_connected(
+                user_id, False, datetime.now(timezone.utc)
+            )
 
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please connect Gmail."
+            status_code=status.HTTP_403_FORBIDDEN, detail="Please connect Gmail."
         )
 
     if not account.get("google_connected", True):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please connect Gmail."
+            status_code=status.HTTP_403_FORBIDDEN, detail="Please connect Gmail."
         )
 
     # Rule 3: Refresh token missing or empty -> Reconnect Gmail
     refresh_token = account.get("refresh_token")
     if not refresh_token or not str(refresh_token).strip():
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Reconnect Gmail."
+            status_code=status.HTTP_403_FORBIDDEN, detail="Reconnect Gmail."
         )
 
     return account

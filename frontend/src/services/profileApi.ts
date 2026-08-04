@@ -69,7 +69,10 @@ export const profileApi = {
    * Updates username, regenerates JWT access token, and updates HttpOnly cookie.
    */
   async updateUsername(username: string): Promise<UserProfile> {
-    const { data } = await apiClient.patch<UpdateUsernameResponseEnvelope>("/api/profile/username", { username });
+    const { data } = await apiClient.patch<UpdateUsernameResponseEnvelope>(
+      "/api/profile/username",
+      { username },
+    );
     return data.data.profile;
   },
 
@@ -78,7 +81,10 @@ export const profileApi = {
    * Triggers 6-digit OTP verification email for new email address.
    */
   async requestEmailChange(new_email: string) {
-    const { data } = await apiClient.post<RequestEmailChangeResponseEnvelope>("/api/profile/request-email-change", { new_email });
+    const { data } = await apiClient.post<RequestEmailChangeResponseEnvelope>(
+      "/api/profile/request-email-change",
+      { new_email },
+    );
     return data.data;
   },
 
@@ -87,7 +93,10 @@ export const profileApi = {
    * Verifies 6-digit OTP, completes email change, and updates HttpOnly token cookie.
    */
   async verifyEmailOtp(otp: string): Promise<{ profile: UserProfile; message: string }> {
-    const { data } = await apiClient.post<VerifyEmailOtpResponseEnvelope>("/api/profile/verify-email-otp", { otp });
+    const { data } = await apiClient.post<VerifyEmailOtpResponseEnvelope>(
+      "/api/profile/verify-email-otp",
+      { otp },
+    );
     return { profile: data.data.profile, message: data.message };
   },
 
@@ -95,8 +104,11 @@ export const profileApi = {
    * POST /api/profile/password
    * Changes password for local accounts.
    */
-  async changePassword(payload: { current_password: string; new_password: string; confirm_password: string }) {
-
+  async changePassword(payload: {
+    current_password: string;
+    new_password: string;
+    confirm_password: string;
+  }) {
     const { data } = await apiClient.post<{ message: string }>("/api/profile/password", payload);
     return data;
   },

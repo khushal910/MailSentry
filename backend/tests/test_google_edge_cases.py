@@ -1,6 +1,7 @@
 import unittest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
+
 from bson import ObjectId
 from fastapi import HTTPException
 from pymongo.errors import DuplicateKeyError
@@ -118,7 +119,9 @@ class TestGoogleOAuthEdgeCases(unittest.TestCase):
     def test_case_5_db_failure_rollback_user_google_connected(self):
         """Case 5: Database failure. Rollback user.google_connected=False and return 500 error."""
         self.mock_accounts_col.find_one.return_value = None
-        self.mock_accounts_col.insert_one.side_effect = Exception("MongoDB connection timeout")
+        self.mock_accounts_col.insert_one.side_effect = Exception(
+            "MongoDB connection timeout"
+        )
 
         with self.assertRaises(HTTPException) as ctx:
             self.repo.upsert_account(
@@ -131,7 +134,7 @@ class TestGoogleOAuthEdgeCases(unittest.TestCase):
         # Rollback call on users collection
         self.mock_users_col.update_one.assert_called_with(
             {"_id": "user_101"},
-            {"$set": {"google_connected": False, "updated_at": unittest.mock.ANY}}
+            {"$set": {"google_connected": False, "updated_at": unittest.mock.ANY}},
         )
 
     def test_case_7_invalid_current_user_id_falls_back_to_email_lookup(self):
@@ -143,11 +146,12 @@ class TestGoogleOAuthEdgeCases(unittest.TestCase):
 
         user_info = {"email": "stale_user@gmail.com", "sub": "g_stale"}
         with patch("app.db.mongodb.get_database", return_value=self.db_mock):
-            res = service.find_or_create_user(user_info, current_user_id="deleted_user_id")
+            res = service.find_or_create_user(
+                user_info, current_user_id="deleted_user_id"
+            )
 
         self.assertEqual(res["email"], "stale_user@gmail.com")
         self.assertTrue(res["google_connected"])
-
 
     def test_case_8_duplicate_key_error_resolves_to_existing_account(self):
         """Case 8: Duplicate key error. Resolve by updating existing account cleanly."""
@@ -159,9 +163,11 @@ class TestGoogleOAuthEdgeCases(unittest.TestCase):
         }
         # First call (before insert) returns None; fallback call (after DuplicateKeyError) returns existing_doc
         self.mock_accounts_col.find_one.side_effect = [None, existing_doc, existing_doc]
-        self.mock_accounts_col.insert_one.side_effect = DuplicateKeyError("E11000 duplicate key error")
+        self.mock_accounts_col.insert_one.side_effect = DuplicateKeyError(
+            "E11000 duplicate key error"
+        )
 
-        result = self.repo.upsert_account(
+        self.repo.upsert_account(
             google_email="duplicate@gmail.com",
             google_user_id="g_101",
             user_id="user_101",
@@ -170,9 +176,8 @@ class TestGoogleOAuthEdgeCases(unittest.TestCase):
         self.mock_accounts_col.update_one.assert_called()
         self.mock_users_col.update_one.assert_called_with(
             {"_id": "user_101"},
-            {"$set": {"google_connected": True, "updated_at": unittest.mock.ANY}}
+            {"$set": {"google_connected": True, "updated_at": unittest.mock.ANY}},
         )
-
 
 
 if __name__ == "__main__":

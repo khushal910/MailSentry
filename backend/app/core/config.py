@@ -1,6 +1,7 @@
-from dotenv import load_dotenv
 import json
 import os
+
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -30,7 +31,9 @@ def _parse_cors_origins(val) -> list[str]:
             try:
                 parsed = json.loads(val_str)
                 if isinstance(parsed, list):
-                    parsed_list = [str(item).strip() for item in parsed if str(item).strip()]
+                    parsed_list = [
+                        str(item).strip() for item in parsed if str(item).strip()
+                    ]
             except Exception:
                 parsed_list = []
 
@@ -38,7 +41,8 @@ def _parse_cors_origins(val) -> list[str]:
             parsed_list = [item.strip() for item in val_str.split(",") if item.strip()]
 
     valid_origins = [
-        o for o in parsed_list
+        o
+        for o in parsed_list
         if o == "*" or o.startswith("http://") or o.startswith("https://")
     ]
     return valid_origins if valid_origins else default_origins
@@ -46,7 +50,7 @@ def _parse_cors_origins(val) -> list[str]:
 
 class Settings:
     """This class loads environment variables from a .env file and provides access to them as attributes."""
-    
+
     try:
         APP_NAME = os.getenv("APP_NAME")
         DEBUG = os.getenv("DEBUG") == "True"
@@ -58,21 +62,14 @@ class Settings:
         )
         CORS_ORIGINS = _parse_cors_origins(raw_origins)
         COSE_ORIGINS = CORS_ORIGINS  # Alias for backward compatibility
-        CORS_ORIGIN_REGEX = os.getenv(
-            "CORS_ORIGIN_REGEX",
-            r"https://.*\.vercel\.app"
-        )
+        CORS_ORIGIN_REGEX = os.getenv("CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app")
 
         SECRET_KEY = os.getenv("SECRET_KEY")
         ALGORITHM = os.getenv("ALGORITHM")
 
-        ACCESS_TOKEN_EXPIRE_MINUTES = int(
-            os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60)
-        )
+        ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
 
-        REFRESH_TOKEN_EXPIRE_DAYS = int(
-            os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7)
-        )
+        REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 
         MONGO_URI = os.getenv("MONGO_URI")
         DATABASE_NAME = os.getenv("DATABASE_NAME")
@@ -81,35 +78,47 @@ class Settings:
         MODEL_COLLECTION_NAME = os.getenv("MODEL_COLLECTION_NAME", "models")
         MODELS_DIR = os.getenv(
             "MODELS_DIR",
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
+            os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models"
+            ),
         )
         MODEL_REGISTRY_DIR = os.getenv(
             "MODEL_REGISTRY_DIR",
-            os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "model_registry"))
+            os.path.abspath(
+                os.path.join(
+                    os.path.dirname(
+                        os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                    ),
+                    "model_registry",
+                )
+            ),
         )
 
-        
         PASSWORD_LENGTH = int(os.getenv("PASSWORD_LENGTH", 8))
         PASSWORD_RULE_APPLY = os.getenv("PASSWORD_RULE_APPLY") == "True"
-        
-        SECURE_COOKIES = os.getenv("SECURE_COOKIES", "True" if not DEBUG else "False") == "True"
-        COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "none" if not DEBUG else "lax").lower()
+
+        SECURE_COOKIES = (
+            os.getenv("SECURE_COOKIES", "True" if not DEBUG else "False") == "True"
+        )
+        COOKIE_SAMESITE = os.getenv(
+            "COOKIE_SAMESITE", "none" if not DEBUG else "lax"
+        ).lower()
         COOKIE_SECURE = SECURE_COOKIES
         if COOKIE_SAMESITE == "none":
             COOKIE_SECURE = True  # SameSite=None requires Secure=True in all browsers
 
         # SMTP — email delivery
-        SMTP_HOST     = os.getenv("SMTP_HOST", "smtp.gmail.com")
-        SMTP_PORT     = int(os.getenv("SMTP_PORT", 587))
+        SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
         SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
         SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-        SMTP_USE_TLS  = os.getenv("SMTP_USE_TLS", "True") == "True"
-        EMAIL_FROM    = os.getenv("EMAIL_FROM", "noreply@mailsentry.app")
+        SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "True") == "True"
+        EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@mailsentry.app")
         EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "MailSentry")
-        
+
         RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", 3))
         RATE_LIMIT_APPLY = os.getenv("RATE_LIMIT_APPLY", "True") == "True"
-        RATE_LIMIT_WINDOW_MINUTES  = int(os.getenv("RATE_LIMIT_WINDOW_MINUTES", 15))
+        RATE_LIMIT_WINDOW_MINUTES = int(os.getenv("RATE_LIMIT_WINDOW_MINUTES", 15))
         OTP_EXPIRATION_MINUTES = int(os.getenv("OTP_EXPIRATION_MINUTES", 10))
 
         # Gmail fetch pipeline guards
@@ -123,7 +132,6 @@ class Settings:
         # Max emails to fetch from Gmail API per fetch operation (default 50)
         FETCH_MAX_RESULTS = int(os.getenv("FETCH_MAX_RESULTS", 50))
 
-
         # Google OAuth
         GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
         GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
@@ -135,12 +143,8 @@ class Settings:
         )
         FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8080")
 
-
-
-
-
-
     except Exception as e:
-        print(f"Error loading environment variables: {str(e)}")
+        print(f"Error loading environment variables: {e!s}")
+
 
 settings = Settings()

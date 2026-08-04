@@ -87,9 +87,7 @@ export function DashboardTopbar() {
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="text-xs">
             <div className="font-medium">{user?.name ?? "Guest"}</div>
-            <div className="text-muted-foreground">
-              {user?.email ?? "Not signed in"}
-            </div>
+            <div className="text-muted-foreground">{user?.email ?? "Not signed in"}</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
@@ -99,7 +97,13 @@ export function DashboardTopbar() {
             <Link to="/dashboard/settings">Settings</Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={async () => { await logout(); navigate({ to: "/login" }); }} className="text-destructive">
+          <DropdownMenuItem
+            onSelect={async () => {
+              await logout();
+              navigate({ to: "/login" });
+            }}
+            className="text-destructive"
+          >
             Log out
           </DropdownMenuItem>
         </DropdownMenuContent>

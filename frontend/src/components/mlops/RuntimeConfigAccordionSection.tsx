@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Terminal } from "lucide-react";
+import { ProductionModelInfo } from "@/types/model";
 
 interface RuntimeConfigAccordionProps {
-  model: any;
+  model: Partial<ProductionModelInfo>;
 }
 
 export function RuntimeConfigAccordionSection({ model }: RuntimeConfigAccordionProps) {
@@ -20,14 +21,25 @@ export function RuntimeConfigAccordionSection({ model }: RuntimeConfigAccordionP
             <Terminal className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-base sm:text-lg font-bold text-foreground">Runtime & Model Configuration</h3>
-            <p className="text-xs sm:text-sm text-muted-foreground font-medium">Read-only technical specs, hyperparameters, input/output signature, and docker environment</p>
+            <h3 className="text-base sm:text-lg font-bold text-foreground">
+              Runtime & Model Configuration
+            </h3>
+            <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+              Read-only technical specs, hyperparameters, input/output signature, and docker
+              environment
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs sm:text-sm font-mono text-muted-foreground font-semibold">Read-Only</span>
-          {isOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+          <span className="text-xs sm:text-sm font-mono text-muted-foreground font-semibold">
+            Read-Only
+          </span>
+          {isOpen ? (
+            <ChevronUp className="h-5 w-5 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+          )}
         </div>
       </button>
 
@@ -40,7 +52,11 @@ export function RuntimeConfigAccordionSection({ model }: RuntimeConfigAccordionP
                 Hyperparameters JSON
               </span>
               <pre className="text-foreground/80 font-mono font-normal whitespace-pre-wrap max-h-56 overflow-y-auto custom-scrollbar text-xs sm:text-sm">
-                {JSON.stringify(model.hyperparameters || { C: 1.0, penalty: "l2", max_iter: 1000 }, null, 2)}
+                {JSON.stringify(
+                  model.hyperparameters || { C: 1.0, penalty: "l2", max_iter: 1000 },
+                  null,
+                  2,
+                )}
               </pre>
             </div>
 
@@ -56,9 +72,12 @@ export function RuntimeConfigAccordionSection({ model }: RuntimeConfigAccordionP
                   </span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground font-sans font-medium">Output Type & Framework:</span>
+                  <span className="text-muted-foreground font-sans font-medium">
+                    Output Type & Framework:
+                  </span>
                   <span className="block text-emerald-500/90 truncate font-mono font-medium bg-background p-2 rounded-lg border border-border/40 mt-1">
-                    {model.output_type || "probability"} ({model.framework || "sklearn"} / {model.serialization || "joblib"})
+                    {model.output_type || "probability"} ({model.framework || "sklearn"} /{" "}
+                    {model.serialization || "joblib"})
                   </span>
                 </div>
               </div>
@@ -68,20 +87,36 @@ export function RuntimeConfigAccordionSection({ model }: RuntimeConfigAccordionP
           {/* Row 2: Environment Specs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-sans text-xs sm:text-sm">
             <div className="p-3 rounded-xl border border-border/60 bg-muted/30">
-              <span className="block text-xs text-muted-foreground font-medium uppercase">Docker Image</span>
-              <span className="font-mono text-xs sm:text-sm font-medium text-foreground/80 truncate block mt-0.5">{model.docker_image || "mailsentry/ml-service:v2.0"}</span>
+              <span className="block text-xs text-muted-foreground font-medium uppercase">
+                Docker Image
+              </span>
+              <span className="font-mono text-xs sm:text-sm font-medium text-foreground/80 truncate block mt-0.5">
+                {model.docker_image || "mailsentry/ml-service:v2.0"}
+              </span>
             </div>
             <div className="p-3 rounded-xl border border-border/60 bg-muted/30">
-              <span className="block text-xs text-muted-foreground font-medium uppercase">Python Runtime</span>
-              <span className="font-mono text-xs sm:text-sm font-medium text-foreground/80 truncate block mt-0.5">{model.python_version || "Python 3.13.1"}</span>
+              <span className="block text-xs text-muted-foreground font-medium uppercase">
+                Python Runtime
+              </span>
+              <span className="font-mono text-xs sm:text-sm font-medium text-foreground/80 truncate block mt-0.5">
+                {model.python_version || "Python 3.13.1"}
+              </span>
             </div>
             <div className="p-3 rounded-xl border border-border/60 bg-muted/30">
-              <span className="block text-xs text-muted-foreground font-medium uppercase">Framework</span>
-              <span className="font-mono text-xs sm:text-sm font-medium text-foreground/80 truncate block mt-0.5">{model.framework || "sklearn"} 1.6.1</span>
+              <span className="block text-xs text-muted-foreground font-medium uppercase">
+                Framework
+              </span>
+              <span className="font-mono text-xs sm:text-sm font-medium text-foreground/80 truncate block mt-0.5">
+                {model.framework || "sklearn"} 1.6.1
+              </span>
             </div>
             <div className="p-3 rounded-xl border border-border/60 bg-muted/30">
-              <span className="block text-xs text-muted-foreground font-medium uppercase">Inference Config</span>
-              <span className="font-mono text-xs sm:text-sm font-medium text-foreground/80 truncate block mt-0.5">workers=4, timeout=30s</span>
+              <span className="block text-xs text-muted-foreground font-medium uppercase">
+                Inference Config
+              </span>
+              <span className="font-mono text-xs sm:text-sm font-medium text-foreground/80 truncate block mt-0.5">
+                workers=4, timeout=30s
+              </span>
             </div>
           </div>
         </div>

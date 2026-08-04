@@ -14,10 +14,10 @@ Pipeline steps (in order):
 
 import asyncio
 import logging
-import re
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
+import httpx
 from fastapi import HTTPException, status
 
 from app.core.config import settings
@@ -33,13 +33,13 @@ logger = logging.getLogger("mailsentry.gmail_fetch")
 # ──────────────────────────────────────────────────────────────────────────────
 
 # Per-user asyncio locks: {user_id: asyncio.Lock}
-_USER_LOCKS: Dict[str, asyncio.Lock] = {}
+_USER_LOCKS: dict[str, asyncio.Lock] = {}
 
 # Per-user lock acquisition timestamps for TTL expiry: {user_id: datetime}
-_LOCK_ACQUIRED_AT: Dict[str, datetime] = {}
+_LOCK_ACQUIRED_AT: dict[str, datetime] = {}
 
 # Per-user last successful fetch timestamp for rate limiting: {user_id: datetime}
-_LAST_FETCH_AT: Dict[str, datetime] = {}
+_LAST_FETCH_AT: dict[str, datetime] = {}
 
 
 def _get_user_lock(user_id: str) -> asyncio.Lock:
@@ -86,12 +86,10 @@ def _seconds_until_allowed(user_id: str) -> int:
     return max(remaining, 0)
 
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Fetch result type
 # ──────────────────────────────────────────────────────────────────────────────
 
-import httpx
 
 class FetchResult:
     def __init__(
@@ -99,14 +97,14 @@ class FetchResult:
         fetched: int = 0,
         classified: int = 0,
         skipped: int = 0,
-        new_emails: Optional[list] = None,
+        new_emails: list | None = None,
     ):
         self.fetched = fetched
         self.classified = classified
         self.skipped = skipped
         self.new_emails = new_emails or []
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "fetched": self.fetched,
             "classified": self.classified,
@@ -115,10 +113,10 @@ class FetchResult:
         }
 
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # GmailFetchService
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 class GmailFetchService:
     """
@@ -132,10 +130,10 @@ class GmailFetchService:
 
     def __init__(
         self,
-        email_repo: Optional[EmailRepository] = None,
-        google_repo: Optional[GoogleAccountRepository] = None,
-        token_manager: Optional[GmailTokenManager] = None,
-        model_service: Optional[MLModelService] = None,
+        email_repo: EmailRepository | None = None,
+        google_repo: GoogleAccountRepository | None = None,
+        token_manager: GmailTokenManager | None = None,
+        model_service: MLModelService | None = None,
     ):
         self.email_repo = email_repo or EmailRepository()
         self.google_repo = google_repo or GoogleAccountRepository()
@@ -145,7 +143,7 @@ class GmailFetchService:
     # ── public entry point ────────────────────────────────────────────────────
 
     async def run_fetch_pipeline(
-        self, user_id: str, google_account: Dict[str, Any]
+        self, user_id: str, google_account: dict[str, Any]
     ) -> FetchResult:
         """
         Run the full pipeline. Raises HTTPException for terminal errors (rate limit,
@@ -171,7 +169,7 @@ class GmailFetchService:
     # ── concurrency lock ──────────────────────────────────────────────────────
 
     async def _run_with_lock(
-        self, user_id: str, google_account: Dict[str, Any]
+        self, user_id: str, google_account: dict[str, Any]
     ) -> FetchResult:
         lock = _get_user_lock(user_id)
 
@@ -196,7 +194,7 @@ class GmailFetchService:
     # ── pipeline ──────────────────────────────────────────────────────────────
 
     async def _pipeline(
-        self, user_id: str, google_account: Dict[str, Any]
+        self, user_id: str, google_account: dict[str, Any]
     ) -> FetchResult:
         google_email = google_account.get("google_email", "")
 
@@ -251,7 +249,7 @@ class GmailFetchService:
                     "received_at": raw.get("received_at") or raw.get("sent_at"),
                     "sent_at": raw.get("sent_at") or raw.get("received_at"),
                 }
-                saved_doc = self.email_repo.save_email(email_doc, check_access=False)
+                self.email_repo.save_email(email_doc, check_access=False)
                 result.classified += 1
 
                 # Format for API response
@@ -285,7 +283,7 @@ class GmailFetchService:
         return result
 
     async def fetch_unclassified_raw_emails(
-        self, user_id: str, google_account: Dict[str, Any]
+        self, user_id: str, google_account: dict[str, Any]
     ) -> list:
         """
         Fetches up to 50 latest raw emails from Gmail whose message_id does NOT exist in MongoDB EmailPrediction.
@@ -301,19 +299,19 @@ class GmailFetchService:
         return raw_emails
 
     def classify_and_save_batch(
-        self, user_id: str, emails_to_classify: list, job_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, user_id: str, emails_to_classify: list, job_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Classifies specified unclassified emails using ML model, saves records to MongoDB,
         updates progress on job_id if provided, and returns saved classified email documents.
         """
         from app.services.job_service import JobService
+
         job_service = JobService()
 
         classified_count = 0
         skipped_count = 0
         saved_records = []
-        batch_size = 5
 
         for raw in emails_to_classify:
             subject = raw.get("subject", "No subject")
@@ -344,7 +342,9 @@ class GmailFetchService:
                         "thread_id": raw.get("thread_id"),
                         "subject": subject,
                         "snippet": raw.get("snippet", ""),
-                        "sender": raw.get("sender") or raw.get("from") or raw.get("received_at"),
+                        "sender": raw.get("sender")
+                        or raw.get("from")
+                        or raw.get("received_at"),
                         "predicted_label": classified.get("predicted_label", "ham"),
                         "prediction": classified.get("predicted_label", "ham"),
                         "predicted_score": classified.get("predicted_score", 0.85),
@@ -358,23 +358,27 @@ class GmailFetchService:
                     self.email_repo.save_email(email_doc, check_access=False)
                     classified_count += 1
                     is_success = True
-                    saved_records.append({
-                        "message_id": message_id,
-                        "gmail_message_id": message_id,
-                        "thread_id": raw.get("thread_id"),
-                        "subject": subject,
-                        "snippet": raw.get("snippet", ""),
-                        "predicted_label": classified["predicted_label"],
-                        "prediction": classified["predicted_label"],
-                        "predicted_score": classified["predicted_score"],
-                        "confidence": classified["predicted_score"],
-                        "classified_at": classified["classified_at"],
-                        "created_at": now.isoformat(),
-                        "sent_at": raw.get("sent_at") or raw.get("received_at"),
-                    })
+                    saved_records.append(
+                        {
+                            "message_id": message_id,
+                            "gmail_message_id": message_id,
+                            "thread_id": raw.get("thread_id"),
+                            "subject": subject,
+                            "snippet": raw.get("snippet", ""),
+                            "predicted_label": classified["predicted_label"],
+                            "prediction": classified["predicted_label"],
+                            "predicted_score": classified["predicted_score"],
+                            "confidence": classified["predicted_score"],
+                            "classified_at": classified["classified_at"],
+                            "created_at": now.isoformat(),
+                            "sent_at": raw.get("sent_at") or raw.get("received_at"),
+                        }
+                    )
             except Exception as err:
                 skipped_count += 1
-                logger.error(f"[ClassifyBatch] user_id={user_id} error classifying email: {err}")
+                logger.error(
+                    f"[ClassifyBatch] user_id={user_id} error classifying email: {err}"
+                )
 
             if job_id:
                 job_service.update_progress(
@@ -388,7 +392,7 @@ class GmailFetchService:
         result = {
             "classified": classified_count,
             "skipped": skipped_count,
-            "classified_emails": saved_records
+            "classified_emails": saved_records,
         }
 
         if job_id:
@@ -412,7 +416,7 @@ class GmailFetchService:
                 f"user_id={user_id}: {err}"
             )
 
-    def _classify_one(self, raw_email: Dict[str, Any]) -> Dict[str, Any]:
+    def _classify_one(self, raw_email: dict[str, Any]) -> dict[str, Any]:
         """
         Classifies a single raw email dict using the ML model service.
         Raises on any model error so the caller can count it as skipped.
@@ -448,12 +452,16 @@ class GmailFetchService:
                 if not message_summaries:
                     return []
 
-                all_msg_ids = [item.get("id") for item in message_summaries if item.get("id")]
+                all_msg_ids = [
+                    item.get("id") for item in message_summaries if item.get("id")
+                ]
                 if not all_msg_ids:
                     return []
 
                 # Batch check database in 1 single query instead of N sequential queries
-                existing_ids = self.email_repo.get_existing_message_ids(user_id, all_msg_ids)
+                existing_ids = self.email_repo.get_existing_message_ids(
+                    user_id, all_msg_ids
+                )
                 new_msg_ids = [m_id for m_id in all_msg_ids if m_id not in existing_ids]
 
                 if not new_msg_ids:
@@ -462,11 +470,13 @@ class GmailFetchService:
                 # Concurrent batch fetching with Semaphore(10) to complete in ~1.2s instead of 20s
                 semaphore = asyncio.Semaphore(10)
 
-                async def _fetch_one_details(msg_id: str) -> Optional[Dict[str, Any]]:
+                async def _fetch_one_details(msg_id: str) -> dict[str, Any] | None:
                     async with semaphore:
                         try:
                             url_msg = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}?format=full"
-                            msg_resp = await client.get(url_msg, headers=headers, timeout=10.0)
+                            msg_resp = await client.get(
+                                url_msg, headers=headers, timeout=10.0
+                            )
                             if msg_resp.status_code != 200:
                                 return None
 
@@ -509,7 +519,9 @@ class GmailFetchService:
                                 "sent_at": sent_at,
                             }
                         except Exception as fetch_err:
-                            logger.warning(f"[GmailAPI] Error fetching msg_id={msg_id}: {fetch_err}")
+                            logger.warning(
+                                f"[GmailAPI] Error fetching msg_id={msg_id}: {fetch_err}"
+                            )
                             return None
 
                 tasks = [_fetch_one_details(msg_id) for msg_id in new_msg_ids]
@@ -518,7 +530,7 @@ class GmailFetchService:
 
                 return new_raw_emails
         except Exception as err:
-            logger.error(f"[GmailAPI] Error querying Gmail API for user_id={user_id}: {err}")
+            logger.error(
+                f"[GmailAPI] Error querying Gmail API for user_id={user_id}: {err}"
+            )
             return []
-
-

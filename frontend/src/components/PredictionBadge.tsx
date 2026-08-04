@@ -18,11 +18,7 @@ export function PredictionBadge({ prediction, className }: PredictionBadgeProps)
         className,
       )}
     >
-      {isSpam ? (
-        <ShieldAlert className="h-3.5 w-3.5" />
-      ) : (
-        <ShieldCheck className="h-3.5 w-3.5" />
-      )}
+      {isSpam ? <ShieldAlert className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
       {isSpam ? "Spam" : "Safe"}
     </span>
   );

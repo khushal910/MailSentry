@@ -27,15 +27,21 @@ export function GmailStatusCard() {
     try {
       const data = await googleAuthApi.getStatus();
       setStatusData(data);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load Gmail connection status.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load Gmail connection status.");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchStatus();
+    let active = true;
+    queueMicrotask(() => {
+      if (active) void fetchStatus();
+    });
+    return () => {
+      active = false;
+    };
   }, [fetchStatus]);
 
   const handleConnect = async () => {
@@ -43,8 +49,11 @@ export function GmailStatusCard() {
     setError(null);
     try {
       await googleAuthApi.initiateConnect();
-    } catch (err: any) {
-      const msg = err?.message || "Failed to connect to Google OAuth service. Please retry.";
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to connect to Google OAuth service. Please retry.";
       setError(msg);
       toast.error(msg);
       setConnecting(false);
@@ -57,8 +66,8 @@ export function GmailStatusCard() {
       await googleAuthApi.disconnect();
       toast.success("Gmail account disconnected.");
       setStatusData({ connected: false });
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to disconnect Gmail.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to disconnect Gmail.");
     } finally {
       setDisconnecting(false);
     }
@@ -115,13 +124,15 @@ export function GmailStatusCard() {
     if (!dateStr) return "N/A";
     try {
       const d = new Date(dateStr);
-      return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      return isNaN(d.getTime())
+        ? dateStr
+        : d.toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
     } catch {
       return dateStr;
     }

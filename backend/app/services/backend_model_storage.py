@@ -8,17 +8,19 @@ Manages versioned ML model storage in backend/models/:
 
 from __future__ import annotations
 
+import hashlib
+import json
+import logging
 import os
 import shutil
-import json
-import hashlib
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
-import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BACKEND_DIR = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 MODELS_DIR = os.path.join(BACKEND_DIR, "models")
 PRODUCTION_DIR = os.path.join(MODELS_DIR, "production")
 VERSIONS_DIR = os.path.join(MODELS_DIR, "versions")
@@ -42,7 +44,10 @@ def find_artifact_file(base_dir: str, filename: str) -> str:
         os.path.join(base_dir, "model", filename),
         os.path.join(base_dir, "preprocessor", filename),
     ]
-    return next((p for p in possible_paths if os.path.exists(p)), os.path.join(base_dir, filename))
+    return next(
+        (p for p in possible_paths if os.path.exists(p)),
+        os.path.join(base_dir, filename),
+    )
 
 
 def _normalize_metric_val(val: Any, default: float = 0.0) -> float:
@@ -80,8 +85,12 @@ class BackendModelStorage:
         if not os.path.exists(meta_path) and os.path.exists(prod_model_file):
             now_iso = datetime.now(timezone.utc).isoformat()
             model_hash = compute_file_hash(prod_model_file)
-            prep_hash = compute_file_hash(find_artifact_file(self.production_dir, "preprocessing.pkl"))
-            enc_hash = compute_file_hash(find_artifact_file(self.production_dir, "label_encoder.pkl"))
+            prep_hash = compute_file_hash(
+                find_artifact_file(self.production_dir, "preprocessing.pkl")
+            )
+            enc_hash = compute_file_hash(
+                find_artifact_file(self.production_dir, "label_encoder.pkl")
+            )
 
             initial_meta = {
                 "version": "v1.0.0",
@@ -105,7 +114,7 @@ class BackendModelStorage:
                     "penalty": "l2",
                     "loss": "squared_hinge",
                     "dual": "auto",
-                    "max_iter": 1000
+                    "max_iter": 1000,
                 },
                 "accuracy": 98.98,
                 "precision": 98.57,
@@ -118,27 +127,51 @@ class BackendModelStorage:
                 "primary_metric": "f1",
                 "primary_score": 99.01,
                 "description": "Linear Support Vector Machine optimized with TF-IDF feature extraction for binary email spam classification.",
-                "is_active": True
+                "is_active": True,
             }
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(initial_meta, f, indent=2)
-            logger.info("Initialized production model storage at %s", self.production_dir)
+            logger.info(
+                "Initialized production model storage at %s", self.production_dir
+            )
 
-    def _enrich_metadata_defaults(self, data: Dict[str, Any], base_dir: str) -> Dict[str, Any]:
+    def _enrich_metadata_defaults(
+        self, data: dict[str, Any], base_dir: str
+    ) -> dict[str, Any]:
         """Ensures all required evaluation metrics and metadata fields are present and normalized to 0-100%."""
         now_iso = datetime.now(timezone.utc).isoformat()
-        
+
         model_file = find_artifact_file(base_dir, "model.pkl")
         prep_file = find_artifact_file(base_dir, "preprocessing.pkl")
         enc_file = find_artifact_file(base_dir, "label_encoder.pkl")
 
         metrics_map = data.get("metrics") or {}
 
-        raw_acc = data.get("accuracy") if data.get("accuracy") is not None else metrics_map.get("accuracy")
-        raw_prec = data.get("precision") if data.get("precision") is not None else metrics_map.get("precision")
-        raw_rec = data.get("recall") if data.get("recall") is not None else metrics_map.get("recall")
-        raw_f1 = data.get("f1_score") if data.get("f1_score") is not None else metrics_map.get("f1") or data.get("score")
-        raw_auc = data.get("roc_auc") if data.get("roc_auc") is not None else metrics_map.get("roc_auc")
+        raw_acc = (
+            data.get("accuracy")
+            if data.get("accuracy") is not None
+            else metrics_map.get("accuracy")
+        )
+        raw_prec = (
+            data.get("precision")
+            if data.get("precision") is not None
+            else metrics_map.get("precision")
+        )
+        raw_rec = (
+            data.get("recall")
+            if data.get("recall") is not None
+            else metrics_map.get("recall")
+        )
+        raw_f1 = (
+            data.get("f1_score")
+            if data.get("f1_score") is not None
+            else metrics_map.get("f1") or data.get("score")
+        )
+        raw_auc = (
+            data.get("roc_auc")
+            if data.get("roc_auc") is not None
+            else metrics_map.get("roc_auc")
+        )
 
         norm_acc = _normalize_metric_val(raw_acc, 98.98)
         norm_prec = _normalize_metric_val(raw_prec, 98.57)
@@ -149,21 +182,29 @@ class BackendModelStorage:
         defaults = {
             "version": "v1.0.0",
             "model_name": data.get("model_name", "LinearSVC"),
-            "algorithm": data.get("algorithm", data.get("model_name", "Linear Support Vector Classifier")),
+            "algorithm": data.get(
+                "algorithm", data.get("model_name", "Linear Support Vector Classifier")
+            ),
             "algorithm_type": data.get("algorithm_type", "Linear SVM"),
             "framework": data.get("framework", "sklearn"),
             "serialization": data.get("serialization", "joblib"),
             "task": "Spam Email Classification",
-            "deployment_date": data.get("deployment_date", data.get("trained_at", now_iso)),
+            "deployment_date": data.get(
+                "deployment_date", data.get("trained_at", now_iso)
+            ),
             "training_date": data.get("training_date", data.get("trained_at", now_iso)),
             "deployment_status": data.get("deployment_status", "Production"),
             "status": data.get("status", "Production"),
             "model_hash": data.get("model_hash") or compute_file_hash(model_file),
-            "preprocessing_hash": data.get("preprocessing_hash") or compute_file_hash(prep_file),
-            "label_encoder_hash": data.get("label_encoder_hash") or compute_file_hash(enc_file),
+            "preprocessing_hash": data.get("preprocessing_hash")
+            or compute_file_hash(prep_file),
+            "label_encoder_hash": data.get("label_encoder_hash")
+            or compute_file_hash(enc_file),
             "dataset_version": data.get("dataset_version", "v1.0.0"),
             "dataset_size": data.get("dataset_size", 17880),
-            "hyperparameters": data.get("hyperparameters", {"C": 1.0, "penalty": "l2", "max_iter": 1000}),
+            "hyperparameters": data.get(
+                "hyperparameters", {"C": 1.0, "penalty": "l2", "max_iter": 1000}
+            ),
             "accuracy": norm_acc,
             "precision": norm_prec,
             "recall": norm_rec,
@@ -174,7 +215,10 @@ class BackendModelStorage:
             "model_size_mb": data.get("model_size_mb", 0.28),
             "primary_metric": data.get("primary_metric", "f1"),
             "primary_score": norm_f1,
-            "description": data.get("description", "Machine learning model trained for binary spam email classification."),
+            "description": data.get(
+                "description",
+                "Machine learning model trained for binary spam email classification.",
+            ),
             "is_active": True,
         }
 
@@ -183,7 +227,7 @@ class BackendModelStorage:
 
         return data
 
-    def get_production_metadata(self) -> Dict[str, Any]:
+    def get_production_metadata(self) -> dict[str, Any]:
         """Returns metadata dictionary of current production model."""
         meta_path = os.path.join(self.production_dir, "metadata.json")
         if os.path.exists(meta_path):
@@ -193,28 +237,37 @@ class BackendModelStorage:
                 data["deployment_status"] = "Production"
                 data["status"] = "Production"
                 return self._enrich_metadata_defaults(data, self.production_dir)
-        
+
         empty_meta = {}
         enriched = self._enrich_metadata_defaults(empty_meta, self.production_dir)
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(enriched, f, indent=2)
         return enriched
 
-    def get_version_metadata(self, version: str) -> Dict[str, Any]:
+    def get_version_metadata(self, version: str) -> dict[str, Any]:
         """Returns metadata dictionary for a specific version or production."""
         clean_v = version.strip().lower()
         prod_meta = self.get_production_metadata()
-        if clean_v in ("production", "current", "latest") or clean_v == prod_meta.get("version", "").lower():
+        if (
+            clean_v in ("production", "current", "latest")
+            or clean_v == prod_meta.get("version", "").lower()
+        ):
             return prod_meta
 
         v_dir = os.path.join(self.versions_dir, version)
         if not os.path.exists(v_dir):
-            dirs = [d for d in os.listdir(self.versions_dir) if os.path.isdir(os.path.join(self.versions_dir, d))]
+            dirs = [
+                d
+                for d in os.listdir(self.versions_dir)
+                if os.path.isdir(os.path.join(self.versions_dir, d))
+            ]
             matched = next((d for d in dirs if d.lower() == clean_v), None)
             if matched:
                 v_dir = os.path.join(self.versions_dir, matched)
             else:
-                raise FileNotFoundError(f"Version '{version}' not found in backend version history")
+                raise FileNotFoundError(
+                    f"Version '{version}' not found in backend version history"
+                )
 
         meta_path = os.path.join(v_dir, "metadata.json")
         if os.path.exists(meta_path):
@@ -224,13 +277,18 @@ class BackendModelStorage:
                 data["deployment_status"] = "Archived"
                 data["status"] = "Archived"
                 return self._enrich_metadata_defaults(data, v_dir)
-        
-        empty_meta = {"version": version, "deployment_status": "Archived", "status": "Archived", "is_active": False}
+
+        empty_meta = {
+            "version": version,
+            "deployment_status": "Archived",
+            "status": "Archived",
+            "is_active": False,
+        }
         return self._enrich_metadata_defaults(empty_meta, v_dir)
 
-    def get_history(self) -> List[Dict[str, Any]]:
+    def get_history(self) -> list[dict[str, Any]]:
         """Returns list of all model versions (production + archived) sorted by deployment_date descending."""
-        history: List[Dict[str, Any]] = []
+        history: list[dict[str, Any]] = []
 
         try:
             prod_meta = self.get_production_metadata()
@@ -250,7 +308,7 @@ class BackendModelStorage:
 
         return history
 
-    def compare_models(self, v1: str, v2: str) -> Dict[str, Any]:
+    def compare_models(self, v1: str, v2: str) -> dict[str, Any]:
         """
         Compares version v1 (base/older) against version v2 (target/newer).
         Calculates mathematically accurate percentage differences and direction indicators.
@@ -270,7 +328,7 @@ class BackendModelStorage:
             ("dataset_size", "Dataset Size", "samples"),
         ]
 
-        metrics_comparison: Dict[str, Any] = {}
+        metrics_comparison: dict[str, Any] = {}
 
         for key, label, unit in compare_keys:
             val1 = float(m1.get(key, 0.0))
@@ -281,7 +339,11 @@ class BackendModelStorage:
                 val2 = _normalize_metric_val(val2)
 
             diff = round(val2 - val1, 2)
-            lower_is_better = key in ("training_time_sec", "inference_time_ms", "model_size_mb")
+            lower_is_better = key in (
+                "training_time_sec",
+                "inference_time_ms",
+                "model_size_mb",
+            )
 
             if abs(diff) < 0.01:
                 status_str = "no_change"
@@ -327,10 +389,8 @@ class BackendModelStorage:
         }
 
     def promote_new_version(
-        self,
-        new_artifacts_dir: str,
-        new_metadata: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, new_artifacts_dir: str, new_metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Promotes a new model to backend/models/production/ after training.
         """
@@ -340,14 +400,20 @@ class BackendModelStorage:
                 version_tag = curr_meta.get("version", "v1.0.0")
                 if not version_tag.startswith("v"):
                     version_tag = f"v{version_tag}"
-                
+
                 archive_dir = os.path.join(self.versions_dir, version_tag)
                 if os.path.exists(archive_dir):
-                    existing_v = [d for d in os.listdir(self.versions_dir) if os.path.isdir(os.path.join(self.versions_dir, d))]
+                    existing_v = [
+                        d
+                        for d in os.listdir(self.versions_dir)
+                        if os.path.isdir(os.path.join(self.versions_dir, d))
+                    ]
                     version_tag = f"v{len(existing_v) + 1}.0.0"
                     archive_dir = os.path.join(self.versions_dir, version_tag)
 
-                logger.info("Archiving current backend production model to %s", archive_dir)
+                logger.info(
+                    "Archiving current backend production model to %s", archive_dir
+                )
                 os.makedirs(archive_dir, exist_ok=True)
                 for fname in os.listdir(self.production_dir):
                     src_f = os.path.join(self.production_dir, fname)
@@ -395,5 +461,7 @@ class BackendModelStorage:
         with open(new_meta_path, "w", encoding="utf-8") as f:
             json.dump(new_metadata, f, indent=2)
 
-        logger.info("Successfully promoted new production model to %s", self.production_dir)
+        logger.info(
+            "Successfully promoted new production model to %s", self.production_dir
+        )
         return new_metadata

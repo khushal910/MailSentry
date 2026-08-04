@@ -1,16 +1,16 @@
 import unittest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
+
 from bson import ObjectId
 from fastapi import HTTPException
 
 from app.services.profile_service import ProfileService
-from app.utils.main_utile import hash_password, create_access_token
+from app.utils.main_utile import hash_password
 from app.utils.otp_util import hash_otp
 
 
 class TestProfileService(unittest.IsolatedAsyncioTestCase):
-
 
     def setUp(self):
         self.mock_users_col = MagicMock()
@@ -48,7 +48,9 @@ class TestProfileService(unittest.IsolatedAsyncioTestCase):
 
     def test_get_profile_returns_formatted_data(self):
         """get_profile returns formatted user profile with Google account status."""
-        with patch("app.services.profile_service.get_database", return_value=self.db_mock):
+        with patch(
+            "app.services.profile_service.get_database", return_value=self.db_mock
+        ):
             profile = self.service.get_profile(self.user_id)
 
         self.assertEqual(profile["id"], self.user_id)
@@ -61,19 +63,27 @@ class TestProfileService(unittest.IsolatedAsyncioTestCase):
 
     def test_update_username_no_changes_detected(self):
         """update_username raises 400 when username is unchanged."""
-        with patch("app.services.profile_service.get_database", return_value=self.db_mock):
-            with self.assertRaises(HTTPException) as ctx:
-                self.service.update_username(self.user_id, "johndoe")
+        with patch(
+            "app.services.profile_service.get_database", return_value=self.db_mock
+        ), self.assertRaises(HTTPException) as ctx:
+            self.service.update_username(self.user_id, "johndoe")
 
         self.assertEqual(ctx.exception.status_code, 400)
         self.assertEqual(ctx.exception.detail, "No changes detected.")
 
     def test_update_username_success(self):
         """update_username updates users collection and logs audit message."""
-        with patch("app.services.profile_service.get_database", return_value=self.db_mock):
+        with patch(
+            "app.services.profile_service.get_database", return_value=self.db_mock
+        ):
             # First call for _get_user returns fake_user; subsequent call returns updated user
             updated_user = dict(self.fake_user, username="john_newname")
-            self.mock_users_col.find_one.side_effect = [self.fake_user, None, updated_user, updated_user]
+            self.mock_users_col.find_one.side_effect = [
+                self.fake_user,
+                None,
+                updated_user,
+                updated_user,
+            ]
 
             res = self.service.update_username(self.user_id, "john_newname")
 
@@ -82,8 +92,13 @@ class TestProfileService(unittest.IsolatedAsyncioTestCase):
 
     def test_update_username_conflict_if_taken(self):
         """update_username raises 409 if username is taken by another user."""
-        with patch("app.services.profile_service.get_database", return_value=self.db_mock):
-            self.mock_users_col.find_one.side_effect = [self.fake_user, {"_id": ObjectId()}]
+        with patch(
+            "app.services.profile_service.get_database", return_value=self.db_mock
+        ):
+            self.mock_users_col.find_one.side_effect = [
+                self.fake_user,
+                {"_id": ObjectId()},
+            ]
 
             with self.assertRaises(HTTPException) as ctx:
                 self.service.update_username(self.user_id, "taken_username")
@@ -91,14 +106,22 @@ class TestProfileService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ctx.exception.status_code, 409)
 
     @patch("app.services.profile_service.send_reset_otp_email")
-    @patch("app.services.profile_service.check_and_update_rate_limit", return_value=None)
-    async def test_request_email_change_sends_otp(self, mock_rate_limit, mock_send_email):
+    @patch(
+        "app.services.profile_service.check_and_update_rate_limit", return_value=None
+    )
+    async def test_request_email_change_sends_otp(
+        self, mock_rate_limit, mock_send_email
+    ):
         """request_email_change stores OTP hash, 5-min expiry, and sends OTP email."""
-        with patch("app.services.profile_service.get_database", return_value=self.db_mock):
+        with patch(
+            "app.services.profile_service.get_database", return_value=self.db_mock
+        ):
             # First call for _get_user; second call for existing email check (returns None)
             self.mock_users_col.find_one.side_effect = [self.fake_user, None]
 
-            res = await self.service.request_email_change(self.user_id, "new_john@example.com")
+            res = await self.service.request_email_change(
+                self.user_id, "new_john@example.com"
+            )
 
         self.mock_users_col.update_one.assert_called_once()
         update_args = self.mock_users_col.update_one.call_args[0][1]["$set"]
@@ -118,9 +141,17 @@ class TestProfileService(unittest.IsolatedAsyncioTestCase):
             email_otp_attempts=0,
         )
 
-        with patch("app.services.profile_service.get_database", return_value=self.db_mock):
-            updated_user = dict(pending_user, email="new_john@example.com", google_connected=False)
-            self.mock_users_col.find_one.side_effect = [pending_user, updated_user, updated_user]
+        with patch(
+            "app.services.profile_service.get_database", return_value=self.db_mock
+        ):
+            updated_user = dict(
+                pending_user, email="new_john@example.com", google_connected=False
+            )
+            self.mock_users_col.find_one.side_effect = [
+                pending_user,
+                updated_user,
+                updated_user,
+            ]
 
             res = self.service.verify_email_change_otp(self.user_id, plain_otp)
 
@@ -128,10 +159,11 @@ class TestProfileService(unittest.IsolatedAsyncioTestCase):
         self.assertIn("disconnected", res.get("notice", "").lower())
         self.mock_google_repo.collection.update_one.assert_called_once()
 
-
     def test_change_password_success(self):
         """change_password verifies current password and hashes new bcrypt password."""
-        with patch("app.services.profile_service.get_database", return_value=self.db_mock):
+        with patch(
+            "app.services.profile_service.get_database", return_value=self.db_mock
+        ):
             res = self.service.change_password(
                 user_id=self.user_id,
                 current_pw="OldPassword123!",
@@ -146,7 +178,9 @@ class TestProfileService(unittest.IsolatedAsyncioTestCase):
         """change_password raises 400 for Google-only users."""
         google_only_user = dict(self.fake_user, providers=["google"], password=None)
 
-        with patch("app.services.profile_service.get_database", return_value=self.db_mock):
+        with patch(
+            "app.services.profile_service.get_database", return_value=self.db_mock
+        ):
             self.mock_users_col.find_one.return_value = google_only_user
 
             with self.assertRaises(HTTPException) as ctx:

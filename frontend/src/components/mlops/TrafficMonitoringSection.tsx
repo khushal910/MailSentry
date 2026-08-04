@@ -54,7 +54,9 @@ export function TrafficMonitoringSection() {
       {/* Header & Filter Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold text-foreground">Traffic & Infrastructure Telemetry</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-foreground">
+            Traffic & Infrastructure Telemetry
+          </h2>
           <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-0.5">
             Real-time inference requests, latencies, CPU/Memory telemetry, and HTTP error rates.
           </p>
@@ -86,11 +88,39 @@ export function TrafficMonitoringSection() {
         <ChartCard title="Prediction Requests (req/s)">
           <ResponsiveContainer width="100%" height={150}>
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.4} />
-              <XAxis dataKey="time" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: "12px", fontWeight: "bold", borderRadius: "8px" }} />
-              <Area type="monotone" dataKey="requests" stroke="#10b981" fill="#10b98120" strokeWidth={2} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="var(--border)"
+                opacity={0.4}
+              />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "var(--card)",
+                  borderColor: "var(--border)",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  borderRadius: "8px",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="requests"
+                stroke="#10b981"
+                fill="#10b98120"
+                strokeWidth={2}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -99,11 +129,39 @@ export function TrafficMonitoringSection() {
         <ChartCard title="Latency P95 (ms)">
           <ResponsiveContainer width="100%" height={150}>
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.4} />
-              <XAxis dataKey="time" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: "12px", fontWeight: "bold", borderRadius: "8px" }} />
-              <Area type="monotone" dataKey="latency" stroke="#3b82f6" fill="#3b82f620" strokeWidth={2} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="var(--border)"
+                opacity={0.4}
+              />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "var(--card)",
+                  borderColor: "var(--border)",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  borderRadius: "8px",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="latency"
+                stroke="#3b82f6"
+                fill="#3b82f620"
+                strokeWidth={2}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -112,11 +170,39 @@ export function TrafficMonitoringSection() {
         <ChartCard title="Error Rate (%)">
           <ResponsiveContainer width="100%" height={150}>
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.4} />
-              <XAxis dataKey="time" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: "12px", fontWeight: "bold", borderRadius: "8px" }} />
-              <Area type="monotone" dataKey="errorRate" stroke="#f43f5e" fill="#f43f5e20" strokeWidth={2} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="var(--border)"
+                opacity={0.4}
+              />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "var(--card)",
+                  borderColor: "var(--border)",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  borderRadius: "8px",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="errorRate"
+                stroke="#f43f5e"
+                fill="#f43f5e20"
+                strokeWidth={2}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -125,11 +211,39 @@ export function TrafficMonitoringSection() {
         <ChartCard title="CPU Usage (%)">
           <ResponsiveContainer width="100%" height={150}>
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.4} />
-              <XAxis dataKey="time" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--border)", fontSize: "12px", fontWeight: "bold", borderRadius: "8px" }} />
-              <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" fill="#8b5cf620" strokeWidth={2} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="var(--border)"
+                opacity={0.4}
+              />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "var(--card)",
+                  borderColor: "var(--border)",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  borderRadius: "8px",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="cpu"
+                stroke="#8b5cf6"
+                fill="#8b5cf620"
+                strokeWidth={2}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -138,13 +252,7 @@ export function TrafficMonitoringSection() {
   );
 }
 
-function ChartCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-2">
       <span className="block text-xs sm:text-sm font-bold text-foreground">{title}</span>

@@ -45,6 +45,7 @@ jobs:
 
       - name: 4. Install Dependencies & Quality Tooling
         run: |
+          mkdir -p reports htmlcov
           uv pip install --system -r requirements.txt
           uv pip install --system black isort ruff mypy pytest pytest-cov bandit pip-audit
 
@@ -70,7 +71,7 @@ jobs:
           MONGO_URI: "mongodb://localhost:27017/mailsentry_ci_db"
           ENVIRONMENT: "testing"
         run: |
-          mkdir -p reports
+          mkdir -p reports htmlcov
           python -m pytest tests/ \
             --cov=app \
             --cov-report=term-missing \
@@ -165,28 +166,33 @@ jobs:
           cache-dependency-path: "frontend/package*.json"
 
       - name: 3. Install Dependencies
-        run: npm ci || npm install
+        run: |
+          mkdir -p reports
+          npm ci || npm install
 
-      - name: "4. Stage 4: Code Linting (ESLint)"
+      - name: "4. Stage 3: Code Formatting Check (Prettier)"
+        run: npx prettier --check "src/**/*.{ts,tsx,css,json}"
+
+      - name: "5. Stage 4: Code Linting (ESLint)"
         run: |
           mkdir -p reports
           npm run lint | tee reports/eslint-report.txt
 
-      - name: "5. Stage 5: Type Checking (TypeScript tsc)"
+      - name: "6. Stage 5: Type Checking (TypeScript tsc)"
         run: npx tsc --noEmit
 
-      - name: "6. Stage 6: Frontend Tests"
+      - name: "7. Stage 6: Frontend Tests"
         run: npm run test
 
-      - name: "7. Stage 7: Dependency Security Audit (npm audit)"
+      - name: "8. Stage 7: Dependency Security Audit (npm audit)"
         run: |
           mkdir -p reports
           npm audit --audit-level=high | tee reports/npm-audit-report.txt || true
 
-      - name: "8. Stage 9: Production Frontend Build"
+      - name: "9. Stage 9: Production Frontend Build"
         run: npm run build
 
-      - name: 9. Upload Frontend Reports Artifact
+      - name: 10. Upload Frontend Reports Artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -209,6 +215,8 @@ jobs:
 
       - name: 2. Run Gitleaks Secret Scan with SARIF & JSON Output
         uses: gitleaks/gitleaks-action@v2
+        with:
+          args: detect --report-format json --report-path gitleaks-report.json --redact --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
@@ -242,7 +250,7 @@ jobs:
             | Quality Stage | Result | Notes |
             | --- | --- | --- |
             | **Backend CI & Tests** | ${{ needs.backend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | Black, Ruff, Mypy, pytest (>=80% cov) |
-            | **Frontend CI & Build** | ${{ needs.frontend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | ESLint, tsc, npm run build |
+            | **Frontend CI & Build** | ${{ needs.frontend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | Prettier, ESLint, tsc, npm run build |
             | **Gitleaks Secret Scan** | ${{ needs.secret-scan.result == 'success' && '✅ PASS' || '❌ FAILED' }} | API Keys, DB URIs, OAuth Secrets |
             | **ML Artifact Validation** | ${{ needs.backend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | Model SHA256 & PredictionEngine Probe |
 

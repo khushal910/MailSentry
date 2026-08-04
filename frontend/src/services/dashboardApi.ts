@@ -20,9 +20,12 @@ export const dashboardApi = {
    * Fetches real aggregated statistics for the currently logged-in user.
    */
   async getStats(): Promise<DashboardStats> {
-    const { data } = await apiClient.get<any>("/api/dashboard/stats");
+    const { data } = await apiClient.get<DashboardStats | { data: DashboardStats }>(
+      "/api/dashboard/stats",
+    );
     // Handle standard return_response envelope { success, status_code, message, data }
-    const statsData: DashboardStats = data?.data ?? data;
+    const statsData: DashboardStats =
+      "data" in data && data.data ? data.data : (data as DashboardStats);
     return statsData;
   },
 };

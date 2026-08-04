@@ -28,12 +28,20 @@ async function safePost(url: string, payload?: object): Promise<BackendResponse>
     return data;
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
-      const body = err.response.data as any;
+      const body = err.response.data as {
+        message?: string;
+        detail?: string | Array<{ msg?: string }>;
+      };
       // Backend returned a structured error body — treat it as a failed BackendResponse
       const message =
         body?.message ||
         (typeof body?.detail === "string" ? body.detail : null) ||
-        (Array.isArray(body?.detail) ? body.detail.map((d: any) => d.msg).join(", ") : null) ||
+        (Array.isArray(body?.detail)
+          ? body.detail
+              .map((d) => d.msg || "")
+              .filter(Boolean)
+              .join(", ")
+          : null) ||
         "Something went wrong. Please try again.";
       return {
         success: false,
@@ -94,5 +102,3 @@ export const authApi = {
     return res;
   },
 };
-
-

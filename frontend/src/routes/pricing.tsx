@@ -32,12 +32,7 @@ const tiers = [
     period: "/ month",
     featured: true,
     desc: "For small teams shipping fast.",
-    features: [
-      "10,000 predictions/mo",
-      "History & analytics",
-      "API access",
-      "Priority support",
-    ],
+    features: ["10,000 predictions/mo", "History & analytics", "API access", "Priority support"],
   },
   {
     name: "Enterprise",
@@ -59,9 +54,7 @@ function PricingPage() {
     <PublicLayout>
       <section className="mx-auto max-w-7xl px-4 py-20 md:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand">
-            Pricing
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand">Pricing</p>
           <h1 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
             Simple, transparent pricing
           </h1>

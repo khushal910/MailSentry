@@ -8,8 +8,7 @@ export const Route = createFileRoute("/about")({
       { title: "About — MailSentry" },
       {
         name: "description",
-        content:
-          "MailSentry is on a mission to make email safer for every team, everywhere.",
+        content: "MailSentry is on a mission to make email safer for every team, everywhere.",
       },
     ],
   }),
@@ -31,16 +30,14 @@ function AboutPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand">
-            About
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand">About</p>
           <h1 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
             Making email safer, one inbox at a time.
           </h1>
           <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-            MailSentry was born out of a frustration: modern spam filters miss the
-            most dangerous emails, and the ones they catch, we already knew about.
-            We're building the AI layer email deserves.
+            MailSentry was born out of a frustration: modern spam filters miss the most dangerous
+            emails, and the ones they catch, we already knew about. We're building the AI layer
+            email deserves.
           </p>
         </motion.div>
 
@@ -69,9 +66,9 @@ function AboutPage() {
         >
           <h2 className="text-2xl font-bold">Our story</h2>
           <p className="mt-4 text-muted-foreground leading-relaxed">
-            Founded by a team of security engineers and ML researchers,
-            MailSentry started as a project to detect phishing in enterprise
-            inboxes. Today, we protect thousands of inboxes across fintech, healthcare, and SaaS.
+            Founded by a team of security engineers and ML researchers, MailSentry started as a
+            project to detect phishing in enterprise inboxes. Today, we protect thousands of inboxes
+            across fintech, healthcare, and SaaS.
           </p>
         </motion.div>
       </section>

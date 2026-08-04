@@ -1,14 +1,12 @@
 import { cn } from "@/lib/utils";
+import { ProductionModelInfo } from "@/types/model";
 
 interface ModelComparisonTableProps {
-  prodModel: any;
-  prevModel?: any;
+  prodModel: Partial<ProductionModelInfo>;
+  prevModel?: Partial<ProductionModelInfo>;
 }
 
-export function ModelComparisonTableSection({
-  prodModel,
-  prevModel,
-}: ModelComparisonTableProps) {
+export function ModelComparisonTableSection({ prodModel, prevModel }: ModelComparisonTableProps) {
   if (!prevModel) return null;
 
   const compareRows = [
@@ -26,11 +24,16 @@ export function ModelComparisonTableSection({
     { label: "MLflow Run ID", key: "mlflow_run", unit: "" },
   ];
 
-  const getValue = (obj: any, key: string, unit: string) => {
+  const getValue = (
+    obj: Partial<ProductionModelInfo> | undefined,
+    key: string,
+    unit: string,
+  ): string => {
     if (!obj) return "N/A";
-    if (key === "commit") return obj.commit || "a1b2c3d";
-    if (key === "mlflow_run") return obj.mlflow_run || "run_12336683";
-    const val = obj[key];
+    const dict = obj as Record<string, unknown>;
+    if (key === "commit") return String(dict.commit || "a1b2c3d");
+    if (key === "mlflow_run") return String(dict.mlflow_run || "run_12336683");
+    const val = dict[key];
     if (val === undefined || val === null) return "N/A";
     if (typeof val === "number") {
       const formattedVal = val <= 1.0 && unit === "%" ? (val * 100).toFixed(2) : val.toFixed(2);
@@ -43,9 +46,12 @@ export function ModelComparisonTableSection({
     <div className="rounded-xl border border-border/80 bg-card p-6 space-y-4 shadow-xs">
       <div className="flex items-center justify-between border-b border-border/60 pb-3">
         <h2 className="text-lg sm:text-xl font-bold text-foreground">
-          Model Specification Comparison ({prodModel.version} vs {prevModel.version})
+          Model Specification Comparison ({prodModel.version || "Production"} vs{" "}
+          {prevModel.version || "Previous"})
         </h2>
-        <span className="text-xs sm:text-sm text-muted-foreground font-semibold">Changed Specs Highlighted</span>
+        <span className="text-xs sm:text-sm text-muted-foreground font-semibold">
+          Changed Specs Highlighted
+        </span>
       </div>
 
       <div className="overflow-x-auto">
@@ -54,10 +60,10 @@ export function ModelComparisonTableSection({
             <tr>
               <th className="py-3 px-4">Specification / Metric</th>
               <th className="py-3 px-4 text-emerald-600 dark:text-emerald-400 font-extrabold">
-                Current Production ({prodModel.version})
+                Current Production ({prodModel.version || "Current"})
               </th>
               <th className="py-3 px-4 text-muted-foreground">
-                Previous Version ({prevModel.version})
+                Previous Version ({prevModel.version || "Previous"})
               </th>
               <th className="py-3 px-4 text-right">Status</th>
             </tr>
@@ -73,12 +79,16 @@ export function ModelComparisonTableSection({
                   key={row.key}
                   className={cn(
                     "hover:bg-muted/30 transition-colors",
-                    isChanged ? "bg-amber-500/10 font-bold" : ""
+                    isChanged ? "bg-amber-500/10 font-bold" : "",
                   )}
                 >
                   <td className="py-3 px-4 font-medium text-muted-foreground">{row.label}</td>
-                  <td className="py-3 px-4 font-semibold text-foreground/85 font-mono text-xs sm:text-sm">{valCurr}</td>
-                  <td className="py-3 px-4 text-muted-foreground font-mono text-xs sm:text-sm">{valPrev}</td>
+                  <td className="py-3 px-4 font-semibold text-foreground/85 font-mono text-xs sm:text-sm">
+                    {valCurr}
+                  </td>
+                  <td className="py-3 px-4 text-muted-foreground font-mono text-xs sm:text-sm">
+                    {valPrev}
+                  </td>
                   <td className="py-3 px-4 text-right font-mono text-xs">
                     {isChanged ? (
                       <span className="text-amber-500 font-extrabold px-2.5 py-1 rounded-md bg-amber-500/15 border border-amber-500/40">

@@ -1,15 +1,13 @@
 import unittest
-from unittest.mock import patch, MagicMock
-from datetime import datetime, timedelta, timezone
-from bson import ObjectId
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
 
-from main import app
+from app.dependencies.auth import get_current_user
 from app.repositories.dashboard_repository import DashboardRepository
 from app.services.dashboard_service import DashboardService
-from app.dependencies.auth import get_current_user
 from app.utils.main_utile import create_access_token
-
+from main import app
 
 USER_ID_A = "507f1f77bcf86cd799439011"
 USER_ID_B = "507f1f77bcf86cd799439022"
@@ -45,14 +43,7 @@ class TestDashboardRepository(unittest.TestCase):
         """Verifies aggregation pipeline calculations for totals, percentages, confidence, and growth."""
         facet_mock_result = [
             {
-                "totals": [
-                    {
-                        "total": 100,
-                        "spam": 30,
-                        "safe": 70,
-                        "avg_score": 0.95
-                    }
-                ],
+                "totals": [{"total": 100, "spam": 30, "safe": 70, "avg_score": 0.95}],
                 "today": [{"count": 10}],
                 "this_week": [{"count": 40}],
                 "last_week": [{"count": 20}],
@@ -77,14 +68,7 @@ class TestDashboardRepository(unittest.TestCase):
         """When last_week_predictions is 0, growth_percentage should be None."""
         facet_mock_result = [
             {
-                "totals": [
-                    {
-                        "total": 10,
-                        "spam": 2,
-                        "safe": 8,
-                        "avg_score": 0.90
-                    }
-                ],
+                "totals": [{"total": 10, "spam": 2, "safe": 8, "avg_score": 0.90}],
                 "today": [{"count": 2}],
                 "this_week": [{"count": 10}],
                 "last_week": [],
@@ -148,12 +132,16 @@ class TestDashboardApiEndpoint(unittest.TestCase):
     @patch("app.api.dashboard_routes.DashboardService")
     def test_get_stats_success(self, MockServiceClass):
         """Returns 200 OK with formatted stats data for authenticated user."""
-        app.dependency_overrides[get_current_user] = lambda: {"_id": USER_ID_A, "username": "user_a"}
+        app.dependency_overrides[get_current_user] = lambda: {
+            "_id": USER_ID_A,
+            "username": "user_a",
+        }
 
         mock_service_instance = MagicMock()
         MockServiceClass.return_value = mock_service_instance
 
         from app.schemas.dashboard import DashboardStatsResponse
+
         mock_stats = DashboardStatsResponse(
             total_predictions=1284,
             spam_emails=317,
@@ -165,7 +153,7 @@ class TestDashboardApiEndpoint(unittest.TestCase):
             this_week_predictions=1284,
             spam_percentage=24.7,
             safe_percentage=75.3,
-            growth_percentage=12.4
+            growth_percentage=12.4,
         )
         mock_service_instance.get_dashboard_stats.return_value = mock_stats
 
@@ -182,7 +170,9 @@ class TestDashboardApiEndpoint(unittest.TestCase):
         self.assertEqual(data["spam_percentage"], 24.7)
         self.assertEqual(data["safe_percentage"], 75.3)
         self.assertEqual(data["growth_percentage"], 12.4)
-        MockServiceClass.return_value.get_dashboard_stats.assert_called_once_with(USER_ID_A)
+        MockServiceClass.return_value.get_dashboard_stats.assert_called_once_with(
+            USER_ID_A
+        )
 
 
 if __name__ == "__main__":

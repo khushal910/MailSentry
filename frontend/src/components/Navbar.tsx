@@ -39,7 +39,7 @@ export function Navbar() {
                   "rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors relative",
                   active
                     ? "text-foreground font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/40",
                 )}
               >
                 {l.label}
@@ -58,7 +58,11 @@ export function Navbar() {
         <div className="hidden items-center gap-3 md:flex">
           <ThemeToggle />
           {isAuthenticated ? (
-            <Button asChild size="sm" className="bg-gradient-brand shadow-elegant btn-gradient-glow font-semibold">
+            <Button
+              asChild
+              size="sm"
+              className="bg-gradient-brand shadow-elegant btn-gradient-glow font-semibold"
+            >
               <Link to="/dashboard">Dashboard</Link>
             </Button>
           ) : (
@@ -66,7 +70,11 @@ export function Navbar() {
               <Button asChild variant="ghost" size="sm" className="hover:bg-accent/50">
                 <Link to="/login">Login</Link>
               </Button>
-              <Button asChild size="sm" className="bg-gradient-brand shadow-elegant btn-gradient-glow font-semibold">
+              <Button
+                asChild
+                size="sm"
+                className="bg-gradient-brand shadow-elegant btn-gradient-glow font-semibold"
+              >
                 <Link to="/signup">Sign up</Link>
               </Button>
             </>
@@ -118,7 +126,11 @@ export function Navbar() {
                         Login
                       </Link>
                     </Button>
-                    <Button asChild size="sm" className="flex-1 bg-gradient-brand btn-gradient-glow">
+                    <Button
+                      asChild
+                      size="sm"
+                      className="flex-1 bg-gradient-brand btn-gradient-glow"
+                    >
                       <Link to="/signup" onClick={() => setOpen(false)}>
                         Sign up
                       </Link>

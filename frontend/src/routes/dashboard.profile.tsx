@@ -28,11 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 import { useAuth } from "@/context/AuthContext";
 import { GmailStatusCard } from "@/components/GmailStatusCard";
@@ -43,7 +39,10 @@ export const Route = createFileRoute("/dashboard/profile")({
   head: () => ({
     meta: [
       { title: "User Profile — MailSentry" },
-      { name: "description", content: "Manage your MailSentry account profile, security, and Gmail integrations." },
+      {
+        name: "description",
+        content: "Manage your MailSentry account profile, security, and Gmail integrations.",
+      },
     ],
   }),
   component: ProfilePage,
@@ -139,7 +138,6 @@ function ProfilePage() {
     const trimmedUsername = values.username.trim();
     const trimmedEmail = values.email.trim().toLowerCase();
 
-
     const usernameChanged = trimmedUsername !== profile.username;
     const emailChanged = trimmedEmail !== profile.email.toLowerCase();
 
@@ -209,7 +207,6 @@ function ProfilePage() {
     }
   };
 
-
   // Submit Change Password Form
 
   const onChangePassword = async (values: ChangePasswordForm) => {
@@ -244,7 +241,9 @@ function ProfilePage() {
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
           <XCircle className="h-10 w-10 text-destructive" />
           <h2 className="text-lg font-semibold">Failed to load profile</h2>
-          <p className="text-sm text-muted-foreground max-w-sm">{profileError || "Profile information is unavailable."}</p>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            {profileError || "Profile information is unavailable."}
+          </p>
           <Button variant="outline" onClick={loadProfile}>
             <RefreshCw className="mr-2 h-4 w-4" /> Try Again
           </Button>
@@ -264,9 +263,7 @@ function ProfilePage() {
   const displayGoogleEmail = googleEmailStr.trim() || emailStr;
   const roleStr = typeof profile.role === "string" ? profile.role : "USER";
 
-  const initials = (usernameStr || emailStr)
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = (usernameStr || emailStr).slice(0, 2).toUpperCase();
 
   const providerLabel = safeProviders
     .map((p) => (p === "google" ? "Google OAuth" : "Email + Password"))
@@ -310,7 +307,10 @@ function ProfilePage() {
                 {profile.created_at && typeof profile.created_at === "string" && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    Joined: <strong className="text-foreground font-medium">{formatDate(profile.created_at)}</strong>
+                    Joined:{" "}
+                    <strong className="text-foreground font-medium">
+                      {formatDate(profile.created_at)}
+                    </strong>
                   </span>
                 )}
               </div>
@@ -363,7 +363,8 @@ function ProfilePage() {
               <p className="mt-1 font-medium flex items-center gap-1.5">
                 {profile.google_connected ? (
                   <>
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Connected ({displayGoogleEmail})
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Connected (
+                    {displayGoogleEmail})
                   </>
                 ) : (
                   <>
@@ -376,14 +377,14 @@ function ProfilePage() {
         </div>
       </div>
 
-
       {/* ── Edit Profile Modal ── */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
             <DialogDescription>
-              Update your username or email address. Changing email requires 6-digit OTP verification.
+              Update your username or email address. Changing email requires 6-digit OTP
+              verification.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmitEdit(onSaveProfile)} className="space-y-4 py-2">
@@ -419,7 +420,8 @@ function ProfilePage() {
                 <p className="text-xs text-destructive">{editErrors.email.message}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Changing your email address will send a 6-digit verification code to the new address.
+                Changing your email address will send a 6-digit verification code to the new
+                address.
               </p>
             </div>
 
@@ -460,18 +462,32 @@ function ProfilePage() {
                 6-Digit Verification Code
               </Label>
 
-              <InputOTP
-                maxLength={6}
-                value={otpInput}
-                onChange={(v) => setOtpInput(v)}
-              >
+              <InputOTP maxLength={6} value={otpInput} onChange={(v) => setOtpInput(v)}>
                 <InputOTPGroup className="gap-2">
-                  <InputOTPSlot index={0} className="w-11 h-12 text-lg font-semibold border-brand/20" />
-                  <InputOTPSlot index={1} className="w-11 h-12 text-lg font-semibold border-brand/20" />
-                  <InputOTPSlot index={2} className="w-11 h-12 text-lg font-semibold border-brand/20" />
-                  <InputOTPSlot index={3} className="w-11 h-12 text-lg font-semibold border-brand/20" />
-                  <InputOTPSlot index={4} className="w-11 h-12 text-lg font-semibold border-brand/20" />
-                  <InputOTPSlot index={5} className="w-11 h-12 text-lg font-semibold border-brand/20" />
+                  <InputOTPSlot
+                    index={0}
+                    className="w-11 h-12 text-lg font-semibold border-brand/20"
+                  />
+                  <InputOTPSlot
+                    index={1}
+                    className="w-11 h-12 text-lg font-semibold border-brand/20"
+                  />
+                  <InputOTPSlot
+                    index={2}
+                    className="w-11 h-12 text-lg font-semibold border-brand/20"
+                  />
+                  <InputOTPSlot
+                    index={3}
+                    className="w-11 h-12 text-lg font-semibold border-brand/20"
+                  />
+                  <InputOTPSlot
+                    index={4}
+                    className="w-11 h-12 text-lg font-semibold border-brand/20"
+                  />
+                  <InputOTPSlot
+                    index={5}
+                    className="w-11 h-12 text-lg font-semibold border-brand/20"
+                  />
                 </InputOTPGroup>
               </InputOTP>
             </div>
@@ -529,7 +545,9 @@ function ProfilePage() {
                 })}
               />
               {passwordErrors.current_password && (
-                <p className="text-xs text-destructive">{passwordErrors.current_password.message}</p>
+                <p className="text-xs text-destructive">
+                  {passwordErrors.current_password.message}
+                </p>
               )}
             </div>
 
@@ -559,7 +577,9 @@ function ProfilePage() {
                 })}
               />
               {passwordErrors.confirm_password && (
-                <p className="text-xs text-destructive">{passwordErrors.confirm_password.message}</p>
+                <p className="text-xs text-destructive">
+                  {passwordErrors.confirm_password.message}
+                </p>
               )}
             </div>
 

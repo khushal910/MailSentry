@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   predictionApi,
@@ -29,23 +22,26 @@ export function PredictionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const predict = useCallback(async (payload: PredictionRequest) => {
-    setPredicting(true);
-    setError(null);
-    try {
-      const res = await predictionApi.predict(payload);
-      setLatest(res);
-      queryClient.invalidateQueries({ queryKey: ["history"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
-      return res;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Prediction failed";
-      setError(msg);
-      throw e;
-    } finally {
-      setPredicting(false);
-    }
-  }, [queryClient]);
+  const predict = useCallback(
+    async (payload: PredictionRequest) => {
+      setPredicting(true);
+      setError(null);
+      try {
+        const res = await predictionApi.predict(payload);
+        setLatest(res);
+        queryClient.invalidateQueries({ queryKey: ["history"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
+        return res;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Prediction failed";
+        setError(msg);
+        throw e;
+      } finally {
+        setPredicting(false);
+      }
+    },
+    [queryClient],
+  );
 
   const reset = useCallback(() => {
     setLatest(null);

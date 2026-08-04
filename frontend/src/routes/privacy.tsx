@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PublicLayout } from "@/layouts/PublicLayout";
 import { motion } from "framer-motion";
-import { Shield, Lock, Eye, CheckCircle2, FileText, ExternalLink, Mail, Key, Server, RefreshCw } from "lucide-react";
+import {
+  Shield,
+  Lock,
+  Eye,
+  CheckCircle2,
+  FileText,
+  ExternalLink,
+  Mail,
+  Key,
+  Server,
+  RefreshCw,
+} from "lucide-react";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
@@ -56,11 +67,11 @@ function PrivacyPolicyPage() {
             <h1 className="text-3xl font-bold tracking-tight md:text-5xl">
               MailSentry Privacy Policy
             </h1>
-            <p className="mt-4 text-base text-muted-foreground">
-              Last Updated: August 2, 2026
-            </p>
+            <p className="mt-4 text-base text-muted-foreground">Last Updated: August 2, 2026</p>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              MailSentry is committed to protecting your privacy, securing your email data, and maintaining complete transparency regarding how Google user data is accessed, processed, and safeguarded.
+              MailSentry is committed to protecting your privacy, securing your email data, and
+              maintaining complete transparency regarding how Google user data is accessed,
+              processed, and safeguarded.
             </p>
           </motion.div>
 
@@ -75,7 +86,8 @@ function PrivacyPolicyPage() {
                   Google API Services User Data Policy Compliance
                 </h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  MailSentry’s use and transfer of information received from Google APIs to any other app will adhere to the{" "}
+                  MailSentry’s use and transfer of information received from Google APIs to any
+                  other app will adhere to the{" "}
                   <a
                     href="https://developers.google.com/terms/api-services-user-data-policy"
                     target="_blank"
@@ -84,7 +96,8 @@ function PrivacyPolicyPage() {
                   >
                     Google API Services User Data Policy
                   </a>
-                  , including the <strong>Limited Use requirements</strong>. We never sell your Gmail data or share it with third-party advertisers.
+                  , including the <strong>Limited Use requirements</strong>. We never sell your
+                  Gmail data or share it with third-party advertisers.
                 </p>
               </div>
             </div>
@@ -114,39 +127,58 @@ function PrivacyPolicyPage() {
             {/* Main Content */}
             <div className="lg:col-span-3 space-y-12">
               {/* Section 1 */}
-              <section id="introduction" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="introduction"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-primary" />
                   <h2 className="text-xl font-bold tracking-tight">1. Introduction & Overview</h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    Welcome to MailSentry ("we," "our," or "us"). MailSentry is an artificial intelligence-powered email classification and security application designed to analyze email headers, snippets, and metadata to protect users against spam, phishing attempts, and unwanted email clutter.
+                    Welcome to MailSentry ("we," "our," or "us"). MailSentry is an artificial
+                    intelligence-powered email classification and security application designed to
+                    analyze email headers, snippets, and metadata to protect users against spam,
+                    phishing attempts, and unwanted email clutter.
                   </p>
                   <p>
-                    This Privacy Policy governs your use of our website (<strong>https://mail-sentry-mu.vercel.app/</strong>) and our backend services. It outlines what information we collect when you authenticate with Google, how we use that data, how we store it securely, and your rights as a user.
+                    This Privacy Policy governs your use of our website (
+                    <strong>https://mail-sentry-mu.vercel.app/</strong>) and our backend services.
+                    It outlines what information we collect when you authenticate with Google, how
+                    we use that data, how we store it securely, and your rights as a user.
                   </p>
                 </div>
               </section>
 
               {/* Section 2 */}
-              <section id="who-we-are" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="who-we-are"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Server className="h-5 w-5 text-primary" />
                   <h2 className="text-xl font-bold tracking-tight">2. Who We Are</h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    MailSentry is operated as a SaaS web application hosted on <strong>Vercel</strong> (frontend) and <strong>Render</strong> (FastAPI backend), utilizing <strong>MongoDB Atlas</strong> as its encrypted primary database provider.
+                    MailSentry is operated as a SaaS web application hosted on{" "}
+                    <strong>Vercel</strong> (frontend) and <strong>Render</strong> (FastAPI
+                    backend), utilizing <strong>MongoDB Atlas</strong> as its encrypted primary
+                    database provider.
                   </p>
                   <p>
-                    If you have questions about this policy or your personal data, you may reach our privacy and engineering team at <strong>privacy@mailsentry.app</strong>.
+                    If you have questions about this policy or your personal data, you may reach our
+                    privacy and engineering team at <strong>privacy@mailsentry.app</strong>.
                   </p>
                 </div>
               </section>
 
               {/* Section 3 */}
-              <section id="information-collection" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="information-collection"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Eye className="h-5 w-5 text-primary" />
                   <h2 className="text-xl font-bold tracking-tight">3. Information We Collect</h2>
@@ -176,14 +208,21 @@ function PrivacyPolicyPage() {
               </section>
 
               {/* Section 4 */}
-              <section id="gmail-data-access" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="gmail-data-access"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">4. Gmail Data Access & OAuth Scopes</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    4. Gmail Data Access & OAuth Scopes
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    MailSentry integrates with Google Identity Services and the official Gmail REST API v1. We request access only after explicit authorization via Google's consent screen.
+                    MailSentry integrates with Google Identity Services and the official Gmail REST
+                    API v1. We request access only after explicit authorization via Google's consent
+                    screen.
                   </p>
                   <div className="rounded-xl border border-border/50 bg-background/60 p-4 space-y-2">
                     <h4 className="font-semibold text-foreground flex items-center gap-2">
@@ -191,10 +230,18 @@ function PrivacyPolicyPage() {
                     </h4>
                     <ul className="space-y-2 text-xs text-muted-foreground">
                       <li>
-                        <strong className="text-foreground">https://www.googleapis.com/auth/gmail.readonly:</strong> Allows MailSentry to inspect new incoming message headers, subjects, and snippets for automated security classification.
+                        <strong className="text-foreground">
+                          https://www.googleapis.com/auth/gmail.readonly:
+                        </strong>{" "}
+                        Allows MailSentry to inspect new incoming message headers, subjects, and
+                        snippets for automated security classification.
                       </li>
                       <li>
-                        <strong className="text-foreground">https://www.googleapis.com/auth/userinfo.email & profile:</strong> Allows MailSentry to authenticate your account and associate your classification history with your user account.
+                        <strong className="text-foreground">
+                          https://www.googleapis.com/auth/userinfo.email & profile:
+                        </strong>{" "}
+                        Allows MailSentry to authenticate your account and associate your
+                        classification history with your user account.
                       </li>
                     </ul>
                   </div>
@@ -202,38 +249,50 @@ function PrivacyPolicyPage() {
               </section>
 
               {/* Section 5 */}
-              <section id="google-limited-use" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="google-limited-use"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">5. Google Limited Use Compliance & Restrictions</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    5. Google Limited Use Compliance & Restrictions
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-4">
                   <p>
-                    MailSentry strictly adheres to Google's <strong>Limited Use Requirements</strong>. Specifically:
+                    MailSentry strictly adheres to Google's{" "}
+                    <strong>Limited Use Requirements</strong>. Specifically:
                   </p>
                   <div className="space-y-3">
                     <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs text-foreground">
                       <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                       <div>
-                        <strong>No Data Sale:</strong> Gmail data is NEVER sold, leased, or monetized under any circumstances.
+                        <strong>No Data Sale:</strong> Gmail data is NEVER sold, leased, or
+                        monetized under any circumstances.
                       </div>
                     </div>
                     <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs text-foreground">
                       <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                       <div>
-                        <strong>No Advertising:</strong> Gmail data is NEVER used or transferred for serving advertisements, retargeting, or personalized marketing.
+                        <strong>No Advertising:</strong> Gmail data is NEVER used or transferred for
+                        serving advertisements, retargeting, or personalized marketing.
                       </div>
                     </div>
                     <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs text-foreground">
                       <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                       <div>
-                        <strong>No Human Inspection:</strong> No human employee reads your email content unless you explicitly grant written support permission or it is necessary for security investigation (e.g. debugging a critical error).
+                        <strong>No Human Inspection:</strong> No human employee reads your email
+                        content unless you explicitly grant written support permission or it is
+                        necessary for security investigation (e.g. debugging a critical error).
                       </div>
                     </div>
                     <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs text-foreground">
                       <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                       <div>
-                        <strong>Sole Purpose Use:</strong> Gmail data is used strictly to provide and improve user-facing features (spam prediction, classification, and organization).
+                        <strong>Sole Purpose Use:</strong> Gmail data is used strictly to provide
+                        and improve user-facing features (spam prediction, classification, and
+                        organization).
                       </div>
                     </div>
                   </div>
@@ -241,83 +300,119 @@ function PrivacyPolicyPage() {
               </section>
 
               {/* Section 6 */}
-              <section id="machine-learning" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="machine-learning"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <RefreshCw className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">6. Email Classification & Machine Learning Usage</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    6. Email Classification & Machine Learning Usage
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    MailSentry processes text snippets using pre-trained Machine Learning models (Scikit-Learn TF-IDF vectorizers and classification pipelines).
+                    MailSentry processes text snippets using pre-trained Machine Learning models
+                    (Scikit-Learn TF-IDF vectorizers and classification pipelines).
                   </p>
                   <p>
-                    Your personal email content is <strong>NEVER used to train generalized AI models</strong> that are exposed to other users or external third parties. All predictions execute in isolated application memory.
+                    Your personal email content is{" "}
+                    <strong>NEVER used to train generalized AI models</strong> that are exposed to
+                    other users or external third parties. All predictions execute in isolated
+                    application memory.
                   </p>
                 </div>
               </section>
 
               {/* Section 7 */}
-              <section id="data-storage-security" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="data-storage-security"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Lock className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">7. Data Storage, Encryption & Security Measures</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    7. Data Storage, Encryption & Security Measures
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
-                  <p>
-                    Security is central to our engineering architecture:
-                  </p>
+                  <p>Security is central to our engineering architecture:</p>
                   <ul className="space-y-2 text-xs text-muted-foreground list-disc list-inside">
                     <li>
-                      <strong className="text-foreground">Encryption at Rest:</strong> Sensitive Google OAuth refresh tokens are encrypted using cryptography-grade <strong>Fernet AES-256 encryption</strong> before being stored in MongoDB Atlas.
+                      <strong className="text-foreground">Encryption at Rest:</strong> Sensitive
+                      Google OAuth refresh tokens are encrypted using cryptography-grade{" "}
+                      <strong>Fernet AES-256 encryption</strong> before being stored in MongoDB
+                      Atlas.
                     </li>
                     <li>
-                      <strong className="text-foreground">Encryption in Transit:</strong> All HTTP traffic between Vercel, Render, Google APIs, and MongoDB Atlas is enforced via <strong>TLS 1.3 encryption</strong>.
+                      <strong className="text-foreground">Encryption in Transit:</strong> All HTTP
+                      traffic between Vercel, Render, Google APIs, and MongoDB Atlas is enforced via{" "}
+                      <strong>TLS 1.3 encryption</strong>.
                     </li>
                     <li>
-                      <strong className="text-foreground">HttpOnly Cookies:</strong> JWT access tokens are stored in <strong>SameSite=None; Secure; HttpOnly</strong> cookies to prevent Cross-Site Scripting (XSS) attacks.
+                      <strong className="text-foreground">HttpOnly Cookies:</strong> JWT access
+                      tokens are stored in <strong>SameSite=None; Secure; HttpOnly</strong> cookies
+                      to prevent Cross-Site Scripting (XSS) attacks.
                     </li>
                   </ul>
                 </div>
               </section>
 
               {/* Section 8 */}
-              <section id="third-party-services" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="third-party-services"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <ExternalLink className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">8. Third-Party Infrastructure Providers</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    8. Third-Party Infrastructure Providers
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>We rely on trusted cloud infrastructure providers to operate MailSentry:</p>
                   <div className="grid gap-3 md:grid-cols-2 text-xs">
                     <div className="rounded-xl border border-border/50 bg-background/60 p-3.5">
-                      <strong className="text-foreground">Google Cloud Platform:</strong> Authentication & Gmail API v1.
+                      <strong className="text-foreground">Google Cloud Platform:</strong>{" "}
+                      Authentication & Gmail API v1.
                     </div>
                     <div className="rounded-xl border border-border/50 bg-background/60 p-3.5">
-                      <strong className="text-foreground">MongoDB Atlas:</strong> Managed encrypted cloud database storage.
+                      <strong className="text-foreground">MongoDB Atlas:</strong> Managed encrypted
+                      cloud database storage.
                     </div>
                     <div className="rounded-xl border border-border/50 bg-background/60 p-3.5">
-                      <strong className="text-foreground">Render Services:</strong> Containerized FastAPI backend server hosting.
+                      <strong className="text-foreground">Render Services:</strong> Containerized
+                      FastAPI backend server hosting.
                     </div>
                     <div className="rounded-xl border border-border/50 bg-background/60 p-3.5">
-                      <strong className="text-foreground">Vercel Inc:</strong> Edge CDN & frontend application hosting.
+                      <strong className="text-foreground">Vercel Inc:</strong> Edge CDN & frontend
+                      application hosting.
                     </div>
                   </div>
                 </div>
               </section>
 
               {/* Section 9 */}
-              <section id="user-rights-deletion" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="user-rights-deletion"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Shield className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">9. User Rights, Access Revocation & Account Deletion</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    9. User Rights, Access Revocation & Account Deletion
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-4">
                   <p>You maintain 100% control over your data:</p>
                   <div className="space-y-3">
                     <div className="rounded-xl border border-border/50 bg-background/60 p-4">
-                      <h4 className="font-semibold text-foreground text-sm">How to Revoke Google Account Access:</h4>
+                      <h4 className="font-semibold text-foreground text-sm">
+                        How to Revoke Google Account Access:
+                      </h4>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        You can disconnect your Google account inside MailSentry under <strong>Settings → Connected Accounts</strong> or directly via your{" "}
+                        You can disconnect your Google account inside MailSentry under{" "}
+                        <strong>Settings → Connected Accounts</strong> or directly via your{" "}
                         <a
                           href="https://myaccount.google.com/permissions"
                           target="_blank"
@@ -325,13 +420,19 @@ function PrivacyPolicyPage() {
                           className="font-semibold text-primary underline underline-offset-4"
                         >
                           Google Account Security Permissions
-                        </a>.
+                        </a>
+                        .
                       </p>
                     </div>
                     <div className="rounded-xl border border-border/50 bg-background/60 p-4">
-                      <h4 className="font-semibold text-foreground text-sm">How to Request Full Data & Account Deletion:</h4>
+                      <h4 className="font-semibold text-foreground text-sm">
+                        How to Request Full Data & Account Deletion:
+                      </h4>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        You can delete your account and all stored email prediction records inside <strong>Profile Settings → Danger Zone</strong> or by sending a deletion request to <strong>privacy@mailsentry.app</strong>. Upon deletion, all database records and encrypted tokens are purged immediately.
+                        You can delete your account and all stored email prediction records inside{" "}
+                        <strong>Profile Settings → Danger Zone</strong> or by sending a deletion
+                        request to <strong>privacy@mailsentry.app</strong>. Upon deletion, all
+                        database records and encrypted tokens are purged immediately.
                       </p>
                     </div>
                   </div>
@@ -339,21 +440,31 @@ function PrivacyPolicyPage() {
               </section>
 
               {/* Section 10 */}
-              <section id="policy-changes-contact" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="policy-changes-contact"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">10. Policy Updates & Contact Information</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    10. Policy Updates & Contact Information
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    We may update this Privacy Policy periodically to reflect technological or legal updates. Material updates will be communicated via our application interface or email notification.
+                    We may update this Privacy Policy periodically to reflect technological or legal
+                    updates. Material updates will be communicated via our application interface or
+                    email notification.
                   </p>
-                  <p>
-                    For privacy inquiries or compliance requests:
-                  </p>
+                  <p>For privacy inquiries or compliance requests:</p>
                   <div className="rounded-xl border border-border/50 bg-background/60 p-4 text-xs space-y-1">
-                    <p><strong className="text-foreground">Email:</strong> privacy@mailsentry.app</p>
-                    <p><strong className="text-foreground">Website:</strong> https://mail-sentry-mu.vercel.app/</p>
+                    <p>
+                      <strong className="text-foreground">Email:</strong> privacy@mailsentry.app
+                    </p>
+                    <p>
+                      <strong className="text-foreground">Website:</strong>{" "}
+                      https://mail-sentry-mu.vercel.app/
+                    </p>
                   </div>
                 </div>
               </section>

@@ -49,11 +49,7 @@ export function ResultCard({ result, className }: ResultCardProps) {
                 : "border-success/40 bg-success/15 text-success",
             )}
           >
-            {isSpam ? (
-              <ShieldAlert className="h-6 w-6" />
-            ) : (
-              <ShieldCheck className="h-6 w-6" />
-            )}
+            {isSpam ? <ShieldAlert className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
           </motion.span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -72,16 +68,10 @@ export function ResultCard({ result, className }: ResultCardProps) {
               <motion.div
                 initial={{ width: 0 }}
                 animate={{
-                  width: `${Math.min(
-                    100,
-                    confValue <= 1 ? confValue * 100 : confValue,
-                  )}%`,
+                  width: `${Math.min(100, confValue <= 1 ? confValue * 100 : confValue)}%`,
                 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className={cn(
-                  "h-full rounded-full",
-                  isSpam ? "bg-destructive" : "bg-success",
-                )}
+                className={cn("h-full rounded-full", isSpam ? "bg-destructive" : "bg-success")}
               />
             </div>
           </div>
@@ -90,4 +80,3 @@ export function ResultCard({ result, className }: ResultCardProps) {
     </AnimatePresence>
   );
 }
-

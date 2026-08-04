@@ -1,14 +1,15 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, Optional
-from bson import ObjectId
-from pymongo import ASCENDING, DESCENDING
-from pymongo.errors import OperationFailure
-from pymongo.database import Database
+from typing import Any
 from unittest.mock import MagicMock
 
-from app.db.mongodb import get_database
+from bson import ObjectId
+from pymongo import ASCENDING, DESCENDING
+from pymongo.database import Database
+from pymongo.errors import OperationFailure
+
 from app.core.config import settings
+from app.db.mongodb import get_database
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +52,15 @@ class DashboardRepository:
             logger.info("Dashboard performance indexes ensured.")
         except OperationFailure as e:
             if e.code == 85:
-                logger.info(f"Dashboard index already exists on collection: {e.details.get('errmsg', str(e))}")
+                logger.info(
+                    f"Dashboard index already exists on collection: {e.details.get('errmsg', str(e))}"
+                )
             else:
-                logger.error(f"Error ensuring dashboard indexes: {str(e)}")
+                logger.error(f"Error ensuring dashboard indexes: {e!s}")
         except Exception as e:
-            logger.error(f"Error ensuring dashboard indexes: {str(e)}")
+            logger.error(f"Error ensuring dashboard indexes: {e!s}")
 
-    def get_user_stats(self, user_id: str) -> Dict[str, Any]:
+    def get_user_stats(self, user_id: str) -> dict[str, Any]:
         """
         Computes dashboard statistics for the specified user_id using a single MongoDB $facet aggregation pipeline.
         Calculations (counts, percentages, averages, weekly windows) are executed in MongoDB.
@@ -98,12 +101,16 @@ class DashboardRepository:
                                         "$cond": [
                                             {
                                                 "$eq": [
-                                                    {"$toLower": {"$ifNull": ["$label", ""]}},
-                                                    "spam"
+                                                    {
+                                                        "$toLower": {
+                                                            "$ifNull": ["$label", ""]
+                                                        }
+                                                    },
+                                                    "spam",
                                                 ]
                                             },
                                             1,
-                                            0
+                                            0,
                                         ]
                                     }
                                 },
@@ -112,40 +119,44 @@ class DashboardRepository:
                                         "$cond": [
                                             {
                                                 "$ne": [
-                                                    {"$toLower": {"$ifNull": ["$label", ""]}},
-                                                    "spam"
+                                                    {
+                                                        "$toLower": {
+                                                            "$ifNull": ["$label", ""]
+                                                        }
+                                                    },
+                                                    "spam",
                                                 ]
                                             },
                                             1,
-                                            0
+                                            0,
                                         ]
                                     }
                                 },
-                                "avg_score": {"$avg": "$score"}
+                                "avg_score": {"$avg": "$score"},
                             }
                         }
                     ],
                     "today": [
                         {"$match": {"created": {"$gte": start_of_today}}},
-                        {"$count": "count"}
+                        {"$count": "count"},
                     ],
                     "this_week": [
                         {"$match": {"created": {"$gte": start_of_this_week}}},
-                        {"$count": "count"}
+                        {"$count": "count"},
                     ],
                     "last_week": [
                         {
                             "$match": {
                                 "created": {
                                     "$gte": start_of_last_week,
-                                    "$lt": start_of_this_week
+                                    "$lt": start_of_this_week,
                                 }
                             }
                         },
-                        {"$count": "count"}
-                    ]
+                        {"$count": "count"},
+                    ],
                 }
-            }
+            },
         ]
 
         try:
@@ -174,7 +185,11 @@ class DashboardRepository:
             # Score conversion: if 0..1 scale, multiply by 100
             if raw_avg_score is not None:
                 score_val = float(raw_avg_score)
-                average_confidence = round(score_val * 100, 1) if score_val <= 1.0 else round(score_val, 1)
+                average_confidence = (
+                    round(score_val * 100, 1)
+                    if score_val <= 1.0
+                    else round(score_val, 1)
+                )
             else:
                 average_confidence = 0.0
 
@@ -182,13 +197,20 @@ class DashboardRepository:
             safe_percentage = round((safe_emails / total_predictions) * 100, 1)
 
             today_predictions = int(today_facet[0]["count"]) if today_facet else 0
-            this_week_predictions = int(this_week_facet[0]["count"]) if this_week_facet else 0
-            last_week_predictions = int(last_week_facet[0]["count"]) if last_week_facet else 0
+            this_week_predictions = (
+                int(this_week_facet[0]["count"]) if this_week_facet else 0
+            )
+            last_week_predictions = (
+                int(last_week_facet[0]["count"]) if last_week_facet else 0
+            )
 
             # Growth rate % math
-            growth_percentage: Optional[float] = None
+            growth_percentage: float | None = None
             if last_week_predictions > 0:
-                growth_val = ((this_week_predictions - last_week_predictions) / last_week_predictions) * 100
+                growth_val = (
+                    (this_week_predictions - last_week_predictions)
+                    / last_week_predictions
+                ) * 100
                 growth_percentage = round(growth_val, 1)
 
             return {
@@ -202,14 +224,16 @@ class DashboardRepository:
                 "this_week_predictions": this_week_predictions,
                 "spam_percentage": spam_percentage,
                 "safe_percentage": safe_percentage,
-                "growth_percentage": growth_percentage
+                "growth_percentage": growth_percentage,
             }
 
         except Exception as err:
-            logger.error(f"Error executing dashboard stats aggregation for user_id={user_id}: {str(err)}")
+            logger.error(
+                f"Error executing dashboard stats aggregation for user_id={user_id}: {err!s}"
+            )
             return self._empty_stats()
 
-    def _empty_stats(self) -> Dict[str, Any]:
+    def _empty_stats(self) -> dict[str, Any]:
         """Returns default zero stats payload for edge cases or zero prediction count."""
         return {
             "total_predictions": 0,
@@ -222,5 +246,5 @@ class DashboardRepository:
             "this_week_predictions": 0,
             "spam_percentage": 0.0,
             "safe_percentage": 0.0,
-            "growth_percentage": 0.0
+            "growth_percentage": 0.0,
         }

@@ -34,11 +34,11 @@ Generate production-quality React code using:
 
 The project should have clean folder architecture and reusable components.
 
-------------------------------------
+---
 
 Design Style
 
-------------------------------------
+---
 
 The UI should look premium like:
 
@@ -86,11 +86,11 @@ NO childish design.
 
 Everything should feel enterprise level.
 
-------------------------------------
+---
 
 Pages
 
-------------------------------------
+---
 
 Create the following pages.
 
@@ -122,11 +122,11 @@ Settings
 
 404 Page
 
-------------------------------------
+---
 
 Navbar
 
-------------------------------------
+---
 
 Logo
 
@@ -152,11 +152,11 @@ Dashboard (after login)
 
 Responsive mobile menu.
 
-------------------------------------
+---
 
 Landing Page
 
-------------------------------------
+---
 
 Hero Section
 
@@ -190,11 +190,11 @@ FAQ
 
 Footer
 
-------------------------------------
+---
 
 Dashboard
 
-------------------------------------
+---
 
 Sidebar
 
@@ -218,11 +218,11 @@ Notifications
 
 Profile Avatar
 
-------------------------------------
+---
 
 Dashboard Home
 
-------------------------------------
+---
 
 Statistics cards
 
@@ -238,11 +238,11 @@ Recent Predictions Table
 
 Quick Action buttons
 
-------------------------------------
+---
 
 Email Classifier Page
 
-------------------------------------
+---
 
 This is the main feature.
 
@@ -286,11 +286,11 @@ Reason
 
 Result card should animate into view.
 
-------------------------------------
+---
 
 History Page
 
-------------------------------------
+---
 
 Modern table
 
@@ -308,11 +308,11 @@ Pagination
 
 Filter
 
-------------------------------------
+---
 
 Profile Page
 
-------------------------------------
+---
 
 Avatar
 
@@ -324,11 +324,11 @@ Role
 
 Edit profile button
 
-------------------------------------
+---
 
 Settings
 
-------------------------------------
+---
 
 Theme Toggle
 
@@ -338,11 +338,11 @@ Security
 
 Delete Account
 
-------------------------------------
+---
 
 Authentication
 
-------------------------------------
+---
 
 Beautiful login page
 
@@ -366,11 +366,11 @@ Password
 
 Confirm Password
 
-------------------------------------
+---
 
 Components
 
-------------------------------------
+---
 
 Create reusable components.
 
@@ -400,11 +400,11 @@ StatsCard
 
 PredictionBadge
 
-------------------------------------
+---
 
 Animations
 
-------------------------------------
+---
 
 Use Framer Motion.
 
@@ -420,11 +420,11 @@ Card animation
 
 Button animation
 
-------------------------------------
+---
 
 API Integration
 
-------------------------------------
+---
 
 Create an Axios service.
 
@@ -444,11 +444,11 @@ historyApi.js
 
 profileApi.js
 
-------------------------------------
+---
 
 Prediction API
 
-------------------------------------
+---
 
 POST
 
@@ -480,11 +480,11 @@ Show loading state.
 
 Handle API errors.
 
-------------------------------------
+---
 
 State Management
 
-------------------------------------
+---
 
 Use React Context.
 
@@ -492,11 +492,11 @@ Auth Context
 
 Prediction Context
 
-------------------------------------
+---
 
 Folder Structure
 
-------------------------------------
+---
 
 src/
 
@@ -522,11 +522,11 @@ App.jsx
 
 main.jsx
 
-------------------------------------
+---
 
 Code Quality
 
-------------------------------------
+---
 
 Reusable components
 
@@ -540,11 +540,11 @@ Responsive
 
 No duplicated code
 
-------------------------------------
+---
 
 Output
 
-------------------------------------
+---
 
 Generate the complete project one page at a time.
 

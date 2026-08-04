@@ -1,13 +1,5 @@
 import { cn } from "@/lib/utils";
-import {
-  ShieldAlert,
-  ShieldCheck,
-  Star,
-  Tag,
-  Users,
-  Inbox,
-  HelpCircle,
-} from "lucide-react";
+import { ShieldAlert, ShieldCheck, Star, Tag, Users, Inbox, HelpCircle } from "lucide-react";
 
 const LABEL_CONFIG: Record<
   string,

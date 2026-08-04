@@ -1,15 +1,16 @@
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any, Union
-from bson import ObjectId
-from pymongo import ASCENDING, DESCENDING
-from pymongo.errors import OperationFailure
-from pymongo.database import Database
+from typing import Any
 from unittest.mock import MagicMock
 
-from app.db.mongodb import get_database
+from bson import ObjectId
+from pymongo import ASCENDING, DESCENDING
+from pymongo.database import Database
+from pymongo.errors import OperationFailure
+
 from app.core.config import settings
+from app.db.mongodb import get_database
 from app.schemas.email import EmailCreateSchema
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ class EmailRepository:
             self.collection.create_index(
                 [("user_id", ASCENDING), ("message_id", ASCENDING)],
                 unique=True,
-                name="uniq_user_message"
+                name="uniq_user_message",
             )
             # Index on user_id for fast queries
             self.collection.create_index("user_id", name="idx_user_id")
@@ -52,21 +53,27 @@ class EmailRepository:
             # Compound index for timeline queries
             self.collection.create_index(
                 [("user_id", ASCENDING), ("classified_at", DESCENDING)],
-                name="idx_user_classified_at"
+                name="idx_user_classified_at",
             )
             # Compound index for label filtering with timeline sorting
             self.collection.create_index(
-                [("user_id", ASCENDING), ("predicted_label", ASCENDING), ("classified_at", DESCENDING)],
-                name="idx_user_label_classified_at"
+                [
+                    ("user_id", ASCENDING),
+                    ("predicted_label", ASCENDING),
+                    ("classified_at", DESCENDING),
+                ],
+                name="idx_user_label_classified_at",
             )
             logger.info("Indexes ensured on emails collection.")
         except OperationFailure as e:
             if e.code == 85:
-                logger.info(f"Email index already exists on collection: {e.details.get('errmsg', str(e))}")
+                logger.info(
+                    f"Email index already exists on collection: {e.details.get('errmsg', str(e))}"
+                )
             else:
-                logger.error(f"Error creating indexes on emails collection: {str(e)}")
+                logger.error(f"Error creating indexes on emails collection: {e!s}")
         except Exception as e:
-            logger.error(f"Error creating indexes on emails collection: {str(e)}")
+            logger.error(f"Error creating indexes on emails collection: {e!s}")
 
     def verify_user_exists(self, user_id: str) -> bool:
         """
@@ -86,7 +93,9 @@ class EmailRepository:
             if user_doc:
                 return True
 
-            google_col_name = getattr(settings, "GOOGLE_ACCOUNT_COLLECTION_NAME", "google_accounts")
+            google_col_name = getattr(
+                settings, "GOOGLE_ACCOUNT_COLLECTION_NAME", "google_accounts"
+            )
             google_col = self.db[google_col_name]
             g_query = (
                 {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]}
@@ -99,7 +108,9 @@ class EmailRepository:
 
             return False
         except Exception as e:
-            logger.error(f"Error verifying user existence for user_id={user_id}: {str(e)}")
+            logger.error(
+                f"Error verifying user existence for user_id={user_id}: {e!s}"
+            )
             return False
 
     def verify_user_access(self, user_id: str) -> bool:
@@ -111,7 +122,9 @@ class EmailRepository:
             return False
         try:
             # Check google_accounts collection
-            google_col_name = getattr(settings, "GOOGLE_ACCOUNT_COLLECTION_NAME", "google_accounts")
+            google_col_name = getattr(
+                settings, "GOOGLE_ACCOUNT_COLLECTION_NAME", "google_accounts"
+            )
             google_acc_col = self.db[google_col_name]
             query = (
                 {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]}
@@ -119,7 +132,11 @@ class EmailRepository:
                 else {"user_id": str(user_id)}
             )
             account = google_acc_col.find_one(query)
-            if account and account.get("google_connected") and account.get("refresh_token"):
+            if (
+                account
+                and account.get("google_connected")
+                and account.get("refresh_token")
+            ):
                 return True
 
             # Fallback: Check google_connected flag in users collection
@@ -136,7 +153,7 @@ class EmailRepository:
 
             return False
         except Exception as e:
-            logger.error(f"Error checking user access for user_id={user_id}: {str(e)}")
+            logger.error(f"Error checking user access for user_id={user_id}: {e!s}")
             return False
 
     @staticmethod
@@ -147,7 +164,9 @@ class EmailRepository:
         """
         return re.sub(r"<[^>]+>", "", text or "")
 
-    def sanitize_email_data(self, email_input: Union[Dict[str, Any], EmailCreateSchema]) -> Dict[str, Any]:
+    def sanitize_email_data(
+        self, email_input: dict[str, Any] | EmailCreateSchema
+    ) -> dict[str, Any]:
         """
         Sanitizes and prepares email payload:
         - Validates field lengths (e.g. subject <= 255 chars)
@@ -226,9 +245,9 @@ class EmailRepository:
 
     def save_email(
         self,
-        email_data: Union[Dict[str, Any], EmailCreateSchema],
-        check_access: bool = True
-    ) -> Dict[str, Any]:
+        email_data: dict[str, Any] | EmailCreateSchema,
+        check_access: bool = True,
+    ) -> dict[str, Any]:
         """
         Saves or updates a classified email in MongoDB.
         - Validates user existence in users table/collection.
@@ -245,19 +264,16 @@ class EmailRepository:
 
         # 2. Security requirement: check user granted access if requested
         if check_access and not self.verify_user_access(user_id):
-            raise PermissionError(f"User ID '{user_id}' has not granted access to store emails")
+            raise PermissionError(
+                f"User ID '{user_id}' has not granted access to store emails"
+            )
 
         now = datetime.now(timezone.utc)
         query = {"user_id": user_id, "message_id": message_id}
 
         update_doc = {
-            "$set": {
-                **sanitized,
-                "updated_at": now
-            },
-            "$setOnInsert": {
-                "created_at": now
-            }
+            "$set": {**sanitized, "updated_at": now},
+            "$setOnInsert": {"created_at": now},
         }
 
         self.collection.update_one(query, update_doc, upsert=True)
@@ -265,9 +281,9 @@ class EmailRepository:
 
     def save_emails_bulk(
         self,
-        emails: List[Union[Dict[str, Any], EmailCreateSchema]],
-        check_access: bool = True
-    ) -> List[Dict[str, Any]]:
+        emails: list[dict[str, Any] | EmailCreateSchema],
+        check_access: bool = True,
+    ) -> list[dict[str, Any]]:
         """
         Saves multiple email records, updating existing ones and ignoring duplicates.
         """
@@ -278,16 +294,22 @@ class EmailRepository:
                 if res:
                     saved.append(res)
             except (ValueError, PermissionError) as err:
-                logger.warning(f"Skipping email save due to validation error: {str(err)}")
+                logger.warning(
+                    f"Skipping email save due to validation error: {err!s}"
+                )
         return saved
 
-    def find_by_message_id(self, user_id: str, message_id: str) -> Optional[Dict[str, Any]]:
+    def find_by_message_id(
+        self, user_id: str, message_id: str
+    ) -> dict[str, Any] | None:
         """
         Finds a saved email by user_id and message_id.
         """
-        return self.collection.find_one({"user_id": str(user_id), "message_id": str(message_id)})
+        return self.collection.find_one(
+            {"user_id": str(user_id), "message_id": str(message_id)}
+        )
 
-    def get_existing_message_ids(self, user_id: str, message_ids: List[str]) -> set:
+    def get_existing_message_ids(self, user_id: str, message_ids: list[str]) -> set:
         """
         Returns a set of message_ids from the given list that already exist in MongoDB for the user.
         Uses a single $in batch query instead of N individual database queries.
@@ -297,29 +319,28 @@ class EmailRepository:
         clean_ids = [str(m).strip() for m in message_ids if str(m).strip()]
         if not clean_ids:
             return set()
-        query = {
-            "user_id": str(user_id),
-            "message_id": {"$in": clean_ids}
-        }
+        query = {"user_id": str(user_id), "message_id": {"$in": clean_ids}}
         try:
             docs = self.collection.find(query, {"message_id": 1})
             return {doc["message_id"] for doc in docs if "message_id" in doc}
         except Exception as e:
-            logger.error(f"Error querying existing message_ids for user_id={user_id}: {e}")
+            logger.error(
+                f"Error querying existing message_ids for user_id={user_id}: {e}"
+            )
             return set()
 
     def get_user_emails(
         self,
         user_id: str,
-        predicted_label: Optional[str] = None,
-        search: Optional[str] = None,
+        predicted_label: str | None = None,
+        search: str | None = None,
         limit: int = 50,
-        skip: int = 0
-    ) -> List[Dict[str, Any]]:
+        skip: int = 0,
+    ) -> list[dict[str, Any]]:
         """
         Fetches classified emails for a specific user with optional label filter, search, and pagination.
         """
-        query: Dict[str, Any] = (
+        query: dict[str, Any] = (
             {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]}
             if ObjectId.is_valid(user_id)
             else {"user_id": str(user_id)}
@@ -345,13 +366,15 @@ class EmailRepository:
 
         cursor = (
             self.collection.find(query)
-            .sort([
-                ("sent_at", DESCENDING),
-                ("received_at", DESCENDING),
-                ("classified_at", DESCENDING),
-                ("fetch_time", DESCENDING),
-                ("_id", DESCENDING)
-            ])
+            .sort(
+                [
+                    ("sent_at", DESCENDING),
+                    ("received_at", DESCENDING),
+                    ("classified_at", DESCENDING),
+                    ("fetch_time", DESCENDING),
+                    ("_id", DESCENDING),
+                ]
+            )
             .skip(skip)
             .limit(limit)
         )
@@ -360,13 +383,13 @@ class EmailRepository:
     def count_user_emails(
         self,
         user_id: str,
-        predicted_label: Optional[str] = None,
-        search: Optional[str] = None
+        predicted_label: str | None = None,
+        search: str | None = None,
     ) -> int:
         """
         Counts total classified emails stored for a user, optionally filtered by predicted_label and search query.
         """
-        query: Dict[str, Any] = (
+        query: dict[str, Any] = (
             {"$or": [{"user_id": str(user_id)}, {"user_id": ObjectId(user_id)}]}
             if ObjectId.is_valid(user_id)
             else {"user_id": str(user_id)}

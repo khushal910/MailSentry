@@ -35,7 +35,7 @@ export function MetricCard({
         <div
           className={cn(
             "flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 shadow-sm transition-transform duration-300 group-hover:scale-110",
-            accentColor
+            accentColor,
           )}
         >
           <Icon className="h-5 w-5" />
@@ -46,9 +46,7 @@ export function MetricCard({
         <div className="text-3xl font-bold tracking-tight text-foreground">
           {formattedPercentage}
         </div>
-        <p className="mt-1 text-xs text-muted-foreground line-clamp-1">
-          {description}
-        </p>
+        <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{description}</p>
       </div>
 
       {/* Ambient background glow */}

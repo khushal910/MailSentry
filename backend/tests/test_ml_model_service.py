@@ -2,22 +2,24 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest.mock import MagicMock, patch
-from fastapi import HTTPException
-from bson import ObjectId
+from unittest.mock import MagicMock
 
-from app.services.ml_model_service import MLModelService
+from fastapi import HTTPException
+
 from app.repositories.model_repository import ModelRepository
+from app.services.ml_model_service import MLModelService
 
 
 class DummyClassifier:
     """Dummy ML Model for testing serialization and predictions."""
+
     def predict(self, X):
         return ["spam" for _ in X]
 
 
 class MockDatabase:
     """Mock Database implementation for testing ModelRepository."""
+
     def __init__(self, models_col):
         self.models_col = models_col
 
@@ -47,9 +49,7 @@ class TestMLModelService(unittest.TestCase):
         metrics = {"f1": 0.95, "accuracy": 0.96}
 
         record = self.service.save_and_register_model(
-            model_obj=dummy_model,
-            model_name="spam_classifier",
-            metrics=metrics
+            model_obj=dummy_model, model_name="spam_classifier", metrics=metrics
         )
 
         self.assertIsNotNone(record)
@@ -86,17 +86,19 @@ class TestMLModelService(unittest.TestCase):
             fpath = os.path.join(self.temp_dir, fname)
             with open(fpath, "wb") as f:
                 import pickle
+
                 pickle.dump(dummy_model, f)
             # Set artificial modification times
             os.utime(fpath, (1000 + i * 10, 1000 + i * 10))
 
-        deleted = self.service.cleanup_old_models(model_name="spam_classifier", keep_count=3)
+        deleted = self.service.cleanup_old_models(
+            model_name="spam_classifier", keep_count=3
+        )
         self.assertEqual(len(deleted), 2)
 
         # Check remaining files (excluding latest_model.pkl if present)
         remaining = [
-            f for f in os.listdir(self.temp_dir)
-            if f.startswith("spam_classifier_v")
+            f for f in os.listdir(self.temp_dir) if f.startswith("spam_classifier_v")
         ]
         self.assertEqual(len(remaining), 3)
 

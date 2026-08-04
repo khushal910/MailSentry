@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -8,25 +8,36 @@ class EmailBaseSchema(BaseModel):
     Base Pydantic Schema for Classified Email documents.
     Enforces minimal field storage required for UI (subject, snippet, labels, timestamps).
     """
+
     user_id: str = Field(..., description="ID of the user in users collection")
     message_id: str = Field(..., min_length=1, description="Unique Gmail message ID")
-    thread_id: Optional[str] = Field(default=None, description="Optional Gmail thread ID")
-    subject: str = Field(default="", max_length=255, description="Email subject, max 255 chars")
-    snippet: Optional[str] = Field(default=None, description="Short snippet preview for UI display")
-    predicted_label: str = Field(..., min_length=1, description="Classification result, e.g., 'spam', 'important'")
-    predicted_score: Optional[float] = Field(
+    thread_id: str | None = Field(
+        default=None, description="Optional Gmail thread ID"
+    )
+    subject: str = Field(
+        default="", max_length=255, description="Email subject, max 255 chars"
+    )
+    snippet: str | None = Field(
+        default=None, description="Short snippet preview for UI display"
+    )
+    predicted_label: str = Field(
+        ...,
+        min_length=1,
+        description="Classification result, e.g., 'spam', 'important'",
+    )
+    predicted_score: float | None = Field(
         default=None,
         ge=0.0,
         le=1.0,
-        description="Optional classification confidence or probability score"
+        description="Optional classification confidence or probability score",
     )
     fetch_time: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
-        description="Timestamp when email was fetched from Gmail"
+        description="Timestamp when email was fetched from Gmail",
     )
     classified_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
-        description="Timestamp when classification was completed"
+        description="Timestamp when classification was completed",
     )
 
     @field_validator("subject")
@@ -40,12 +51,13 @@ class EmailBaseSchema(BaseModel):
 
 class EmailCreateSchema(EmailBaseSchema):
     """Schema used when inserting or updating a classified email."""
-    pass
+
 
 
 class EmailInDBSchema(EmailBaseSchema):
     """Schema representing an email stored in MongoDB."""
-    id: Optional[str] = Field(default=None, alias="_id")
+
+    id: str | None = Field(default=None, alias="_id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -55,7 +67,8 @@ class EmailInDBSchema(EmailBaseSchema):
 
 class EmailResponseSchema(EmailBaseSchema):
     """Schema returned by API endpoints for UI consumption."""
-    id: Optional[str] = Field(default=None, alias="_id")
+
+    id: str | None = Field(default=None, alias="_id")
 
     class Config:
         populate_by_name = True
@@ -66,9 +79,12 @@ class ClassifyEmailRequestSchema(BaseModel):
     Request payload schema for email classification.
     Accepts subject and body (or message as alias).
     """
-    subject: str = Field(default="", max_length=255, description="Email subject, max 255 chars")
-    body: Optional[str] = Field(default="", description="Full or snippet of email body")
-    message: Optional[str] = Field(default=None, description="Alias for body")
+
+    subject: str = Field(
+        default="", max_length=255, description="Email subject, max 255 chars"
+    )
+    body: str | None = Field(default="", description="Full or snippet of email body")
+    message: str | None = Field(default=None, description="Alias for body")
 
     @field_validator("subject")
     @classmethod
@@ -80,5 +96,3 @@ class ClassifyEmailRequestSchema(BaseModel):
     @property
     def email_body(self) -> str:
         return (self.body or self.message or "").strip()
-
-

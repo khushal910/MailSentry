@@ -1,4 +1,3 @@
-from bson import ObjectId
 
 
 def get_me(user: dict) -> dict:
@@ -12,8 +11,8 @@ def get_me(user: dict) -> dict:
     }
     """
     return {
-        "id":    str(user["_id"]),
-        "name":  user.get("username", ""),
+        "id": str(user["_id"]),
+        "name": user.get("username", ""),
         "email": user.get("email", ""),
-        "role":  user.get("role", "user"),
+        "role": user.get("role", "user"),
     }

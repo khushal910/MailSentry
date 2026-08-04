@@ -11,9 +11,7 @@ export interface GoogleStatusNotConnectedResponse {
   connected: false;
 }
 
-export type GoogleStatusResponse =
-  | GoogleStatusConnectedResponse
-  | GoogleStatusNotConnectedResponse;
+export type GoogleStatusResponse = GoogleStatusConnectedResponse | GoogleStatusNotConnectedResponse;
 
 export const googleAuthApi = {
   /**
@@ -31,12 +29,12 @@ export const googleAuthApi = {
    */
   async getConnectUrl(): Promise<string> {
     const { data } = await apiClient.get<{
-      success: boolean;
-      data?: { url: string };
+      success?: boolean;
+      data?: { url?: string };
       url?: string;
     }>("/api/google/connect?format=json");
 
-    const url = data?.data?.url || (data as any)?.url;
+    const url = data?.data?.url || data?.url;
     if (!url) {
       throw new Error("Failed to generate Google connection URL.");
     }
@@ -57,7 +55,7 @@ export const googleAuthApi = {
    */
   async disconnect(): Promise<{ success: boolean; message: string }> {
     const { data } = await apiClient.post<{ success: boolean; message: string }>(
-      "/api/google/disconnect"
+      "/api/google/disconnect",
     );
     return data;
   },

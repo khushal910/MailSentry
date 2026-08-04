@@ -67,10 +67,14 @@ export function usePredictiveHistory({
       };
 
       if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-        const idleId = (window as any).requestIdleCallback(schedulePrefetch, { timeout: 2000 });
+        const win = window as unknown as {
+          requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number;
+          cancelIdleCallback: (id: number) => void;
+        };
+        const idleId = win.requestIdleCallback(schedulePrefetch, { timeout: 2000 });
         return () => {
           if ("cancelIdleCallback" in window) {
-            (window as any).cancelIdleCallback(idleId);
+            win.cancelIdleCallback(idleId);
           }
         };
       } else {
@@ -84,8 +88,18 @@ export function usePredictiveHistory({
   const sortedEmails = useMemo(() => {
     const rawEmails = query.data?.emails ?? [];
     return [...rawEmails].sort((a, b) => {
-      const getTimestamp = (item: any) => {
-        const dateCandidates = [item.sent_at, item.received_at, item.classified_at, item.fetch_time];
+      const getTimestamp = (item: {
+        sent_at?: string | null;
+        received_at?: string | null;
+        classified_at?: string | null;
+        fetch_time?: string | null;
+      }) => {
+        const dateCandidates = [
+          item.sent_at,
+          item.received_at,
+          item.classified_at,
+          item.fetch_time,
+        ];
         for (const dateVal of dateCandidates) {
           if (!dateVal) continue;
           if (typeof dateVal === "number") return dateVal;
@@ -103,7 +117,7 @@ export function usePredictiveHistory({
     totalCount: query.data?.total_count ?? query.data?.total ?? query.data?.count ?? 0,
     pageCount: Math.max(
       1,
-      Math.ceil((query.data?.total_count ?? query.data?.total ?? query.data?.count ?? 0) / limit)
+      Math.ceil((query.data?.total_count ?? query.data?.total ?? query.data?.count ?? 0) / limit),
     ),
     isLoading: query.isLoading,
     isFetching: query.isFetching,

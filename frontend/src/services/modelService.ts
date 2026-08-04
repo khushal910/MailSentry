@@ -1,8 +1,5 @@
 import apiClient from "./apiClient";
-import type {
-  ProductionModelInfo,
-  ModelComparisonResult,
-} from "@/types/model";
+import type { ProductionModelInfo, ModelComparisonResult } from "@/types/model";
 
 export const modelService = {
   /**
@@ -29,8 +26,7 @@ export const modelService = {
    */
   getModelHistory: async (): Promise<ProductionModelInfo[]> => {
     const res = await apiClient.get<
-      | { history: ProductionModelInfo[] }
-      | { data: { history: ProductionModelInfo[] } }
+      { history: ProductionModelInfo[] } | { data: { history: ProductionModelInfo[] } }
     >("/api/v1/model/history");
 
     const payload = res.data;
@@ -48,10 +44,9 @@ export const modelService = {
    * GET /api/v1/model/version/{version}
    */
   getModelVersion: async (version: string): Promise<ProductionModelInfo> => {
-    const res = await apiClient.get<
-      | ProductionModelInfo
-      | { data: ProductionModelInfo }
-    >(`/api/v1/model/version/${encodeURIComponent(version)}`);
+    const res = await apiClient.get<ProductionModelInfo | { data: ProductionModelInfo }>(
+      `/api/v1/model/version/${encodeURIComponent(version)}`,
+    );
 
     const payload = res.data;
     if (payload && typeof payload === "object" && "data" in payload && payload.data) {
@@ -64,16 +59,13 @@ export const modelService = {
    * Compare two model versions side by side.
    * GET /api/v1/model/compare?v1=x&v2=y
    */
-  compareModels: async (
-    v1: string,
-    v2: string
-  ): Promise<ModelComparisonResult> => {
-    const res = await apiClient.get<
-      | ModelComparisonResult
-      | { data: ModelComparisonResult }
-    >("/api/v1/model/compare", {
-      params: { v1, v2 },
-    });
+  compareModels: async (v1: string, v2: string): Promise<ModelComparisonResult> => {
+    const res = await apiClient.get<ModelComparisonResult | { data: ModelComparisonResult }>(
+      "/api/v1/model/compare",
+      {
+        params: { v1, v2 },
+      },
+    );
 
     const payload = res.data;
     if (payload && typeof payload === "object" && "data" in payload && payload.data) {

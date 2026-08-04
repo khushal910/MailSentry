@@ -34,7 +34,8 @@ export const Route = createFileRoute("/dashboard/auto-classifier")({
       { title: "Auto Classifier — MailSentry" },
       {
         name: "description",
-        content: "Queue of unclassified incoming Gmail messages waiting to be classified by MailSentry AI.",
+        content:
+          "Queue of unclassified incoming Gmail messages waiting to be classified by MailSentry AI.",
       },
     ],
   }),
@@ -66,6 +67,7 @@ function AutoClassifierPage() {
     status: string;
     current_subject?: string | null;
     startTime?: number;
+    estRemainingSec?: number;
   } | null>(null);
 
   // Search & Pagination state
@@ -123,6 +125,7 @@ function AutoClassifierPage() {
         status: job.status,
         current_subject: job.current_subject,
         startTime: startMs,
+        estRemainingSec: 0,
       });
 
       // Step 2: Poll status every 1.0s until complete or failed
@@ -130,12 +133,23 @@ function AutoClassifierPage() {
         const pollInterval = setInterval(async () => {
           try {
             const statusRes = await emailsApi.getJobStatus(job.job_id);
+            const nowMs = Date.now();
+            const total = statusRes.total || unclassifiedEmails.length;
+            const processed = statusRes.processed;
+            const elapsedSec = (nowMs - startMs) / 1000;
+            const avgItemSec = processed > 0 ? elapsedSec / processed : 0;
+            const estRemainingSec =
+              processed > 0 && processed < total
+                ? Math.max(1, Math.ceil((total - processed) * avgItemSec))
+                : 0;
+
             setJobProgress({
-              processed: statusRes.processed,
-              total: statusRes.total || unclassifiedEmails.length,
+              processed,
+              total,
               status: statusRes.status,
               current_subject: statusRes.current_subject,
               startTime: startMs,
+              estRemainingSec,
             });
 
             if (statusRes.status === "completed") {
@@ -161,12 +175,12 @@ function AutoClassifierPage() {
                       label: "View History",
                       onClick: () => navigate({ to: "/dashboard/history" }),
                     },
-                  }
+                  },
                 );
               } else if (skipped > 0) {
                 toast.error(
                   `Classification completed, but ${skipped} email(s) failed to save. Please try again.`,
-                  { duration: 5000 }
+                  { duration: 5000 },
                 );
               } else {
                 toast.info("No emails were classified.");
@@ -204,9 +218,11 @@ function AutoClassifierPage() {
   }, [unclassifiedEmails, debouncedSearch]);
 
   // Reset page when search term changes
-  useEffect(() => {
+  const [prevSearch, setPrevSearch] = useState(debouncedSearch);
+  if (debouncedSearch !== prevSearch) {
+    setPrevSearch(debouncedSearch);
     setPage(1);
-  }, [debouncedSearch]);
+  }
 
   const pageCount = Math.max(1, Math.ceil(filteredEmails.length / PAGE_SIZE));
   const paginatedEmails = useMemo(() => {
@@ -303,7 +319,10 @@ function AutoClassifierPage() {
               ) : (
                 <>
                   <Wand2 className="mr-2 h-4 w-4" />
-                  Classify {unclassifiedEmails.length > 0 ? `(${unclassifiedEmails.length})` : ""} Emails
+                  Classify {unclassifiedEmails.length > 0
+                    ? `(${unclassifiedEmails.length})`
+                    : ""}{" "}
+                  Emails
                 </>
               )}
             </Button>
@@ -337,11 +356,11 @@ function AutoClassifierPage() {
                     <h4 className="font-semibold text-foreground">Classifying Emails...</h4>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {jobProgress.processed} / {jobProgress.total} emails processed
-                      {jobProgress.startTime && jobProgress.processed > 0 && jobProgress.processed < jobProgress.total && (
+                      {jobProgress.estRemainingSec ? (
                         <span className="ml-2 text-primary font-medium">
-                          • Est. remaining: ~{Math.max(1, Math.ceil(((jobProgress.total - jobProgress.processed) * ((Date.now() - jobProgress.startTime) / 1000 / jobProgress.processed))))}s
+                          • Est. remaining: ~{jobProgress.estRemainingSec}s
                         </span>
-                      )}
+                      ) : null}
                     </p>
                   </div>
                 </div>
@@ -354,7 +373,8 @@ function AutoClassifierPage() {
 
               {jobProgress.current_subject && (
                 <p className="mt-3 text-xs text-muted-foreground truncate border-t border-border/40 pt-2">
-                  <span className="font-semibold text-foreground">Current Email:</span> {jobProgress.current_subject}
+                  <span className="font-semibold text-foreground">Current Email:</span>{" "}
+                  {jobProgress.current_subject}
                 </p>
               )}
 
@@ -392,12 +412,18 @@ function AutoClassifierPage() {
             <Sparkles className="h-4 w-4 text-brand" />
             <span>
               Unclassified Email Queue ({filteredEmails.length}
-              {unclassifiedEmails.length !== filteredEmails.length ? ` of ${unclassifiedEmails.length}` : ""} pending, max 50)
+              {unclassifiedEmails.length !== filteredEmails.length
+                ? ` of ${unclassifiedEmails.length}`
+                : ""}{" "}
+              pending, max 50)
             </span>
           </div>
           <span className="text-xs">
             Classified emails are saved directly to{" "}
-            <Link to="/dashboard/history" className="text-brand underline underline-offset-2 hover:text-brand/80">
+            <Link
+              to="/dashboard/history"
+              className="text-brand underline underline-offset-2 hover:text-brand/80"
+            >
               Prediction History
             </Link>
           </span>
@@ -452,7 +478,9 @@ function AutoClassifierPage() {
               <div>
                 <p className="text-sm font-semibold">Queue is empty!</p>
                 <p className="mt-1 text-xs text-muted-foreground max-w-md">
-                  All latest emails in your connected Gmail account have been classified and stored in MongoDB. Click <span className="font-semibold">Fetch Queue</span> to check for new incoming messages.
+                  All latest emails in your connected Gmail account have been classified and stored
+                  in MongoDB. Click <span className="font-semibold">Fetch Queue</span> to check for
+                  new incoming messages.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3 mt-3">
@@ -460,7 +488,11 @@ function AutoClassifierPage() {
                   <RefreshCw className="mr-2 h-3.5 w-3.5" />
                   Fetch New Messages
                 </Button>
-                <Button variant="default" size="sm" onClick={() => navigate({ to: "/dashboard/history" })}>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => navigate({ to: "/dashboard/history" })}
+                >
                   <HistoryIcon className="mr-2 h-3.5 w-3.5" />
                   View Prediction History
                 </Button>
@@ -474,10 +506,16 @@ function AutoClassifierPage() {
               <div>
                 <p className="text-sm font-semibold">No matching emails found</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  No unclassified email matches "<span className="font-medium text-foreground">{searchTerm}</span>".
+                  No unclassified email matches "
+                  <span className="font-medium text-foreground">{searchTerm}</span>".
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setSearchTerm("")} className="mt-2 text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearchTerm("")}
+                className="mt-2 text-xs"
+              >
                 Clear Search
               </Button>
             </div>
@@ -511,7 +549,8 @@ function AutoClassifierPage() {
                             onClick={(e) => {
                               // Prevent triggering if user clicked an interactive child element
                               const target = e.target as HTMLElement;
-                              if (target.closest("button, a, input, select, [role='button']")) return;
+                              if (target.closest("button, a, input, select, [role='button']"))
+                                return;
                               if (gmailUrl) openGmailInNewTab(gmailUrl);
                             }}
                             className={`border-b border-border/40 last:border-0 transition-colors group ${
@@ -536,18 +575,20 @@ function AutoClassifierPage() {
                               />
                             </td>
                             <td className="py-3 pr-4">
-                              <Badge variant="outline" className="border-brand/40 bg-brand/10 text-brand text-xs font-normal">
+                              <Badge
+                                variant="outline"
+                                className="border-brand/40 bg-brand/10 text-brand text-xs font-normal"
+                              >
                                 Unclassified
                               </Badge>
                             </td>
                             <td className="py-3 text-left text-muted-foreground text-xs pr-2">
-                              {email.sent_at || email.received_at ? formatDate(email.sent_at || email.received_at!) : "—"}
+                              {email.sent_at || email.received_at
+                                ? formatDate(email.sent_at || email.received_at!)
+                                : "—"}
                             </td>
                             <td className="py-3 text-center">
-                              <GmailOpenButton
-                                messageId={msgId}
-                                threadId={email.thread_id}
-                              />
+                              <GmailOpenButton messageId={msgId} threadId={email.thread_id} />
                             </td>
                           </motion.tr>
                         );
@@ -561,7 +602,8 @@ function AutoClassifierPage() {
               {filteredEmails.length > PAGE_SIZE && (
                 <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground border-t border-border/40 pt-4">
                   <span>
-                    Page {page} of {pageCount} · {filteredEmails.length} unclassified email{filteredEmails.length !== 1 ? "s" : ""}
+                    Page {page} of {pageCount} · {filteredEmails.length} unclassified email
+                    {filteredEmails.length !== 1 ? "s" : ""}
                   </span>
                   <div className="flex gap-2">
                     <Button
@@ -618,7 +660,8 @@ function GmailNotConnectedState({ onConnect }: { onConnect: () => void }) {
       <div>
         <h2 className="text-xl font-semibold">Gmail Not Connected</h2>
         <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-          Connect your Gmail account to allow MailSentry to fetch and classify your emails automatically.
+          Connect your Gmail account to allow MailSentry to fetch and classify your emails
+          automatically.
         </p>
       </div>
       <Button

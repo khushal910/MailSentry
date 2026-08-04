@@ -9,10 +9,7 @@
  * @param threadId - Optional Gmail thread ID for opening the conversation thread.
  * @returns Full Gmail URL string, or null if the message identifier is missing/invalid.
  */
-export function getGmailUrl(
-  messageId?: string | null,
-  threadId?: string | null
-): string | null {
+export function getGmailUrl(messageId?: string | null, threadId?: string | null): string | null {
   const cleanMsgId = messageId?.trim();
   const cleanThreadId = threadId?.trim();
 

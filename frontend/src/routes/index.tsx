@@ -85,14 +85,12 @@ const testimonials = [
     role: "Head of IT, Northwind",
   },
   {
-    quote:
-      "Clean, fast, and the reasoning breakdown is gold for our SOC team.",
+    quote: "Clean, fast, and the reasoning breakdown is gold for our SOC team.",
     name: "Marcus Lee",
     role: "Security Engineer, Vercel-scale startup",
   },
   {
-    quote:
-      "Deployed to 400 seats in an afternoon. Nothing else comes close.",
+    quote: "Deployed to 400 seats in an afternoon. Nothing else comes close.",
     name: "Elena Rossi",
     role: "CTO, Fintech",
   },
@@ -110,12 +108,7 @@ const tiers = [
     price: "$29",
     period: "/ month",
     featured: true,
-    features: [
-      "10,000 predictions/mo",
-      "History & analytics",
-      "Priority support",
-      "API access",
-    ],
+    features: ["10,000 predictions/mo", "History & analytics", "Priority support", "API access"],
   },
   {
     name: "Enterprise",
@@ -162,13 +155,11 @@ function LandingPage() {
               Powered by Machine Learning
             </div>
             <h1 className="mt-6 text-5xl font-bold leading-[1.05] tracking-tight md:text-6xl">
-              Protect your inbox with{" "}
-              <span className="gradient-text">MailSentry AI</span>
+              Protect your inbox with <span className="gradient-text">MailSentry AI</span>
             </h1>
             <p className="mt-5 max-w-lg text-base text-muted-foreground md:text-lg">
-              Detect spam emails instantly using Machine Learning. MailSentry
-              scores every message with confidence & reasoning — before it
-              reaches your team.
+              Detect spam emails instantly using Machine Learning. MailSentry scores every message
+              with confidence & reasoning — before it reaches your team.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button
@@ -211,26 +202,20 @@ function LandingPage() {
                 <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
                 <span className="h-2.5 w-2.5 rounded-full bg-warning/60" />
                 <span className="h-2.5 w-2.5 rounded-full bg-success/60" />
-                <span className="ml-3 text-xs text-muted-foreground">
-                  mailsentry / classifier
-                </span>
+                <span className="ml-3 text-xs text-muted-foreground">mailsentry / classifier</span>
               </div>
               <div className="space-y-3">
                 <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Subject
-                  </p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Subject</p>
                   <p className="mt-1 text-sm text-foreground">
                     URGENT: Your account has been compromised — verify now
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Message
-                  </p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Message</p>
                   <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">
-                    Click here immediately to secure your account and claim your
-                    reward before it expires…
+                    Click here immediately to secure your account and claim your reward before it
+                    expires…
                   </p>
                 </div>
                 <motion.div
@@ -241,13 +226,9 @@ function LandingPage() {
                 >
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-destructive" />
-                    <span className="text-sm font-medium text-destructive">
-                      Spam detected
-                    </span>
+                    <span className="text-sm font-medium text-destructive">Spam detected</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    98.34% confidence
-                  </span>
+                  <span className="text-xs text-muted-foreground">98.34% confidence</span>
                 </motion.div>
               </div>
             </div>
@@ -259,9 +240,7 @@ function LandingPage() {
       {/* Features */}
       <section className="mx-auto max-w-7xl px-4 py-24 md:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand">
-            Features
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand">Features</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
             Everything you need to defend your inbox
           </h2>
@@ -331,9 +310,8 @@ function LandingPage() {
               Built by people who ship security software.
             </h2>
             <p className="mt-4 text-muted-foreground">
-              MailSentry combines classical ML with modern LLM signals to catch
-              the phishing attempts your provider misses — without the noise of
-              overzealous filters.
+              MailSentry combines classical ML with modern LLM signals to catch the phishing
+              attempts your provider misses — without the noise of overzealous filters.
             </p>
             <ul className="mt-6 space-y-3 text-sm">
               {[
@@ -357,9 +335,7 @@ function LandingPage() {
                 { k: "Uptime", v: "99.99%" },
               ].map((m) => (
                 <div key={m.k} className="rounded-lg border border-border/60 p-4">
-                  <p className="text-xs uppercase tracking-widest text-muted-foreground">
-                    {m.k}
-                  </p>
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground">{m.k}</p>
                   <p className="mt-2 text-2xl font-semibold gradient-text">{m.v}</p>
                 </div>
               ))}
@@ -396,8 +372,7 @@ function LandingPage() {
                 </div>
                 <p className="mt-4 text-sm text-foreground">"{t.quote}"</p>
                 <div className="mt-4 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{t.name}</span> ·{" "}
-                  {t.role}
+                  <span className="font-medium text-foreground">{t.name}</span> · {t.role}
                 </div>
               </motion.div>
             ))}
@@ -408,9 +383,7 @@ function LandingPage() {
       {/* Pricing preview */}
       <section className="mx-auto max-w-7xl px-4 py-24 md:px-6">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand">
-            Pricing
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand">Pricing</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
             Simple, honest pricing
           </h2>
@@ -445,9 +418,7 @@ function LandingPage() {
               </ul>
               <Button
                 asChild
-                className={`mt-6 w-full ${
-                  t.featured ? "bg-gradient-brand" : ""
-                }`}
+                className={`mt-6 w-full ${t.featured ? "bg-gradient-brand" : ""}`}
                 variant={t.featured ? "default" : "outline"}
               >
                 <Link to="/pricing">Choose {t.name}</Link>
@@ -460,26 +431,18 @@ function LandingPage() {
       {/* FAQ */}
       <section className="mx-auto max-w-3xl px-4 pb-24 md:px-6">
         <div className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand">
-            FAQ
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand">FAQ</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
             Frequently asked questions
           </h2>
         </div>
         <Accordion type="single" collapsible className="mt-10">
           {faqs.map((f) => (
-            <AccordionItem
-              key={f.q}
-              value={f.q}
-              className="glass mb-2 rounded-lg px-4"
-            >
+            <AccordionItem key={f.q} value={f.q} className="glass mb-2 rounded-lg px-4">
               <AccordionTrigger className="text-left text-sm hover:no-underline">
                 {f.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-muted-foreground">
-                {f.a}
-              </AccordionContent>
+              <AccordionContent className="text-sm text-muted-foreground">{f.a}</AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>

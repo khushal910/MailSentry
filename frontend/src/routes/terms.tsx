@@ -1,7 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PublicLayout } from "@/layouts/PublicLayout";
 import { motion } from "framer-motion";
-import { FileText, Shield, CheckCircle2, AlertTriangle, Scale, Ban, Server, UserCheck, HelpCircle } from "lucide-react";
+import {
+  FileText,
+  Shield,
+  CheckCircle2,
+  AlertTriangle,
+  Scale,
+  Ban,
+  Server,
+  UserCheck,
+  HelpCircle,
+} from "lucide-react";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
@@ -56,11 +66,10 @@ function TermsOfServicePage() {
             <h1 className="text-3xl font-bold tracking-tight md:text-5xl">
               MailSentry Terms of Service
             </h1>
-            <p className="mt-4 text-base text-muted-foreground">
-              Last Updated: August 2, 2026
-            </p>
+            <p className="mt-4 text-base text-muted-foreground">Last Updated: August 2, 2026</p>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              Please read these Terms of Service ("Terms") carefully before using the MailSentry SaaS web application, API, and associated services.
+              Please read these Terms of Service ("Terms") carefully before using the MailSentry
+              SaaS web application, API, and associated services.
             </p>
           </motion.div>
 
@@ -88,14 +97,19 @@ function TermsOfServicePage() {
             {/* Main Content */}
             <div className="lg:col-span-3 space-y-12">
               {/* Section 1 */}
-              <section id="acceptance" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="acceptance"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-primary" />
                   <h2 className="text-xl font-bold tracking-tight">1. Acceptance of Terms</h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    By creating an account, authenticating via Google OAuth 2.0, or using any portion of MailSentry (<strong>https://mail-sentry-mu.vercel.app/</strong>), you agree to be bound by these Terms of Service and our Privacy Policy.
+                    By creating an account, authenticating via Google OAuth 2.0, or using any
+                    portion of MailSentry (<strong>https://mail-sentry-mu.vercel.app/</strong>), you
+                    agree to be bound by these Terms of Service and our Privacy Policy.
                   </p>
                   <p>
                     If you do not agree to these Terms, you may not access or use the application.
@@ -104,57 +118,89 @@ function TermsOfServicePage() {
               </section>
 
               {/* Section 2 */}
-              <section id="eligibility" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="eligibility"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <UserCheck className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">2. Eligibility & Account Security</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    2. Eligibility & Account Security
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    You must be at least 18 years old or the legal age of majority in your jurisdiction to use MailSentry. By accessing the service, you represent and warrant that you have the legal authority to enter into this agreement.
+                    You must be at least 18 years old or the legal age of majority in your
+                    jurisdiction to use MailSentry. By accessing the service, you represent and
+                    warrant that you have the legal authority to enter into this agreement.
                   </p>
                   <p>
-                    You are responsible for maintaining the confidentiality of your login credentials and for all activities conducted through your account.
+                    You are responsible for maintaining the confidentiality of your login
+                    credentials and for all activities conducted through your account.
                   </p>
                 </div>
               </section>
 
               {/* Section 3 */}
-              <section id="google-authentication" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="google-authentication"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Shield className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">3. Google OAuth & Gmail Permissions</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    3. Google OAuth & Gmail Permissions
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    MailSentry enables seamless authentication via Google Identity Services and connects to the Gmail API v1 to fetch unclassified email metadata.
+                    MailSentry enables seamless authentication via Google Identity Services and
+                    connects to the Gmail API v1 to fetch unclassified email metadata.
                   </p>
                   <div className="rounded-xl border border-border/50 bg-background/60 p-4 space-y-2 text-xs">
-                    <p className="font-semibold text-foreground">By connecting your Google Account, you agree that:</p>
+                    <p className="font-semibold text-foreground">
+                      By connecting your Google Account, you agree that:
+                    </p>
                     <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                      <li>You grant MailSentry read-only permission to retrieve message headers and snippets.</li>
-                      <li>You may disconnect MailSentry at any time via Settings or Google Security settings.</li>
-                      <li>MailSentry complies strictly with Google's API Services User Data Policy (Limited Use).</li>
+                      <li>
+                        You grant MailSentry read-only permission to retrieve message headers and
+                        snippets.
+                      </li>
+                      <li>
+                        You may disconnect MailSentry at any time via Settings or Google Security
+                        settings.
+                      </li>
+                      <li>
+                        MailSentry complies strictly with Google's API Services User Data Policy
+                        (Limited Use).
+                      </li>
                     </ul>
                   </div>
                 </div>
               </section>
 
               {/* Section 4 */}
-              <section id="acceptable-use" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="acceptable-use"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="h-5 w-5 text-primary" />
                   <h2 className="text-xl font-bold tracking-tight">4. Acceptable Use Policy</h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    You agree to use MailSentry only for lawful purposes related to managing, classifying, and protecting your personal or authorized business email accounts.
+                    You agree to use MailSentry only for lawful purposes related to managing,
+                    classifying, and protecting your personal or authorized business email accounts.
                   </p>
                 </div>
               </section>
 
               {/* Section 5 */}
-              <section id="prohibited-activities" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="prohibited-activities"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Ban className="h-5 w-5 text-destructive" />
                   <h2 className="text-xl font-bold tracking-tight">5. Prohibited Activities</h2>
@@ -163,92 +209,134 @@ function TermsOfServicePage() {
                   <p>You agree NOT to engage in any of the following prohibited behaviors:</p>
                   <ul className="grid gap-2 md:grid-cols-2 text-xs">
                     <li className="rounded-lg border border-border/50 bg-background/60 p-3">
-                      <strong>Unauthorized Access:</strong> Attempting to access accounts or Gmail data belonging to another individual without explicit consent.
+                      <strong>Unauthorized Access:</strong> Attempting to access accounts or Gmail
+                      data belonging to another individual without explicit consent.
                     </li>
                     <li className="rounded-lg border border-border/50 bg-background/60 p-3">
-                      <strong>Reverse Engineering:</strong> Decompiling, reverse engineering, or exploiting security vulnerabilities in MailSentry APIs or ML models.
+                      <strong>Reverse Engineering:</strong> Decompiling, reverse engineering, or
+                      exploiting security vulnerabilities in MailSentry APIs or ML models.
                     </li>
                     <li className="rounded-lg border border-border/50 bg-background/60 p-3">
-                      <strong>Abusive Automation:</strong> Overloading backend infrastructure through denial-of-service (DoS) or unauthorized scraping scripts.
+                      <strong>Abusive Automation:</strong> Overloading backend infrastructure
+                      through denial-of-service (DoS) or unauthorized scraping scripts.
                     </li>
                     <li className="rounded-lg border border-border/50 bg-background/60 p-3">
-                      <strong>Malicious Content:</strong> Transmitting malware, viruses, or illegal material through our platform interfaces.
+                      <strong>Malicious Content:</strong> Transmitting malware, viruses, or illegal
+                      material through our platform interfaces.
                     </li>
                   </ul>
                 </div>
               </section>
 
               {/* Section 6 */}
-              <section id="intellectual-property" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="intellectual-property"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Server className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">6. Intellectual Property Rights</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    6. Intellectual Property Rights
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    The MailSentry application, Machine Learning classification models, brand assets, logos, design system, and codebases are the exclusive intellectual property of MailSentry and its licensors.
+                    The MailSentry application, Machine Learning classification models, brand
+                    assets, logos, design system, and codebases are the exclusive intellectual
+                    property of MailSentry and its licensors.
                   </p>
                 </div>
               </section>
 
               {/* Section 7 */}
-              <section id="disclaimers" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="disclaimers"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="h-5 w-5 text-amber-500" />
                   <h2 className="text-xl font-bold tracking-tight">7. Disclaimer of Warranties</h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    MailSentry is provided on an <strong>"AS IS"</strong> and <strong>"AS AVAILABLE"</strong> basis without warranties of any kind, whether express or implied.
+                    MailSentry is provided on an <strong>"AS IS"</strong> and{" "}
+                    <strong>"AS AVAILABLE"</strong> basis without warranties of any kind, whether
+                    express or implied.
                   </p>
                   <p>
-                    While our AI classification models maintain high confidence scores, we do not guarantee 100% accuracy in detecting every spam or phishing attempt. Users are encouraged to review critical email classifications manually.
+                    While our AI classification models maintain high confidence scores, we do not
+                    guarantee 100% accuracy in detecting every spam or phishing attempt. Users are
+                    encouraged to review critical email classifications manually.
                   </p>
                 </div>
               </section>
 
               {/* Section 8 */}
-              <section id="limitation-liability" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="limitation-liability"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Scale className="h-5 w-5 text-primary" />
                   <h2 className="text-xl font-bold tracking-tight">8. Limitation of Liability</h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    To the maximum extent permitted by applicable law, MailSentry shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use or inability to use the service.
+                    To the maximum extent permitted by applicable law, MailSentry shall not be
+                    liable for any indirect, incidental, special, consequential, or punitive damages
+                    resulting from your use or inability to use the service.
                   </p>
                 </div>
               </section>
 
               {/* Section 9 */}
-              <section id="termination" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="termination"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <Ban className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">9. Account Suspension & Deletion</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    9. Account Suspension & Deletion
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    We reserve the right to suspend or terminate account access if a user violates these Terms or engages in fraudulent activity.
+                    We reserve the right to suspend or terminate account access if a user violates
+                    these Terms or engages in fraudulent activity.
                   </p>
                   <p>
-                    You may terminate your account at any time via Profile Settings. Upon termination, all stored email predictions and tokens are deleted.
+                    You may terminate your account at any time via Profile Settings. Upon
+                    termination, all stored email predictions and tokens are deleted.
                   </p>
                 </div>
               </section>
 
               {/* Section 10 */}
-              <section id="governing-law-contact" className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm">
+              <section
+                id="governing-law-contact"
+                className="scroll-mt-24 rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 backdrop-blur-sm"
+              >
                 <div className="flex items-center gap-3">
                   <HelpCircle className="h-5 w-5 text-primary" />
-                  <h2 className="text-xl font-bold tracking-tight">10. Governing Law & Contact Information</h2>
+                  <h2 className="text-xl font-bold tracking-tight">
+                    10. Governing Law & Contact Information
+                  </h2>
                 </div>
                 <div className="mt-4 text-sm text-muted-foreground leading-relaxed space-y-3">
                   <p>
-                    These Terms are governed by and construed in accordance with applicable laws without regard to conflict of law principles.
+                    These Terms are governed by and construed in accordance with applicable laws
+                    without regard to conflict of law principles.
                   </p>
                   <div className="rounded-xl border border-border/50 bg-background/60 p-4 text-xs space-y-1">
-                    <p><strong className="text-foreground">Support Email:</strong> support@mailsentry.app</p>
-                    <p><strong className="text-foreground">Website:</strong> https://mail-sentry-mu.vercel.app/</p>
+                    <p>
+                      <strong className="text-foreground">Support Email:</strong>{" "}
+                      support@mailsentry.app
+                    </p>
+                    <p>
+                      <strong className="text-foreground">Website:</strong>{" "}
+                      https://mail-sentry-mu.vercel.app/
+                    </p>
                   </div>
                 </div>
               </section>

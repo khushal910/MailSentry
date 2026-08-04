@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Request, Query, Depends, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import RedirectResponse
+
 from app.dependencies.auth import get_current_user
 from app.dependencies.google_auth_deps import get_google_oauth_service
-from app.services.auth.google_oauth_service import GoogleOAuthService
-from app.services.auth.google_status import (
-    get_google_status_service,
-    disconnect_google_service,
-)
 from app.schemas.google_auth import (
     GoogleStatusConnectedResponse,
     GoogleStatusNotConnectedResponse,
+)
+from app.services.auth.google_oauth_service import GoogleOAuthService
+from app.services.auth.google_status import (
+    disconnect_google_service,
+    get_google_status_service,
 )
 from app.utils.main_utile import return_response
 
@@ -46,6 +47,7 @@ async def connect_google(
         if token:
             try:
                 from app.utils.main_utile import decode_token
+
                 payload = decode_token(token)
                 user_id = payload.get("user_id") or payload.get("sub")
             except Exception:
@@ -59,7 +61,7 @@ async def connect_google(
         return return_response(
             status_code=status.HTTP_200_OK,
             message="Google connect URL generated successfully",
-            data={"url": auth_url, "state": state}
+            data={"url": auth_url, "state": state},
         )
 
     return RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)

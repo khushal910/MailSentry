@@ -1,7 +1,10 @@
 import base64
 import hashlib
+
 from cryptography.fernet import Fernet
+
 from app.core.config import settings
+
 
 def _get_fernet_instance() -> Fernet:
     """
@@ -12,6 +15,7 @@ def _get_fernet_instance() -> Fernet:
     key = base64.urlsafe_b64encode(hashed)
     return Fernet(key)
 
+
 def encrypt_token(plain_token: str) -> str:
     """
     Symmetrically encrypts a token string (e.g. refresh_token) using Fernet.
@@ -21,6 +25,7 @@ def encrypt_token(plain_token: str) -> str:
     fernet = _get_fernet_instance()
     encrypted_bytes = fernet.encrypt(plain_token.encode("utf-8"))
     return encrypted_bytes.decode("utf-8")
+
 
 def decrypt_token(encrypted_token: str) -> str:
     """

@@ -8,6 +8,8 @@ export interface ProductionModelInfo {
   task: string;
   deployment_date: string;
   training_date: string;
+  trained_at?: string;
+  mlflow_run_id?: string;
   deployment_status: string;
   status: string;
   model_hash: string;
@@ -15,7 +17,7 @@ export interface ProductionModelInfo {
   label_encoder_hash: string;
   dataset_version: string;
   dataset_size: number;
-  hyperparameters: Record<string, any>;
+  hyperparameters: Record<string, unknown>;
   accuracy: number;
   precision: number;
   recall: number;
@@ -28,6 +30,15 @@ export interface ProductionModelInfo {
   primary_score: number;
   description: string;
   is_active: boolean;
+  input_type?: string;
+  preprocessor?: string;
+  output_type?: string;
+  docker_image?: string;
+  python_version?: string;
+  commit?: string;
+  mlflow_run?: string;
+  deployed_by?: string;
+  experiment_name?: string;
 }
 
 export interface MetricDiffItem {
@@ -48,7 +59,7 @@ export interface ModelComparisonResult {
     algorithm: string;
     deployment_date: string;
     dataset_version: string;
-    hyperparameters: Record<string, any>;
+    hyperparameters: Record<string, unknown>;
   };
   v2: {
     version: string;
@@ -56,7 +67,7 @@ export interface ModelComparisonResult {
     algorithm: string;
     deployment_date: string;
     dataset_version: string;
-    hyperparameters: Record<string, any>;
+    hyperparameters: Record<string, unknown>;
   };
   comparison: Record<string, MetricDiffItem>;
 }

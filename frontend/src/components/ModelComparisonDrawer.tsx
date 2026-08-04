@@ -1,13 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Scale,
-  Code2,
-} from "lucide-react";
+import { X, TrendingUp, TrendingDown, Minus, Scale, Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,21 +26,30 @@ export function ModelComparisonDrawer({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isCancelled = false;
     if (isOpen && targetVersion) {
-      setIsLoading(true);
-      setError(null);
-      modelService
-        .compareModels(targetVersion, baseVersion)
-        .then((res) => {
-          setData(res);
-        })
-        .catch((err) => {
-          setError(err.message || "Failed to compare model versions");
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+      queueMicrotask(() => {
+        if (!isCancelled) {
+          setIsLoading(true);
+          setError(null);
+          void modelService
+            .compareModels(targetVersion, baseVersion)
+            .then((res) => {
+              if (!isCancelled) setData(res);
+            })
+            .catch((err: unknown) => {
+              if (!isCancelled)
+                setError(err instanceof Error ? err.message : "Failed to compare model versions");
+            })
+            .finally(() => {
+              if (!isCancelled) setIsLoading(false);
+            });
+        }
+      });
     }
+    return () => {
+      isCancelled = true;
+    };
   }, [isOpen, targetVersion, baseVersion]);
 
   if (!isOpen) return null;
@@ -124,10 +126,15 @@ export function ModelComparisonDrawer({
                   {/* Target Version Card (Selected) */}
                   <div className="rounded-2xl p-4 border border-slate-700/80 bg-slate-900/90 space-y-2">
                     <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="border-slate-600 bg-slate-800/80 text-slate-200 text-xs font-bold">
+                      <Badge
+                        variant="outline"
+                        className="border-slate-600 bg-slate-800/80 text-slate-200 text-xs font-bold"
+                      >
                         Selected Version
                       </Badge>
-                      <span className="text-xs font-black text-brand font-mono">{data.v1.version}</span>
+                      <span className="text-xs font-black text-brand font-mono">
+                        {data.v1.version}
+                      </span>
                     </div>
                     <div>
                       <span className="block text-sm font-black text-white">
@@ -148,7 +155,9 @@ export function ModelComparisonDrawer({
                       >
                         ● Production
                       </Badge>
-                      <span className="text-xs font-black text-emerald-400 font-mono">{data.v2.version}</span>
+                      <span className="text-xs font-black text-emerald-400 font-mono">
+                        {data.v2.version}
+                      </span>
                     </div>
                     <div>
                       <span className="block text-sm font-black text-white">
@@ -202,17 +211,23 @@ export function ModelComparisonDrawer({
                                 "inline-flex items-center gap-1 font-black px-2.5 py-1 rounded-lg text-xs border tabular-nums shadow-xs",
                                 isImproved &&
                                   "bg-emerald-500/20 text-emerald-400 border-emerald-500/40",
-                                isDecreased &&
-                                  "bg-rose-500/20 text-rose-400 border-rose-500/40",
+                                isDecreased && "bg-rose-500/20 text-rose-400 border-rose-500/40",
                                 !isImproved &&
                                   !isDecreased &&
-                                  "bg-slate-800 text-slate-300 border-slate-700"
+                                  "bg-slate-800 text-slate-300 border-slate-700",
                               )}
                             >
-                              {isImproved && <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
-                              {isDecreased && <TrendingDown className="h-3.5 w-3.5 text-rose-400" />}
-                              {!isImproved && !isDecreased && <Minus className="h-3.5 w-3.5 text-slate-400" />}
-                              {item.diff > 0 ? `+${item.diff}` : item.diff}{item.unit === "%" ? "%" : ""}
+                              {isImproved && (
+                                <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+                              )}
+                              {isDecreased && (
+                                <TrendingDown className="h-3.5 w-3.5 text-rose-400" />
+                              )}
+                              {!isImproved && !isDecreased && (
+                                <Minus className="h-3.5 w-3.5 text-slate-400" />
+                              )}
+                              {item.diff > 0 ? `+${item.diff}` : item.diff}
+                              {item.unit === "%" ? "%" : ""}
                             </span>
                           </div>
                         </div>
@@ -254,7 +269,11 @@ export function ModelComparisonDrawer({
 
           {/* Footer */}
           <div className="border-t border-slate-800 pt-4 flex justify-end">
-            <Button variant="outline" onClick={onClose} className="rounded-xl border-slate-700 text-white hover:bg-slate-800 font-bold text-xs">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="rounded-xl border-slate-700 text-white hover:bg-slate-800 font-bold text-xs"
+            >
               Close Comparison
             </Button>
           </div>

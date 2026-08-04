@@ -1,17 +1,18 @@
 from datetime import datetime, timezone
-from typing import Dict, Any
+
 from fastapi import Response
+
 from app.core.config import settings
 from app.db.mongodb import get_database
+from app.schemas.user import UserRegisterSchema
 from app.utils.main_utile import (
-    validate_email,
-    validate_password_strength,
-    hash_password,
     create_access_token,
+    hash_password,
     return_response,
     set_auth_cookie,
+    validate_email,
+    validate_password_strength,
 )
-from app.schemas.user import UserRegisterSchema
 
 
 async def register_user(user: UserRegisterSchema, response: Response):
@@ -41,15 +42,15 @@ async def register_user(user: UserRegisterSchema, response: Response):
         hashed_password = hash_password(password)
 
         new_user = {
-            "username":   username,
-            "email":      email,
-            "password":   hashed_password,
-            "role":       "user",
-            "is_active":  True,
+            "username": username,
+            "email": email,
+            "password": hashed_password,
+            "role": "user",
+            "is_active": True,
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc),
         }
-        result  = users_col.insert_one(new_user)
+        result = users_col.insert_one(new_user)
         user_id = str(result.inserted_id)
 
         # Generate token and set HTTP-only cookie — identical to login
@@ -60,4 +61,6 @@ async def register_user(user: UserRegisterSchema, response: Response):
         return return_response(status_code=201, message="User registered successfully")
 
     except Exception as e:
-        return return_response(status_code=500, message=f"Error during registration: {str(e)}")
+        return return_response(
+            status_code=500, message=f"Error during registration: {e!s}"
+        )

@@ -1,9 +1,11 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
-from main import app
+
 from app.dependencies.auth import get_current_user
 from app.utils.main_utile import create_access_token
+from main import app
 
 
 class TestClassifyEmailEndpoint(unittest.TestCase):
@@ -19,8 +21,7 @@ class TestClassifyEmailEndpoint(unittest.TestCase):
     def test_classify_email_unauthorized_without_jwt(self):
         """Should return 401 Unauthorized if JWT token is missing."""
         response = self.client.post(
-            "/api/classify-email",
-            json={"subject": "Hello", "body": "How are you?"}
+            "/api/classify-email", json={"subject": "Hello", "body": "How are you?"}
         )
         self.assertEqual(response.status_code, 401)
         self.assertIn("Authentication required", response.json().get("detail", ""))
@@ -35,13 +36,13 @@ class TestClassifyEmailEndpoint(unittest.TestCase):
             "subject": "Claim your reward",
             "predicted_label": "spam",
             "predicted_score": 0.96,
-            "classified_at": "2026-08-01T10:00:00Z"
+            "classified_at": "2026-08-01T10:00:00Z",
         }
 
         response = self.client.post(
             "/api/classify-email",
             headers={"Authorization": f"Bearer {self.token}"},
-            json={"subject": "Claim your reward", "body": "Click here to win $1000"}
+            json={"subject": "Claim your reward", "body": "Click here to win $1000"},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -65,11 +66,14 @@ class TestClassifyEmailEndpoint(unittest.TestCase):
         response = self.client.post(
             "/api/classify-email",
             headers={"Authorization": f"Bearer {self.token}"},
-            json={"subject": "Test Email", "body": "Some body"}
+            json={"subject": "Test Email", "body": "Some body"},
         )
 
         self.assertEqual(response.status_code, 500)
-        self.assertIn("ML classification model is not available", response.json().get("detail", ""))
+        self.assertIn(
+            "ML classification model is not available",
+            response.json().get("detail", ""),
+        )
 
 
 if __name__ == "__main__":

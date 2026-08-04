@@ -87,7 +87,9 @@ const Carousel = React.forwardRef<
       return;
     }
 
-    setApi(api);
+    queueMicrotask(() => {
+      setApi(api);
+    });
   }, [api, setApi]);
 
   React.useEffect(() => {
@@ -95,7 +97,9 @@ const Carousel = React.forwardRef<
       return;
     }
 
-    onSelect(api);
+    queueMicrotask(() => {
+      onSelect(api);
+    });
     api.on("reInit", onSelect);
     api.on("select", onSelect);
 

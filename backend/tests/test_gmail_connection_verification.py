@@ -1,10 +1,12 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
-from main import app
+
 from app.dependencies.auth import get_current_user
 from app.dependencies.google_auth_deps import get_google_account_repository
 from app.utils.main_utile import create_access_token
+from main import app
 
 
 class TestGmailConnectionVerification(unittest.TestCase):
@@ -19,28 +21,45 @@ class TestGmailConnectionVerification(unittest.TestCase):
 
     def test_gmail_account_missing_returns_403_please_connect(self):
         """If google_account missing, return 403 Forbidden ('Please connect Gmail.')."""
-        mock_user = {"_id": self.user_id, "username": "testuser", "google_connected": False}
+        mock_user = {
+            "_id": self.user_id,
+            "username": "testuser",
+            "google_connected": False,
+        }
         mock_repo = MagicMock()
         mock_repo.find_by_user_id.return_value = None
 
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_google_account_repository] = lambda: mock_repo
 
-        for endpoint in ["/api/gmail/fetch", "/api/gmail/classify", "/api/gmail/summarize", "/api/gmail/schedule-meeting"]:
-            response = self.client.post(endpoint, headers={"Authorization": f"Bearer {self.token}"})
+        for endpoint in [
+            "/api/gmail/fetch",
+            "/api/gmail/classify",
+            "/api/gmail/summarize",
+            "/api/gmail/schedule-meeting",
+        ]:
+            response = self.client.post(
+                endpoint, headers={"Authorization": f"Bearer {self.token}"}
+            )
             self.assertEqual(response.status_code, 403)
             self.assertIn("Please connect Gmail.", response.json().get("detail", ""))
 
     def test_auto_fix_user_google_connected_if_account_missing(self):
         """If user.google_connected=true but google_account missing, auto-fix user.google_connected=false and return 403."""
-        mock_user_desynced = {"_id": self.user_id, "username": "testuser", "google_connected": True}
+        mock_user_desynced = {
+            "_id": self.user_id,
+            "username": "testuser",
+            "google_connected": True,
+        }
         mock_repo = MagicMock()
         mock_repo.find_by_user_id.return_value = None  # Document missing
 
         app.dependency_overrides[get_current_user] = lambda: mock_user_desynced
         app.dependency_overrides[get_google_account_repository] = lambda: mock_repo
 
-        response = self.client.post("/api/gmail/fetch", headers={"Authorization": f"Bearer {self.token}"})
+        response = self.client.post(
+            "/api/gmail/fetch", headers={"Authorization": f"Bearer {self.token}"}
+        )
         self.assertEqual(response.status_code, 403)
 
         # Verify auto-fix was called
@@ -50,7 +69,11 @@ class TestGmailConnectionVerification(unittest.TestCase):
 
     def test_missing_refresh_token_returns_403_reconnect_gmail(self):
         """If google_account exists but refresh_token missing or empty, return 403 ('Reconnect Gmail.')."""
-        mock_user = {"_id": self.user_id, "username": "testuser", "google_connected": True}
+        mock_user = {
+            "_id": self.user_id,
+            "username": "testuser",
+            "google_connected": True,
+        }
         mock_repo = MagicMock()
         mock_repo.find_by_user_id.return_value = {
             "_id": "acc_123",
@@ -63,16 +86,28 @@ class TestGmailConnectionVerification(unittest.TestCase):
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_google_account_repository] = lambda: mock_repo
 
-        response = self.client.post("/api/gmail/fetch", headers={"Authorization": f"Bearer {self.token}"})
+        response = self.client.post(
+            "/api/gmail/fetch", headers={"Authorization": f"Bearer {self.token}"}
+        )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json().get("detail"), "Reconnect Gmail.")
 
-    @patch("app.services.gmail_token_manager.GmailTokenManager.get_valid_access_token", new_callable=unittest.mock.AsyncMock, return_value="mock_access_token")
+    @patch(
+        "app.services.gmail_token_manager.GmailTokenManager.get_valid_access_token",
+        new_callable=unittest.mock.AsyncMock,
+        return_value="mock_access_token",
+    )
     @patch("app.services.ml_model_service.MLModelService.get_model_or_raise")
-    def test_valid_connection_and_refresh_token_succeeds(self, mock_get_model, mock_get_token):
+    def test_valid_connection_and_refresh_token_succeeds(
+        self, mock_get_model, mock_get_token
+    ):
         """If valid google_account with refresh_token exists, operations succeed with 200 OK."""
         mock_get_model.return_value = MagicMock()
-        mock_user = {"_id": self.user_id, "username": "testuser", "google_connected": True}
+        mock_user = {
+            "_id": self.user_id,
+            "username": "testuser",
+            "google_connected": True,
+        }
         mock_account = {
             "_id": "acc_123",
             "user_id": self.user_id,
@@ -87,8 +122,15 @@ class TestGmailConnectionVerification(unittest.TestCase):
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_google_account_repository] = lambda: mock_repo
 
-        for endpoint in ["/api/gmail/fetch", "/api/gmail/classify", "/api/gmail/summarize", "/api/gmail/schedule-meeting"]:
-            response = self.client.post(endpoint, headers={"Authorization": f"Bearer {self.token}"})
+        for endpoint in [
+            "/api/gmail/fetch",
+            "/api/gmail/classify",
+            "/api/gmail/summarize",
+            "/api/gmail/schedule-meeting",
+        ]:
+            response = self.client.post(
+                endpoint, headers={"Authorization": f"Bearer {self.token}"}
+            )
             self.assertEqual(response.status_code, 200)
 
 

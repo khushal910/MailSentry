@@ -33,15 +33,11 @@ export function AuthLayout({ title, subtitle, footer, children }: AuthLayoutProp
         >
           <div className="mb-6">
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-            {subtitle && (
-              <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>
-            )}
+            {subtitle && <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>}
           </div>
           {children}
         </motion.div>
-        {footer && (
-          <p className="mt-6 text-center text-sm text-muted-foreground">{footer}</p>
-        )}
+        {footer && <p className="mt-6 text-center text-sm text-muted-foreground">{footer}</p>}
         <div className="mt-6 flex justify-center gap-4 text-xs text-muted-foreground">
           <Link to="/privacy" className="hover:text-foreground transition-colors">
             Privacy Policy

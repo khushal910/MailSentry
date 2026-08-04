@@ -2,12 +2,7 @@ import * as React from "react";
 import { ExternalLink, Mail, MessageSquare, Reply, Forward, FileCode } from "lucide-react";
 import { getGmailUrl, openGmailInNewTab } from "@/utils/gmail";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,8 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export interface GmailOpenButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface GmailOpenButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Gmail message ID (e.g. 194be567a1b...) */
   messageId?: string | null;
   /** Optional Gmail thread ID */
@@ -37,10 +31,7 @@ export interface GmailOpenButtonProps
   onViewRaw?: () => void;
 }
 
-export const GmailOpenButton = React.forwardRef<
-  HTMLButtonElement,
-  GmailOpenButtonProps
->(
+export const GmailOpenButton = React.forwardRef<HTMLButtonElement, GmailOpenButtonProps>(
   (
     {
       messageId,
@@ -56,7 +47,7 @@ export const GmailOpenButton = React.forwardRef<
       onViewRaw,
       ...props
     },
-    ref
+    ref,
   ) => {
     const gmailUrl = getGmailUrl(messageId, threadId);
     const isAvailable = Boolean(gmailUrl);
@@ -75,9 +66,7 @@ export const GmailOpenButton = React.forwardRef<
     };
 
     // Tooltip text per requirements
-    const tooltipText = isAvailable
-      ? "Open Original Email in Gmail"
-      : "Original email unavailable";
+    const tooltipText = isAvailable ? "Open Original Email in Gmail" : "Original email unavailable";
 
     // Standard accessible aria label
     const ariaLabel = isAvailable
@@ -240,7 +229,7 @@ export const GmailOpenButton = React.forwardRef<
         </Tooltip>
       </TooltipProvider>
     );
-  }
+  },
 );
 
 GmailOpenButton.displayName = "GmailOpenButton";

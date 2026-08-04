@@ -1,12 +1,13 @@
-import os
 import glob
-import pickle
 import logging
+import os
+import pickle
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
-from fastapi import HTTPException, status
+from typing import Any
 
 import joblib
+from fastapi import HTTPException, status
+
 from app.core.config import settings
 from app.repositories.model_repository import ModelRepository
 from app.services.ml_preprocessing import MLPreprocessing
@@ -15,20 +16,21 @@ from app.services.prediction_engine import PredictionEngine
 logger = logging.getLogger(__name__)
 
 
-
 class MLModelService:
     """
     Service layer for saving, validating, versioning, cleaning up, loading ML classification models,
     and running standalone preprocessing and predictions in backend.
     """
 
-    _cached_model: Optional[Any] = None
-    _cached_preprocessor: Optional[Any] = None
-    _cached_label_encoder: Optional[Any] = None
-    _cached_version: Optional[str] = None
-    _cached_model_type: Optional[str] = None
+    _cached_model: Any | None = None
+    _cached_preprocessor: Any | None = None
+    _cached_label_encoder: Any | None = None
+    _cached_version: str | None = None
+    _cached_model_type: str | None = None
 
-    def __init__(self, models_dir: Optional[str] = None, repo: Optional[ModelRepository] = None):
+    def __init__(
+        self, models_dir: str | None = None, repo: ModelRepository | None = None
+    ):
         self.models_dir = (
             models_dir
             if models_dir is not None
@@ -42,7 +44,9 @@ class MLModelService:
         now = datetime.now(timezone.utc)
         return f"v{now.strftime('%Y%m%d_%H%M%S')}"
 
-    def cleanup_old_models(self, model_name: str = "spam_classifier", keep_count: int = 3) -> List[str]:
+    def cleanup_old_models(
+        self, model_name: str = "spam_classifier", keep_count: int = 3
+    ) -> list[str]:
         """
         Cleans up old versioned model files from disk, retaining only the latest `keep_count` versions.
         Does NOT delete latest_model.pkl.
@@ -62,7 +66,7 @@ class MLModelService:
                     deleted_files.append(fpath)
                     logger.info(f"Cleaned up old model file: {fpath}")
                 except Exception as e:
-                    logger.error(f"Failed to delete old model file '{fpath}': {str(e)}")
+                    logger.error(f"Failed to delete old model file '{fpath}': {e!s}")
 
         return deleted_files
 
@@ -82,14 +86,16 @@ class MLModelService:
                 raise ValueError("Deserialized model object is None.")
             return model_obj
         except Exception as e:
-            raise ValueError(f"Model file integrity check failed for '{file_path}': {str(e)}")
+            raise ValueError(
+                f"Model file integrity check failed for '{file_path}': {e!s}"
+            )
 
     def save_and_register_model(
         self,
         model_obj: Any,
         model_name: str = "spam_classifier",
-        metrics: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        metrics: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Saves a trained ML model:
         1. Serializes model to versioned file (e.g. spam_classifier_v20260801_103527.pkl).
@@ -121,7 +127,7 @@ class MLModelService:
             model_name=model_name,
             version=version,
             file_path=versioned_filepath,
-            metrics=metrics
+            metrics=metrics,
         )
 
         # 4. Disk cleanup: retain latest 3 versions
@@ -131,10 +137,12 @@ class MLModelService:
         MLModelService._cached_model = model_obj
         MLModelService._cached_version = version
 
-        logger.info(f"Model successfully saved, verified, registered, and cached. Version: {version}")
+        logger.info(
+            f"Model successfully saved, verified, registered, and cached. Version: {version}"
+        )
         return record
 
-    def load_latest_model(self, force_reload: bool = False) -> Optional[Any]:
+    def load_latest_model(self, force_reload: bool = False) -> Any | None:
         """
         Loads the latest model file from disk or PredictionEngine.
         Returns None if model file is missing or corrupted.
@@ -149,7 +157,8 @@ class MLModelService:
             pattern = os.path.join(self.models_dir, "*.pkl")
             all_files = glob.glob(pattern)
             files = [
-                f for f in all_files
+                f
+                for f in all_files
                 if not os.path.basename(f).startswith("preprocessing")
                 and not os.path.basename(f).startswith("label_encoder")
             ]
@@ -164,7 +173,7 @@ class MLModelService:
                 logger.info(f"Successfully loaded latest model from '{target_path}'.")
                 return model_obj
             except Exception as e:
-                logger.error(f"Error loading model from '{target_path}': {str(e)}")
+                logger.error(f"Error loading model from '{target_path}': {e!s}")
 
         # 2. Check production directory (model.joblib or model.pkl)
         prod_paths = [
@@ -178,22 +187,30 @@ class MLModelService:
                 try:
                     model_obj = joblib.load(p_path)
                     MLModelService._cached_model = model_obj
-                    logger.info(f"Successfully loaded production model from '{p_path}'.")
+                    logger.info(
+                        f"Successfully loaded production model from '{p_path}'."
+                    )
                     return model_obj
                 except Exception as e:
-                    logger.error(f"Error loading model from '{p_path}': {str(e)}")
+                    logger.error(f"Error loading model from '{p_path}': {e!s}")
 
         # 3. Try PredictionEngine singleton if metadata exists in models_dir
         try:
             has_meta = (
-                os.path.exists(os.path.join(self.models_dir, "metadata.json")) or
-                os.path.exists(os.path.join(self.models_dir, "production", "metadata.json")) or
-                os.path.exists(os.path.join(self.models_dir, "champion", "metadata.json"))
+                os.path.exists(os.path.join(self.models_dir, "metadata.json"))
+                or os.path.exists(
+                    os.path.join(self.models_dir, "production", "metadata.json")
+                )
+                or os.path.exists(
+                    os.path.join(self.models_dir, "champion", "metadata.json")
+                )
             )
             if has_meta:
                 engine = PredictionEngine(self.models_dir)
                 if engine.predictor is not None:
-                    predictor_model = getattr(engine.predictor, "model", engine.predictor)
+                    predictor_model = getattr(
+                        engine.predictor, "model", engine.predictor
+                    )
                     MLModelService._cached_model = predictor_model
                     return predictor_model
         except Exception as e:
@@ -212,11 +229,11 @@ class MLModelService:
         if model is None:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="ML classification model is not available"
+                detail="ML classification model is not available",
             )
         return model
 
-    def load_preprocessor(self) -> Optional[Any]:
+    def load_preprocessor(self) -> Any | None:
         """Loads preprocessor (preprocessing.pkl) from models_dir if present."""
         if MLModelService._cached_preprocessor is not None:
             return MLModelService._cached_preprocessor
@@ -232,7 +249,7 @@ class MLModelService:
                 logger.warning(f"Failed to load preprocessor: {e}")
         return None
 
-    def load_label_encoder(self) -> Optional[Any]:
+    def load_label_encoder(self) -> Any | None:
         """Loads label encoder (label_encoder.pkl) from models_dir if present."""
         if MLModelService._cached_label_encoder is not None:
             return MLModelService._cached_label_encoder
@@ -248,7 +265,7 @@ class MLModelService:
                 logger.warning(f"Failed to load label encoder: {e}")
         return None
 
-    def classify_text(self, subject: str, body: str) -> Dict[str, Any]:
+    def classify_text(self, subject: str, body: str) -> dict[str, Any]:
         """
         Classifies email content using active ML model or PredictionEngine singleton.
         Returns predicted_label, predicted_score, subject, and classified_at timestamp.
@@ -270,14 +287,19 @@ class MLModelService:
                 except ValueError as val_err:
                     if "Expected 2D array" in str(val_err):
                         import numpy as np
+
                         arr = np.array(features).reshape(-1, 1)
                         preds = model.predict(arr)
                     else:
                         raise val_err
 
-                raw_label = preds[0] if (preds is not None and len(preds) > 0) else "ham"
+                raw_label = (
+                    preds[0] if (preds is not None and len(preds) > 0) else "ham"
+                )
 
-                if label_encoder is not None and hasattr(label_encoder, "inverse_transform"):
+                if label_encoder is not None and hasattr(
+                    label_encoder, "inverse_transform"
+                ):
                     try:
                         label = str(label_encoder.inverse_transform([raw_label])[0])
                     except Exception:
@@ -294,6 +316,7 @@ class MLModelService:
                         if "Expected 2D array" in str(val_err):
                             try:
                                 import numpy as np
+
                                 arr = np.array(features).reshape(-1, 1)
                                 probas = model.predict_proba(arr)[0]
                                 score = float(max(probas))
@@ -309,10 +332,9 @@ class MLModelService:
                     "classified_at": datetime.now(timezone.utc).isoformat(),
                 }
             except Exception as exc:
-                logger.warning(f"ML classification failed on text ({exc}), delegating to PredictionEngine fallback.")
+                logger.warning(
+                    f"ML classification failed on text ({exc}), delegating to PredictionEngine fallback."
+                )
 
         engine = PredictionEngine(self.models_dir)
         return engine.predict(subject=subject, body=body)
-
-
-

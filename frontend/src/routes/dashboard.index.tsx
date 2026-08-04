@@ -71,7 +71,13 @@ function DashboardHome() {
   }, []);
 
   useEffect(() => {
-    fetchRecent();
+    let active = true;
+    queueMicrotask(() => {
+      if (active) void fetchRecent();
+    });
+    return () => {
+      active = false;
+    };
   }, [fetchRecent]);
 
   // Helper for Total Predictions Trend
@@ -114,7 +120,9 @@ function DashboardHome() {
             <AlertCircle className="h-5 w-5" />
             <span>Failed to load dashboard statistics</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{error || "Could not retrieve data from server."}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {error || "Could not retrieve data from server."}
+          </p>
           <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-3">
             <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry
           </Button>
@@ -206,7 +214,9 @@ function DashboardHome() {
                       </td>
                       <td className="py-3">{truncate(r.subject || "(No Subject)", 45)}</td>
                       <td className="py-3">
-                        <PredictionBadge prediction={r.predicted_label === "spam" ? "Spam" : "Ham"} />
+                        <PredictionBadge
+                          prediction={r.predicted_label === "spam" ? "Spam" : "Ham"}
+                        />
                       </td>
                       <td className="py-3 text-right font-medium">
                         {r.predicted_score !== undefined && r.predicted_score !== null
@@ -223,9 +233,7 @@ function DashboardHome() {
 
         <div className="glass rounded-xl p-5">
           <h2 className="text-base font-semibold">Quick actions</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Jump into the tools you use most.
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Jump into the tools you use most.</p>
           <div className="mt-4 space-y-2">
             <Button asChild variant="outline" className="w-full justify-start">
               <Link to="/dashboard/classifier">

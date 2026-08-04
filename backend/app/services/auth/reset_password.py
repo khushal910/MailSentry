@@ -1,12 +1,14 @@
-from fastapi import status, HTTPException
-from app.db.mongodb import get_database
+from fastapi import HTTPException, status
+
 from app.core.config import settings
+from app.db.mongodb import get_database
+from app.schemas.user import ResetPasswordRequest
 from app.utils.main_utile import (
     hash_password,
+    return_response,
     verify_password_reset_token,
-    return_response
 )
-from app.schemas.user import ResetPasswordRequest
+
 
 async def reset_password_service(payload: ResetPasswordRequest):
     """Handle POST /reset-password.
@@ -21,7 +23,7 @@ async def reset_password_service(payload: ResetPasswordRequest):
         if not email:
             return return_response(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                message="Invalid token payload: email missing"
+                message="Invalid token payload: email missing",
             )
 
         db = get_database()
@@ -30,8 +32,7 @@ async def reset_password_service(payload: ResetPasswordRequest):
 
         if not user:
             return return_response(
-                status_code=status.HTTP_404_NOT_FOUND,
-                message="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, message="User not found"
             )
 
         # 2. Hash the new password
@@ -48,24 +49,21 @@ async def reset_password_service(payload: ResetPasswordRequest):
                     "reset_otp_hash": "",
                     "reset_otp_expire_at": "",
                     "reset_otp_attempts": "",
-                    "forgot_password_otp_timestamps": ""
-                }
-            }
+                    "forgot_password_otp_timestamps": "",
+                },
+            },
         )
 
         return return_response(
             status_code=status.HTTP_200_OK,
-            message="Password has been reset successfully"
+            message="Password has been reset successfully",
         )
 
     except HTTPException as he:
         # Propagate or handle the JWT signature errors gracefully
-        return return_response(
-            status_code=he.status_code,
-            message=he.detail
-        )
+        return return_response(status_code=he.status_code, message=he.detail)
     except Exception as e:
         return return_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Error resetting password: {str(e)}"
+            message=f"Error resetting password: {e!s}",
         )

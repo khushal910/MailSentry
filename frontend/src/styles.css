@@ -56,17 +56,17 @@
   --radius: 0.85rem;
 
   /* Default Light Theme variables */
-  --background: oklch(0.985 0.005 250);         /* ~ #F8FAFC */
-  --foreground: oklch(0.2 0.02 260);            /* ~ #0F172A */
-  --card: oklch(1 0 0 / 0.85);                   /* glass card light */
+  --background: oklch(0.985 0.005 250); /* ~ #F8FAFC */
+  --foreground: oklch(0.2 0.02 260); /* ~ #0F172A */
+  --card: oklch(1 0 0 / 0.85); /* glass card light */
   --card-foreground: oklch(0.2 0.02 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.02 260);
 
   /* Brand Colors */
-  --brand: oklch(0.55 0.22 275);                /* #4F46E5 Indigo */
+  --brand: oklch(0.55 0.22 275); /* #4F46E5 Indigo */
   --brand-foreground: oklch(0.985 0.002 285);
-  --cyan: oklch(0.65 0.18 210);                 /* #06B6D4 Cyan */
+  --cyan: oklch(0.65 0.18 210); /* #06B6D4 Cyan */
 
   --primary: oklch(0.55 0.22 275);
   --primary-foreground: oklch(0.985 0.002 285);
@@ -97,26 +97,31 @@
 
   /* Gradients & Shadows */
   --gradient-brand: linear-gradient(135deg, oklch(0.55 0.22 275), oklch(0.65 0.18 210));
-  --gradient-hero: radial-gradient(60% 60% at 50% 0%, oklch(0.55 0.22 275 / 0.15), transparent 70%),
-                   radial-gradient(50% 50% at 100% 30%, oklch(0.65 0.18 210 / 0.12), transparent 70%),
-                   linear-gradient(180deg, oklch(0.985 0.005 250), oklch(0.96 0.005 250));
-  --gradient-glow: radial-gradient(400px 200px at 50% 0%, oklch(0.55 0.22 275 / 0.2), transparent 70%);
+  --gradient-hero:
+    radial-gradient(60% 60% at 50% 0%, oklch(0.55 0.22 275 / 0.15), transparent 70%),
+    radial-gradient(50% 50% at 100% 30%, oklch(0.65 0.18 210 / 0.12), transparent 70%),
+    linear-gradient(180deg, oklch(0.985 0.005 250), oklch(0.96 0.005 250));
+  --gradient-glow: radial-gradient(
+    400px 200px at 50% 0%,
+    oklch(0.55 0.22 275 / 0.2),
+    transparent 70%
+  );
   --shadow-elegant: 0 20px 60px -20px oklch(0.55 0.22 275 / 0.2);
   --shadow-soft: 0 10px 40px -10px oklch(0 0 0 / 0.08);
 }
 
 /* Dark Theme Variables */
 .dark {
-  --background: oklch(0.145 0.006 285);         /* ~ #09090B */
+  --background: oklch(0.145 0.006 285); /* ~ #09090B */
   --foreground: oklch(0.985 0.002 285);
-  --card: oklch(0.19 0.008 285 / 0.6);          /* glass card dark */
+  --card: oklch(0.19 0.008 285 / 0.6); /* glass card dark */
   --card-foreground: oklch(0.985 0.002 285);
   --popover: oklch(0.17 0.008 285);
   --popover-foreground: oklch(0.985 0.002 285);
 
-  --brand: oklch(0.55 0.22 275);                /* #4F46E5 */
+  --brand: oklch(0.55 0.22 275); /* #4F46E5 */
   --brand-foreground: oklch(0.985 0.002 285);
-  --cyan: oklch(0.75 0.14 210);                 /* #06B6D4 */
+  --cyan: oklch(0.75 0.14 210); /* #06B6D4 */
 
   --primary: oklch(0.55 0.22 275);
   --primary-foreground: oklch(0.985 0.002 285);
@@ -146,10 +151,15 @@
   --sidebar-ring: oklch(0.55 0.22 275);
 
   --gradient-brand: linear-gradient(135deg, oklch(0.55 0.22 275), oklch(0.75 0.14 210));
-  --gradient-hero: radial-gradient(60% 60% at 50% 0%, oklch(0.55 0.22 275 / 0.28), transparent 70%),
-                   radial-gradient(50% 50% at 100% 30%, oklch(0.75 0.14 210 / 0.18), transparent 70%),
-                   linear-gradient(180deg, oklch(0.145 0.006 285), oklch(0.11 0.005 285));
-  --gradient-glow: radial-gradient(400px 200px at 50% 0%, oklch(0.55 0.22 275 / 0.35), transparent 70%);
+  --gradient-hero:
+    radial-gradient(60% 60% at 50% 0%, oklch(0.55 0.22 275 / 0.28), transparent 70%),
+    radial-gradient(50% 50% at 100% 30%, oklch(0.75 0.14 210 / 0.18), transparent 70%),
+    linear-gradient(180deg, oklch(0.145 0.006 285), oklch(0.11 0.005 285));
+  --gradient-glow: radial-gradient(
+    400px 200px at 50% 0%,
+    oklch(0.55 0.22 275 / 0.35),
+    transparent 70%
+  );
   --shadow-elegant: 0 20px 60px -20px oklch(0.55 0.22 275 / 0.35);
   --shadow-soft: 0 10px 40px -10px oklch(0 0 0 / 0.5);
 }
@@ -166,7 +176,9 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
   }
 
   ::selection {
@@ -219,28 +231,33 @@
 
 /* Vibrant Multi-Color Gradient Utilities */
 .gradient-indigo-cyan {
-  background-image: linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%);
+  background-image: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
 }
 .gradient-purple-pink {
-  background-image: linear-gradient(135deg, #9333EA 0%, #EC4899 100%);
+  background-image: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
 }
 .gradient-blue-purple {
-  background-image: linear-gradient(135deg, #2563EB 0%, #8B5CF6 100%);
+  background-image: linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%);
 }
 .gradient-cyan-blue {
-  background-image: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
+  background-image: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
 }
 .gradient-emerald-cyan {
-  background-image: linear-gradient(135deg, #10B981 0%, #06B6D4 100%);
+  background-image: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
 }
 
 /* Glowing Card & Vibrant Multi-Color Hover Effects */
 .glow-card-hover {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s ease;
 }
 .glow-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 35px -10px rgba(79, 70, 229, 0.25), 0 0 20px -2px rgba(6, 182, 212, 0.2);
+  box-shadow:
+    0 12px 35px -10px rgba(79, 70, 229, 0.25),
+    0 0 20px -2px rgba(6, 182, 212, 0.2);
   border-color: rgba(79, 70, 229, 0.35);
 }
 
@@ -250,7 +267,9 @@
   transition: all 0.3s ease;
 }
 .btn-gradient-glow:hover {
-  box-shadow: 0 0 25px 2px rgba(79, 70, 229, 0.4), 0 0 15px -1px rgba(6, 182, 212, 0.3);
+  box-shadow:
+    0 0 25px 2px rgba(79, 70, 229, 0.4),
+    0 0 15px -1px rgba(6, 182, 212, 0.3);
   transform: scale(1.015);
 }
 

@@ -19,17 +19,15 @@ interface CandidateModelProps {
   onDeploy: (version: string) => void;
 }
 
-export function CandidateModelSection({
-  candidate,
-  onCompare,
-  onDeploy,
-}: CandidateModelProps) {
+export function CandidateModelSection({ candidate, onCompare, onDeploy }: CandidateModelProps) {
   if (!candidate) {
     return (
       <div className="rounded-xl border border-border/80 bg-card p-5 text-sm font-semibold text-muted-foreground flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-2.5">
           <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-          <span>No candidate model available. Current production model is serving optimal traffic.</span>
+          <span>
+            No candidate model available. Current production model is serving optimal traffic.
+          </span>
         </div>
         <span className="text-xs font-mono text-muted-foreground">Status: Optimal</span>
       </div>
@@ -40,7 +38,10 @@ export function CandidateModelSection({
     <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-5 space-y-4 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20 pb-3">
         <div className="flex items-center gap-3">
-          <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-500 font-extrabold text-sm px-3 py-1 rounded-md">
+          <Badge
+            variant="outline"
+            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-500 font-extrabold text-sm px-3 py-1 rounded-md"
+          >
             Candidate Available
           </Badge>
           <span className="text-base font-extrabold text-foreground">
@@ -65,8 +66,14 @@ export function CandidateModelSection({
           <Button
             size="sm"
             onClick={() => {
-              downloadPklFile(`candidate_model_${candidate.version}.pkl`, `MailSentry Candidate Model ${candidate.version}`, 0.08);
-              toast.success(`Downloading candidate model (${candidate.version}) .pkl artifact (0.08 MB)...`);
+              downloadPklFile(
+                `candidate_model_${candidate.version}.pkl`,
+                `MailSentry Candidate Model ${candidate.version}`,
+                0.08,
+              );
+              toast.success(
+                `Downloading candidate model (${candidate.version}) .pkl artifact (0.08 MB)...`,
+              );
             }}
             className="h-9 px-4 text-xs sm:text-sm font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
           >
@@ -83,12 +90,16 @@ export function CandidateModelSection({
         </div>
         <div>
           <span className="block text-xs text-muted-foreground font-medium">Dataset Version</span>
-          <span className="font-mono font-medium text-foreground/80">{candidate.dataset_version}</span>
+          <span className="font-mono font-medium text-foreground/80">
+            {candidate.dataset_version}
+          </span>
         </div>
         <div>
           <span className="block text-xs text-muted-foreground font-medium">MLflow Run ID</span>
           <div className="flex items-center gap-1">
-            <span className="font-mono text-xs font-medium text-brand/90 truncate block">{candidate.mlflow_run_id}</span>
+            <span className="font-mono text-xs font-medium text-brand/90 truncate block">
+              {candidate.mlflow_run_id}
+            </span>
             <button
               type="button"
               onClick={() => {

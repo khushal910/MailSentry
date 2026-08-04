@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta, timezone
-from app.db.mongodb import get_database
-from app.core.config import settings
-from app.utils.otp_util import generate_otp, hash_otp
-from app.utils.email_util import send_reset_otp_email
-from app.utils.rate_limit_util import check_and_update_rate_limit
-from app.utils.main_utile import return_response
-from app.schemas.user import ForgotPasswordRequest
 
+from app.core.config import settings
+from app.db.mongodb import get_database
+from app.schemas.user import ForgotPasswordRequest
+from app.utils.email_util import send_reset_otp_email
+from app.utils.main_utile import return_response
+from app.utils.otp_util import generate_otp, hash_otp
+from app.utils.rate_limit_util import check_and_update_rate_limit
 
 
 async def forgot_password_service(payload: ForgotPasswordRequest):
@@ -18,7 +18,7 @@ async def forgot_password_service(payload: ForgotPasswordRequest):
     """
     try:
         db = get_database()
-        
+
         # Check and update rate limit (max 3 requests per 15 minutes)
         rate_limit_error = check_and_update_rate_limit(db, payload.email)
         if rate_limit_error:
@@ -31,7 +31,9 @@ async def forgot_password_service(payload: ForgotPasswordRequest):
             # Invalidate any previous OTP by overwriting fields.
             otp = generate_otp()
             otp_hash = hash_otp(otp)
-            expiry = datetime.now(timezone.utc) + timedelta(minutes=settings.OTP_EXPIRATION_MINUTES)
+            expiry = datetime.now(timezone.utc) + timedelta(
+                minutes=settings.OTP_EXPIRATION_MINUTES
+            )
 
             users_col.update_one(
                 {"_id": user["_id"]},
@@ -48,8 +50,9 @@ async def forgot_password_service(payload: ForgotPasswordRequest):
             try:
                 send_reset_otp_email(email=payload.email, otp=otp)
             except Exception as mail_err:
-                print(f"[WARNING] Failed to deliver OTP email to {payload.email}: {mail_err}")
-
+                print(
+                    f"[WARNING] Failed to deliver OTP email to {payload.email}: {mail_err}"
+                )
 
         # Whether user exists or not, return the same generic message.
         return return_response(
@@ -60,5 +63,5 @@ async def forgot_password_service(payload: ForgotPasswordRequest):
         # Unexpected error – do not leak details to the client.
         return return_response(
             status_code=500,
-            message=f"Error processing password reset request: {str(e)}",
+            message=f"Error processing password reset request: {e!s}",
         )

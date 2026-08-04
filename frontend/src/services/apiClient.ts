@@ -11,12 +11,12 @@ import axios, { AxiosError, type AxiosInstance } from "axios";
  * .env) is the authoritative source; localhost:8000 is only the local dev fallback.
  */
 const rawBase =
-  (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_URL) ||
+  (typeof import.meta !== "undefined" &&
+    (import.meta as unknown as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL) ||
   "http://localhost:8000";
 
 // Normalise: replace 127.0.0.1 with localhost so cookies are never split across origins
 const baseURL = rawBase.replace("127.0.0.1", "localhost");
-
 
 const apiClient: AxiosInstance = axios.create({
   baseURL,
@@ -44,7 +44,7 @@ apiClient.interceptors.request.use((config) => {
 
 apiClient.interceptors.response.use(
   (r) => r,
-  (error: AxiosError<{ message?: string; detail?: string | { msg: string }[] }>) => {
+  (error: AxiosError<{ message?: string; detail?: string | Array<{ msg?: string }> }>) => {
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url || "";
       const isAuthCheck = requestUrl.includes("/auth/me") || requestUrl.includes("/auth/login");
@@ -56,11 +56,18 @@ apiClient.interceptors.response.use(
       }
     }
 
-    const data = error.response?.data as any;
+    const data = error.response?.data as
+      | { message?: string; detail?: string | Array<{ msg?: string }> }
+      | undefined;
     const message =
       data?.message ||
       (typeof data?.detail === "string" ? data.detail : null) ||
-      (Array.isArray(data?.detail) ? data.detail.map((d: any) => d.msg).join(", ") : null) ||
+      (Array.isArray(data?.detail)
+        ? data.detail
+            .map((d) => d.msg || "")
+            .filter(Boolean)
+            .join(", ")
+        : null) ||
       error.message ||
       "Something went wrong. Please try again.";
     return Promise.reject(new Error(message));

@@ -1,15 +1,16 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any
+
 from bson import ObjectId
 from fastapi import HTTPException, status
 
 from app.core.config import settings
 from app.db.mongodb import get_database
 from app.repositories.google_account_repository import GoogleAccountRepository
+from app.utils.email_util import send_reset_otp_email
 from app.utils.main_utile import hash_password, verify_password
 from app.utils.otp_util import generate_otp, hash_otp, verify_otp
-from app.utils.email_util import send_reset_otp_email
 from app.utils.rate_limit_util import check_and_update_rate_limit
 
 logger = logging.getLogger("mailsentry.profile_service")
@@ -22,10 +23,10 @@ class ProfileService:
     password changes, Google account synchronization, and audit logging.
     """
 
-    def __init__(self, google_repo: Optional[GoogleAccountRepository] = None):
+    def __init__(self, google_repo: GoogleAccountRepository | None = None):
         self.google_repo = google_repo or GoogleAccountRepository()
 
-    def _get_user(self, user_id: str) -> Dict[str, Any]:
+    def _get_user(self, user_id: str) -> dict[str, Any]:
         db = get_database()
         users_col = db[settings.USER_COLLECTION_NAME]
         query = (
@@ -35,14 +36,16 @@ class ProfileService:
         )
         user = users_col.find_one(query)
         if not user:
-            logger.error(f"[AUDIT] Profile operation failed — User ID={user_id} not found in database.")
+            logger.error(
+                f"[AUDIT] Profile operation failed — User ID={user_id} not found in database."
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="User account no longer exists."
+                detail="User account no longer exists.",
             )
         return user
 
-    def get_profile(self, user_id: str) -> Dict[str, Any]:
+    def get_profile(self, user_id: str) -> dict[str, Any]:
         """
         Retrieves user profile details including linked Google account status.
         """
@@ -60,9 +63,14 @@ class ProfileService:
             updated_at_str = ua.isoformat() if isinstance(ua, datetime) else str(ua)
 
         raw_g_email = google_acc.get("google_email") if google_acc else None
-        google_email = str(raw_g_email) if (raw_g_email and isinstance(raw_g_email, str)) else None
+        google_email = (
+            str(raw_g_email) if (raw_g_email and isinstance(raw_g_email, str)) else None
+        )
 
-        google_connected = bool(user.get("google_connected") or (google_acc and google_acc.get("google_connected")))
+        google_connected = bool(
+            user.get("google_connected")
+            or (google_acc and google_acc.get("google_connected"))
+        )
 
         raw_providers = user.get("providers", ["local"])
         if isinstance(raw_providers, str):
@@ -76,10 +84,18 @@ class ProfileService:
             providers = ["local"]
 
         raw_username = user.get("username", "")
-        username = str(raw_username) if (raw_username and not isinstance(raw_username, (dict, list))) else ""
+        username = (
+            str(raw_username)
+            if (raw_username and not isinstance(raw_username, (dict, list)))
+            else ""
+        )
 
         raw_email = user.get("email", "")
-        email = str(raw_email) if (raw_email and not isinstance(raw_email, (dict, list))) else ""
+        email = (
+            str(raw_email)
+            if (raw_email and not isinstance(raw_email, (dict, list)))
+            else ""
+        )
 
         return {
             "id": str(user["_id"]),
@@ -94,8 +110,9 @@ class ProfileService:
             "updated_at": updated_at_str,
         }
 
-
-    def update_username(self, user_id: str, new_username: str, client_ip: str = "unknown") -> Dict[str, Any]:
+    def update_username(
+        self, user_id: str, new_username: str, client_ip: str = "unknown"
+    ) -> dict[str, Any]:
         """
         Updates user's username.
         Checks for unchanged values and updates DB with audit logging.
@@ -106,24 +123,25 @@ class ProfileService:
 
         if user.get("username") == new_username:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No changes detected."
+                status_code=status.HTTP_400_BAD_REQUEST, detail="No changes detected."
             )
 
         db = get_database()
         users_col = db[settings.USER_COLLECTION_NAME]
 
         # Check if username is taken by another user
-        existing_username = users_col.find_one({"username": new_username, "_id": {"$ne": user["_id"]}})
+        existing_username = users_col.find_one(
+            {"username": new_username, "_id": {"$ne": user["_id"]}}
+        )
         if existing_username:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Username is already taken."
+                detail="Username is already taken.",
             )
 
         users_col.update_one(
             {"_id": user["_id"]},
-            {"$set": {"username": new_username, "updated_at": now}}
+            {"$set": {"username": new_username, "updated_at": now}},
         )
 
         logger.info(
@@ -133,7 +151,9 @@ class ProfileService:
 
         return self.get_profile(user_id)
 
-    async def request_email_change(self, user_id: str, new_email: str, client_ip: str = "unknown") -> Dict[str, Any]:
+    async def request_email_change(
+        self, user_id: str, new_email: str, client_ip: str = "unknown"
+    ) -> dict[str, Any]:
         """
         Initiates OTP-verified email change flow.
         Checks for same email or 409 conflict, generates 6-digit OTP, hashes it,
@@ -145,19 +165,19 @@ class ProfileService:
 
         if user.get("email") == new_email:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No changes detected."
+                status_code=status.HTTP_400_BAD_REQUEST, detail="No changes detected."
             )
 
         db = get_database()
         users_col = db[settings.USER_COLLECTION_NAME]
 
         # Check if email is already taken by another user
-        existing_email = users_col.find_one({"email": new_email, "_id": {"$ne": user["_id"]}})
+        existing_email = users_col.find_one(
+            {"email": new_email, "_id": {"$ne": user["_id"]}}
+        )
         if existing_email:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Email already in use."
+                status_code=status.HTTP_409_CONFLICT, detail="Email already in use."
             )
 
         # Rate limiting check for OTP resend (max 3 per window)
@@ -165,7 +185,7 @@ class ProfileService:
         if rate_limit_err:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many OTP requests. Please wait before requesting another OTP."
+                detail="Too many OTP requests. Please wait before requesting another OTP.",
             )
 
         otp = generate_otp()
@@ -182,14 +202,16 @@ class ProfileService:
                     "email_otp_attempts": 0,
                     "updated_at": now,
                 }
-            }
+            },
         )
 
         # Send OTP email
         try:
             send_reset_otp_email(email=new_email, otp=otp)
         except Exception as mail_err:
-            logger.error(f"[WARNING] Failed to deliver email change OTP to {new_email}: {mail_err}")
+            logger.error(
+                f"[WARNING] Failed to deliver email change OTP to {new_email}: {mail_err}"
+            )
 
         logger.info(
             f"[AUDIT] Action=Email Change Requested | User ID={user_id} | Timestamp={now.isoformat()} | "
@@ -202,7 +224,9 @@ class ProfileService:
             "expires_in_seconds": 300,
         }
 
-    def verify_email_change_otp(self, user_id: str, otp: str, client_ip: str = "unknown") -> Dict[str, Any]:
+    def verify_email_change_otp(
+        self, user_id: str, otp: str, client_ip: str = "unknown"
+    ) -> dict[str, Any]:
         """
         Verifies 6-digit OTP for pending email change.
         Updates user.email, syncs google_accounts email or flags reconnection, invalidates OTP,
@@ -219,7 +243,7 @@ class ProfileService:
         if not pending_email or not stored_hash or not expire_at:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No active email change request found. Please request a new OTP."
+                detail="No active email change request found. Please request a new OTP.",
             )
 
         if expire_at.tzinfo is None:
@@ -239,11 +263,11 @@ class ProfileService:
                         "email_otp_expire_at": "",
                         "email_otp_attempts": "",
                     }
-                }
+                },
             )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="OTP has expired. Please request a new one."
+                detail="OTP has expired. Please request a new one.",
             )
 
         # Check attempts lockout
@@ -257,11 +281,11 @@ class ProfileService:
                         "email_otp_expire_at": "",
                         "email_otp_attempts": "",
                     }
-                }
+                },
             )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Too many failed attempts. Verification locked. Please request a new OTP."
+                detail="Too many failed attempts. Verification locked. Please request a new OTP.",
             )
 
         # Verify OTP hash
@@ -277,20 +301,19 @@ class ProfileService:
                             "email_otp_expire_at": "",
                             "email_otp_attempts": "",
                         }
-                    }
+                    },
                 )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Too many failed attempts. This OTP has been invalidated. Please request a new one."
+                    detail="Too many failed attempts. This OTP has been invalidated. Please request a new one.",
                 )
             else:
                 users_col.update_one(
-                    {"_id": user["_id"]},
-                    {"$inc": {"email_otp_attempts": 1}}
+                    {"_id": user["_id"]}, {"$inc": {"email_otp_attempts": 1}}
                 )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Incorrect OTP. {5 - new_attempts} attempt(s) remaining."
+                    detail=f"Incorrect OTP. {5 - new_attempts} attempt(s) remaining.",
                 )
 
         # Valid OTP! Perform updates
@@ -309,8 +332,8 @@ class ProfileService:
                     "email_otp_hash": "",
                     "email_otp_expire_at": "",
                     "email_otp_attempts": "",
-                }
-            }
+                },
+            },
         )
 
         logger.info(
@@ -320,17 +343,26 @@ class ProfileService:
 
         # Google Account Synchronization & Disconnection on Email Change
         google_acc = self.google_repo.find_by_user_id(user_id)
-        had_google_connected = bool(user.get("google_connected") or (google_acc and google_acc.get("google_connected")))
+        had_google_connected = bool(
+            user.get("google_connected")
+            or (google_acc and google_acc.get("google_connected"))
+        )
 
         if google_acc or had_google_connected:
             if google_acc:
                 self.google_repo.collection.update_one(
                     {"_id": google_acc["_id"]},
-                    {"$set": {"google_email": new_email, "google_connected": False, "updated_at": now}}
+                    {
+                        "$set": {
+                            "google_email": new_email,
+                            "google_connected": False,
+                            "updated_at": now,
+                        }
+                    },
                 )
             users_col.update_one(
                 {"_id": user["_id"]},
-                {"$set": {"google_connected": False, "updated_at": now}}
+                {"$set": {"google_connected": False, "updated_at": now}},
             )
             logger.info(
                 f"[AUDIT] Action=Google Account Disconnected On Email Change | User ID={user_id} | "
@@ -339,14 +371,20 @@ class ProfileService:
 
         updated_profile = self.get_profile(user_id)
         if had_google_connected:
-            updated_profile["notice"] = "Your Google account has been disconnected. Please reconnect your Google account with your new email address."
+            updated_profile["notice"] = (
+                "Your Google account has been disconnected. Please reconnect your Google account with your new email address."
+            )
 
         return updated_profile
 
-
     def change_password(
-        self, user_id: str, current_pw: str, new_pw: str, confirm_pw: str, client_ip: str = "unknown"
-    ) -> Dict[str, Any]:
+        self,
+        user_id: str,
+        current_pw: str,
+        new_pw: str,
+        confirm_pw: str,
+        client_ip: str = "unknown",
+    ) -> dict[str, Any]:
         """
         Changes password for local accounts.
         Validates current password, hashes new password with bcrypt, updates DB with audit logging.
@@ -354,25 +392,25 @@ class ProfileService:
         if not current_pw or not current_pw.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Current password is required."
+                detail="Current password is required.",
             )
 
         if not new_pw or not new_pw.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="New password is required."
+                detail="New password is required.",
             )
 
         if new_pw != confirm_pw:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="New password and confirm password do not match."
+                detail="New password and confirm password do not match.",
             )
 
         if len(new_pw.strip()) < 8:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must be at least 8 characters long."
+                detail="Password must be at least 8 characters long.",
             )
 
         user = self._get_user(user_id)
@@ -381,14 +419,14 @@ class ProfileService:
         if "local" not in providers:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Google-authenticated accounts cannot change password directly."
+                detail="Google-authenticated accounts cannot change password directly.",
             )
 
         existing_pw_hash = user.get("password")
         if not existing_pw_hash or not verify_password(current_pw, existing_pw_hash):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Current password is incorrect."
+                detail="Current password is incorrect.",
             )
 
         new_hash = hash_password(new_pw)
@@ -397,8 +435,7 @@ class ProfileService:
         db = get_database()
         users_col = db[settings.USER_COLLECTION_NAME]
         users_col.update_one(
-            {"_id": user["_id"]},
-            {"$set": {"password": new_hash, "updated_at": now}}
+            {"_id": user["_id"]}, {"$set": {"password": new_hash, "updated_at": now}}
         )
 
         logger.info(

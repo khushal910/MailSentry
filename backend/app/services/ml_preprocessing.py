@@ -10,11 +10,10 @@ Preprocessing Steps (matching ml-service/src/components/data_transformation.py):
   3. Extract URL features: parse schemes, domain names, and query indicators and append tokens.
 """
 
+import logging
 import re
 import string
-import logging
 from urllib.parse import urlparse
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +54,7 @@ class MLPreprocessing:
         if not text:
             return ""
         try:
-            extracted_tokens: List[str] = []
+            extracted_tokens: list[str] = []
             url_pattern = r"https?://[^\s]+"
             urls = re.findall(url_pattern, text)
 

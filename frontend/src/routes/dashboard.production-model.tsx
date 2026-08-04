@@ -53,7 +53,8 @@ export const Route = createFileRoute("/dashboard/production-model")({
       { title: "Production Model — MailSentry MLOps Platform" },
       {
         name: "description",
-        content: "Enterprise serving status, health telemetry, candidate models, and lifecycle audit log of deployed AI models.",
+        content:
+          "Enterprise serving status, health telemetry, candidate models, and lifecycle audit log of deployed AI models.",
       },
     ],
   }),
@@ -130,7 +131,10 @@ function ProductionModelPage() {
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
                 Production Model
               </h1>
-              <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold text-sm px-3 py-1 rounded-full flex items-center gap-2 shadow-xs">
+              <Badge
+                variant="outline"
+                className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold text-sm px-3 py-1 rounded-full flex items-center gap-2 shadow-xs"
+              >
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_#10b981]" />
@@ -157,24 +161,43 @@ function ProductionModelPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72 text-xs sm:text-sm font-semibold">
-                <DropdownMenuItem onClick={() => {
-                  const size = model?.model_size_mb || 0.05;
-                  downloadPklFile("model.pkl", "MailSentry Production Classifier Weights", size);
-                  toast.success(`Downloading Model (.pkl) artifact (${size.toFixed(2)} MB)...`);
-                }}>
-                  <Download className="mr-2.5 h-4 w-4 text-brand" /> Model File (.pkl) ({model?.model_size_mb ? model.model_size_mb.toFixed(2) : "0.05"} MB)
+                <DropdownMenuItem
+                  onClick={() => {
+                    const size = model?.model_size_mb || 0.05;
+                    downloadPklFile("model.pkl", "MailSentry Production Classifier Weights", size);
+                    toast.success(`Downloading Model (.pkl) artifact (${size.toFixed(2)} MB)...`);
+                  }}
+                >
+                  <Download className="mr-2.5 h-4 w-4 text-brand" /> Model File (.pkl) (
+                  {model?.model_size_mb ? model.model_size_mb.toFixed(2) : "0.05"} MB)
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  downloadPklFile("preprocessing.pkl", "TF-IDF Vectorizer & Text Preprocessing Pipeline", 0.02);
-                  toast.success("Downloading Preprocessing (.pkl) artifact (0.02 MB)...");
-                }}>
-                  <Download className="mr-2.5 h-4 w-4 text-emerald-500" /> Preprocessing File (.pkl) (0.02 MB)
+                <DropdownMenuItem
+                  onClick={() => {
+                    downloadPklFile(
+                      "preprocessing.pkl",
+                      "TF-IDF Vectorizer & Text Preprocessing Pipeline",
+                      0.02,
+                    );
+                    toast.success("Downloading Preprocessing (.pkl) artifact (0.02 MB)...");
+                  }}
+                >
+                  <Download className="mr-2.5 h-4 w-4 text-emerald-500" /> Preprocessing File (.pkl)
+                  (0.02 MB)
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  downloadPklFile("embedding.pkl", "Label Encoder & Contextual Word Embeddings", 0.01);
-                  toast.success("Downloading Label Encoder & Embedding (.pkl) artifact (0.01 MB)...");
-                }}>
-                  <Download className="mr-2.5 h-4 w-4 text-amber-500" /> Label Encoder & Embedding (.pkl) (0.01 MB)
+                <DropdownMenuItem
+                  onClick={() => {
+                    downloadPklFile(
+                      "embedding.pkl",
+                      "Label Encoder & Contextual Word Embeddings",
+                      0.01,
+                    );
+                    toast.success(
+                      "Downloading Label Encoder & Embedding (.pkl) artifact (0.01 MB)...",
+                    );
+                  }}
+                >
+                  <Download className="mr-2.5 h-4 w-4 text-amber-500" /> Label Encoder & Embedding
+                  (.pkl) (0.01 MB)
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -197,7 +220,11 @@ function ProductionModelPage() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9 rounded-lg border-border/80">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 rounded-lg border-border/80"
+                >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -205,7 +232,9 @@ function ProductionModelPage() {
                 <DropdownMenuItem onClick={() => window.open("http://localhost:5000", "_blank")}>
                   <ExternalLink className="mr-2.5 h-4 w-4" /> Open MLflow UI
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.success("Downloading Model (.pkl) artifact...")}>
+                <DropdownMenuItem
+                  onClick={() => toast.success("Downloading Model (.pkl) artifact...")}
+                >
                   <Download className="mr-2.5 h-4 w-4" /> Download Model (.pkl)
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => alert("Fetching logs...")}>
@@ -225,12 +254,19 @@ function ProductionModelPage() {
           <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-6 text-center space-y-3">
             <AlertTriangle className="h-7 w-7 text-destructive mx-auto" />
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-foreground">Production Model Service Unavailable</h3>
+              <h3 className="text-base font-bold text-foreground">
+                Production Model Service Unavailable
+              </h3>
               <p className="text-xs sm:text-sm text-muted-foreground font-medium max-w-md mx-auto">
                 Unable to retrieve production model specs. Please verify backend service endpoints.
               </p>
             </div>
-            <Button size="sm" variant="outline" onClick={handleRefresh} className="h-9 text-xs sm:text-sm font-bold">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRefresh}
+              className="h-9 text-xs sm:text-sm font-bold"
+            >
               Retry Connection
             </Button>
           </div>
@@ -249,7 +285,10 @@ function ProductionModelPage() {
                 <div className="space-y-5">
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
                     <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-500 font-extrabold text-sm px-3 py-1 rounded-md flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className="border-emerald-500/40 bg-emerald-500/10 text-emerald-500 font-extrabold text-sm px-3 py-1 rounded-md flex items-center gap-2"
+                      >
                         <span className="relative flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
@@ -265,24 +304,55 @@ function ProductionModelPage() {
                     </div>
 
                     <span className="text-xs sm:text-sm font-medium text-muted-foreground">
-                      Algorithm: <strong className="text-foreground/85 font-semibold">{model.algorithm || model.algorithm_type}</strong>
+                      Algorithm:{" "}
+                      <strong className="text-foreground/85 font-semibold">
+                        {model.algorithm || model.algorithm_type}
+                      </strong>
                     </span>
                   </div>
 
                   {/* 2-Column Technical Metadata Key-Value Layout */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-xs sm:text-sm">
                     <MetaRow label="Serving Endpoint" value="/api/v1/classify-email" isMono />
-                    <MetaRow label="Deployment Status" value={model.deployment_status || "Active Serving Traffic"} isStatus />
-                    <MetaRow label="Deployment Date" value={formattedDate(model.deployment_date || model.trained_at)} />
+                    <MetaRow
+                      label="Deployment Status"
+                      value={model.deployment_status || "Active Serving Traffic"}
+                      isStatus
+                    />
+                    <MetaRow
+                      label="Deployment Date"
+                      value={formattedDate(model.deployment_date || model.trained_at)}
+                    />
                     <MetaRow label="Deployed By" value="khushalsatani009" />
                     <MetaRow label="Serving Environment" value="Production (US-East-1)" />
                     <MetaRow label="Model File Size" value={`${model.model_size_mb || 0.05} MB`} />
-                    <MetaRow label="Dataset Version" value={model.dataset_version || "v1.0.0"} isMono />
+                    <MetaRow
+                      label="Dataset Version"
+                      value={model.dataset_version || "v1.0.0"}
+                      isMono
+                    />
                     <MetaRow label="Git Commit SHA" value="a1b2c3d" isMono />
-                    <MetaRow label="MLflow Run ID" value={model.mlflow_run_id || "1233668301d94c14a3c98f6a87d234a5"} isMono isCopyable />
-                    <MetaRow label="Docker Container Image" value="mailsentry/ml-service:v2.0" isMono />
+                    <MetaRow
+                      label="MLflow Run ID"
+                      value={model.mlflow_run_id || "1233668301d94c14a3c98f6a87d234a5"}
+                      isMono
+                      isCopyable
+                    />
+                    <MetaRow
+                      label="Docker Container Image"
+                      value="mailsentry/ml-service:v2.0"
+                      isMono
+                    />
                     <MetaRow label="Python Runtime" value="Python 3.13.1" />
-                    <MetaRow label="Model SHA256" value={model.model_hash ? `${model.model_hash.slice(0, 16)}...` : "7f0e8e98ac1f14a7..."} isMono />
+                    <MetaRow
+                      label="Model SHA256"
+                      value={
+                        model.model_hash
+                          ? `${model.model_hash.slice(0, 16)}...`
+                          : "7f0e8e98ac1f14a7..."
+                      }
+                      isMono
+                    />
                     <MetaRow label="Training Pipeline Ver" value="v1.2.0" isMono />
                     <MetaRow label="Feature Store Ver" value="v1.0" isMono />
                   </div>
@@ -293,7 +363,9 @@ function ProductionModelPage() {
               <div className="lg:col-span-4 rounded-xl border border-border/80 bg-card p-6 flex flex-col justify-between shadow-xs">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                    <h3 className="text-base sm:text-lg font-bold text-foreground">Health & Telemetry</h3>
+                    <h3 className="text-base sm:text-lg font-bold text-foreground">
+                      Health & Telemetry
+                    </h3>
                     <span className="text-xs sm:text-sm font-mono font-bold text-emerald-500 flex items-center gap-2">
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -315,7 +387,15 @@ function ProductionModelPage() {
                   <div className="space-y-2.5 pt-3 border-t border-border/60 text-xs sm:text-sm font-semibold">
                     <MetricRow label="CPU Utilization" value="14.2%" />
                     <MetricRow label="Memory Usage" value="240.5 MB" />
-                    <MetricRow label="Average Latency" value={model.inference_time_ms ? `${model.inference_time_ms.toFixed(3)} ms` : "1.743 ms"} isHighlight />
+                    <MetricRow
+                      label="Average Latency"
+                      value={
+                        model.inference_time_ms
+                          ? `${model.inference_time_ms.toFixed(3)} ms`
+                          : "1.743 ms"
+                      }
+                      isHighlight
+                    />
                     <MetricRow label="Total Predictions" value="12,480 reqs" />
                     <MetricRow label="Throughput" value="42 req/s" />
                     <MetricRow label="HTTP Error Rate" value="0.00%" isGreen />
@@ -328,14 +408,20 @@ function ProductionModelPage() {
             <CandidateModelSection
               candidate={null}
               onCompare={(ver) => setSelectedVersionForCompare(ver)}
-              onDeploy={() => toast.info("Run 'python scripts/deploy_production_model.py' in CLI to promote & deploy candidate models.")}
+              onDeploy={() =>
+                toast.info(
+                  "Run 'python scripts/deploy_production_model.py' in CLI to promote & deploy candidate models.",
+                )
+              }
             />
 
             {/* TRAFFIC MONITORING TELEMETRY */}
             <TrafficMonitoringSection />
 
             {/* DEPLOYMENT TIMELINE AUDIT LOG */}
-            <DeploymentTimelineSection historyEvents={historyList} />
+            <DeploymentTimelineSection
+              historyEvents={historyList as unknown as Record<string, unknown>[]}
+            />
 
             {/* MODEL COMPARISON TABLE */}
             {previousModel && (
@@ -350,7 +436,11 @@ function ProductionModelPage() {
 
             {/* QUICK ACTIONS TOOLBAR */}
             <QuickActionsToolbarSection
-              onDeploy={() => toast.info("Run 'python scripts/deploy_production_model.py' in CLI to deploy a model version.")}
+              onDeploy={() =>
+                toast.info(
+                  "Run 'python scripts/deploy_production_model.py' in CLI to deploy a model version.",
+                )
+              }
               onRefresh={handleRefresh}
             />
           </div>
@@ -404,7 +494,7 @@ function MetaRow({
             "font-medium text-foreground/80 truncate max-w-[220px]",
             isMono && "font-mono text-xs sm:text-sm text-foreground/75 font-normal",
             isStatus && "text-emerald-500/90 font-medium",
-            isLink && "text-brand/90 hover:underline cursor-pointer font-medium"
+            isLink && "text-brand/90 hover:underline cursor-pointer font-medium",
           )}
         >
           {value}
@@ -461,7 +551,7 @@ function MetricRow({
         className={cn(
           "font-semibold font-mono text-foreground/80 text-xs sm:text-sm",
           isHighlight && "text-brand/90",
-          isGreen && "text-emerald-500/90"
+          isGreen && "text-emerald-500/90",
         )}
       >
         {value}

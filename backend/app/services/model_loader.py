@@ -18,10 +18,10 @@ No changes to PredictionEngine or the API layer.
 
 from __future__ import annotations
 
-import os
 import logging
+import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Type
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class TransformerBundle:
     components directly for tokenization and inference.
     """
 
-    __slots__ = ("model", "tokenizer", "device")
+    __slots__ = ("device", "model", "tokenizer")
 
     def __init__(self, model: Any, tokenizer: Any, device: str) -> None:
         self.model = model
@@ -83,7 +83,9 @@ class SklearnModelLoader(BaseModelLoader):
         ]
         model_path = next((p for p in possible_paths if os.path.exists(p)), None)
         if model_path is None:
-            raise FileNotFoundError(f"Sklearn model not found in directory: {champion_dir}")
+            raise FileNotFoundError(
+                f"Sklearn model not found in directory: {champion_dir}"
+            )
         model = joblib.load(model_path)
         logger.info("Loaded sklearn model via joblib ← %s", model_path)
         return model
@@ -100,10 +102,7 @@ class TransformerModelLoader(BaseModelLoader):
     def load(self, champion_dir: str, metadata: dict) -> TransformerBundle:
         try:
             import torch
-            from transformers import (
-                AutoModelForSequenceClassification,
-                AutoTokenizer,
-            )
+            from transformers import AutoModelForSequenceClassification, AutoTokenizer
         except ImportError as exc:
             raise ImportError(
                 "PyTorch and HuggingFace transformers are required to serve "
@@ -120,9 +119,7 @@ class TransformerModelLoader(BaseModelLoader):
         model.to(device)
         model.eval()
 
-        logger.info(
-            "Loaded transformer model ← %s (device: %s)", model_dir, device
-        )
+        logger.info("Loaded transformer model ← %s (device: %s)", model_dir, device)
         return TransformerBundle(model=model, tokenizer=tokenizer, device=device)
 
 
@@ -141,13 +138,13 @@ class ModelLoaderFactory:
         "huggingface" → TransformerModelLoader
     """
 
-    _registry: Dict[str, Type[BaseModelLoader]] = {
+    _registry: dict[str, type[BaseModelLoader]] = {
         "joblib": SklearnModelLoader,
         "huggingface": TransformerModelLoader,
     }
 
     @classmethod
-    def register(cls, serialization: str, loader_class: Type[BaseModelLoader]) -> None:
+    def register(cls, serialization: str, loader_class: type[BaseModelLoader]) -> None:
         """Register a new loader at runtime."""
         cls._registry[serialization] = loader_class
         logger.info(

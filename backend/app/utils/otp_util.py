@@ -16,20 +16,19 @@ Design decisions
   security-sensitive codes.
 """
 
-import hmac
 import hashlib
+import hmac
 import secrets
-
-
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-OTP_LENGTH = 6          # digits
-OTP_MIN    = 10 ** (OTP_LENGTH - 1)   # 100_000
-OTP_MAX    = (10 ** OTP_LENGTH) - 1   # 999_999
+OTP_LENGTH = 6  # digits
+OTP_MIN = 10 ** (OTP_LENGTH - 1)  # 100_000
+OTP_MAX = (10**OTP_LENGTH) - 1  # 999_999
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def generate_otp() -> str:
     """
@@ -120,4 +119,3 @@ def verify_otp(plain_otp: str, stored_hash: str) -> bool:
 
     # compare_digest is constant-time; prevents timing side-channel attacks.
     return hmac.compare_digest(candidate_hash, stored_hash)
-

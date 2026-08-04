@@ -1,36 +1,48 @@
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+import logging
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+
 from app.dependencies.auth import get_current_user
 from app.dependencies.google_auth_deps import require_google_connected
 from app.services.gmail_fetch_service import GmailFetchService
 from app.services.job_service import JobService
 from app.utils.main_utile import return_response
 
-import logging
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
-
 logger = logging.getLogger("mailsentry.gmail_routes")
 
+
 class ClassifyBatchRequest(BaseModel):
-    emails: Optional[List[Dict[str, Any]]] = Field(default=[], description="List of unclassified raw emails to classify")
+    emails: list[dict[str, Any]] | None = Field(
+        default=[], description="List of unclassified raw emails to classify"
+    )
+
 
 gmail_router = APIRouter()
 
 
-async def _run_classify_job_background(job_id: str, user_id: str, emails_to_classify: list, google_account: dict):
+async def _run_classify_job_background(
+    job_id: str, user_id: str, emails_to_classify: list, google_account: dict
+):
     job_service = JobService()
     try:
         from app.services.ml_model_service import MLModelService
+
         model_service = MLModelService()
         model_service.get_model_or_raise()
         service = GmailFetchService(model_service=model_service)
 
         if not emails_to_classify:
-            emails_to_classify = await service.fetch_unclassified_raw_emails(user_id=user_id, google_account=google_account)
+            emails_to_classify = await service.fetch_unclassified_raw_emails(
+                user_id=user_id, google_account=google_account
+            )
 
         if not emails_to_classify:
-            job_service.complete_job(job_id, {"classified": 0, "skipped": 0, "classified_emails": []})
+            job_service.complete_job(
+                job_id, {"classified": 0, "skipped": 0, "classified_emails": []}
+            )
             return
 
         # CRITICAL ARCHITECTURAL FIX: Offload CPU-bound ML prediction + DB writes to worker thread pool
@@ -39,7 +51,7 @@ async def _run_classify_job_background(job_id: str, user_id: str, emails_to_clas
             service.classify_and_save_batch,
             user_id=user_id,
             emails_to_classify=emails_to_classify,
-            job_id=job_id
+            job_id=job_id,
         )
     except Exception as err:
         logger.error(f"Error executing background job {job_id}: {err}", exc_info=True)
@@ -49,7 +61,7 @@ async def _run_classify_job_background(job_id: str, user_id: str, emails_to_clas
 @gmail_router.post("/classify-job", summary="Start background email classification job")
 async def start_classify_job(
     background_tasks: BackgroundTasks,
-    payload: Optional[ClassifyBatchRequest] = None,
+    payload: ClassifyBatchRequest | None = None,
     current_user: dict = Depends(get_current_user),
     account: dict = Depends(require_google_connected),
 ):
@@ -96,7 +108,7 @@ async def get_job_status(
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job '{job_id}' not found or unauthorized."
+            detail=f"Job '{job_id}' not found or unauthorized.",
         )
 
     return return_response(
@@ -108,7 +120,7 @@ async def get_job_status(
 
 @gmail_router.post("/classify", summary="Classify provided unclassified emails")
 async def classify_emails(
-    payload: Optional[ClassifyBatchRequest] = None,
+    payload: ClassifyBatchRequest | None = None,
     current_user: dict = Depends(get_current_user),
     account: dict = Depends(require_google_connected),
 ):
@@ -118,6 +130,7 @@ async def classify_emails(
     saves prediction records to MongoDB with full metadata, and returns classified results.
     """
     from app.services.ml_model_service import MLModelService
+
     model_service = MLModelService()
     model_service.get_model_or_raise()
 
@@ -128,18 +141,24 @@ async def classify_emails(
 
     if not emails_to_process:
         # Fallback: fetch unclassified emails from Gmail directly
-        emails_to_process = await service.fetch_unclassified_raw_emails(user_id=user_id, google_account=account)
+        emails_to_process = await service.fetch_unclassified_raw_emails(
+            user_id=user_id, google_account=account
+        )
 
-    result = service.classify_and_save_batch(user_id=user_id, emails_to_classify=emails_to_process)
+    result = service.classify_and_save_batch(
+        user_id=user_id, emails_to_classify=emails_to_process
+    )
 
     return return_response(
         status_code=status.HTTP_200_OK,
         message="Emails classified and stored successfully",
-        data=result
+        data=result,
     )
 
 
-@gmail_router.post("/fetch-unclassified", summary="Fetch unclassified raw emails from Gmail")
+@gmail_router.post(
+    "/fetch-unclassified", summary="Fetch unclassified raw emails from Gmail"
+)
 async def fetch_unclassified_emails(
     current_user: dict = Depends(get_current_user),
     account: dict = Depends(require_google_connected),
@@ -151,14 +170,13 @@ async def fetch_unclassified_emails(
     """
     user_id = str(current_user["_id"])
     service = GmailFetchService()
-    unclassified = await service.fetch_unclassified_raw_emails(user_id=user_id, google_account=account)
+    unclassified = await service.fetch_unclassified_raw_emails(
+        user_id=user_id, google_account=account
+    )
     return return_response(
         status_code=status.HTTP_200_OK,
         message="Unclassified emails fetched successfully",
-        data={
-            "fetched": len(unclassified),
-            "unclassified_emails": unclassified
-        }
+        data={"fetched": len(unclassified), "unclassified_emails": unclassified},
     )
 
 
@@ -181,39 +199,6 @@ async def fetch_emails(
     )
 
 
-@gmail_router.post("/classify", summary="Classify provided unclassified emails")
-async def classify_emails(
-    payload: Optional[ClassifyBatchRequest] = None,
-    current_user: dict = Depends(get_current_user),
-    account: dict = Depends(require_google_connected),
-):
-    """
-    POST /api/gmail/classify
-    Runs ML model classification on provided unclassified emails (or pending Gmail queue),
-    saves prediction records to MongoDB with full metadata, and returns classified results.
-    """
-    from app.services.ml_model_service import MLModelService
-    model_service = MLModelService()
-    model_service.get_model_or_raise()
-
-    user_id = str(current_user["_id"])
-    service = GmailFetchService(model_service=model_service)
-
-    emails_to_process = payload.emails if (payload and payload.emails) else []
-
-    if not emails_to_process:
-        # Fallback: fetch unclassified emails from Gmail directly
-        emails_to_process = await service.fetch_unclassified_raw_emails(user_id=user_id, google_account=account)
-
-    result = service.classify_and_save_batch(user_id=user_id, emails_to_classify=emails_to_process)
-
-    return return_response(
-        status_code=status.HTTP_200_OK,
-        message="Emails classified and stored successfully",
-        data=result
-    )
-
-
 @gmail_router.post("/summarize", summary="Summarize emails")
 async def summarize_emails(account: dict = Depends(require_google_connected)):
     """
@@ -223,7 +208,7 @@ async def summarize_emails(account: dict = Depends(require_google_connected)):
     return return_response(
         status_code=status.HTTP_200_OK,
         message="Emails summarized successfully",
-        data={"google_email": account.get("google_email"), "summary": ""}
+        data={"google_email": account.get("google_email"), "summary": ""},
     )
 
 
@@ -236,5 +221,5 @@ async def schedule_meeting(account: dict = Depends(require_google_connected)):
     return return_response(
         status_code=status.HTTP_200_OK,
         message="Meeting scheduled successfully",
-        data={"google_email": account.get("google_email"), "event": None}
+        data={"google_email": account.get("google_email"), "event": None},
     )

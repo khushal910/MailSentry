@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, status
-from typing import Optional, List
 from datetime import datetime, timezone
+
 from bson import ObjectId
+from fastapi import APIRouter, Depends, Query, status
 
 from app.dependencies.auth import get_current_user
 from app.repositories.email_repository import EmailRepository
@@ -43,7 +43,11 @@ def _sanitize_email(doc: dict) -> dict:
                 if val.tzinfo is None:
                     val = val.replace(tzinfo=timezone.utc)
                 iso_str = val.isoformat()
-                if not iso_str.endswith("Z") and "+" not in iso_str and "-" not in iso_str[10:]:
+                if (
+                    not iso_str.endswith("Z")
+                    and "+" not in iso_str
+                    and "-" not in iso_str[10:]
+                ):
                     iso_str += "Z"
                 val = iso_str
             result[key] = val
@@ -52,11 +56,21 @@ def _sanitize_email(doc: dict) -> dict:
 
 @emails_router.get("/emails", summary="Get classified emails for authenticated user")
 async def get_user_emails(
-    limit: int = Query(default=20, ge=1, le=MAX_LIMIT, description="Number of emails per page (max 100)"),
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=MAX_LIMIT,
+        description="Number of emails per page (max 100)",
+    ),
     page: int = Query(default=1, ge=1, description="Page number (starts at 1)"),
-    label: Optional[str] = Query(default=None, description="Filter by predicted label (e.g. 'spam', 'important')"),
-    search: Optional[str] = Query(default=None, description="Search query string for subject, snippet, label, or sender"),
-    current_user: dict = Depends(get_current_user)
+    label: str | None = Query(
+        default=None, description="Filter by predicted label (e.g. 'spam', 'important')"
+    ),
+    search: str | None = Query(
+        default=None,
+        description="Search query string for subject, snippet, label, or sender",
+    ),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     GET /api/emails
@@ -101,6 +115,6 @@ async def get_user_emails(
             "limit": limit,
             "count": len(emails),
             "total_count": total_count,
-            "total": total_count
-        }
+            "total": total_count,
+        },
     )

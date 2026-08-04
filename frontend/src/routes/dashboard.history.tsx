@@ -24,7 +24,10 @@ export const Route = createFileRoute("/dashboard/history")({
   head: () => ({
     meta: [
       { title: "Prediction History — MailSentry" },
-      { name: "description", content: "Search and filter every stored email prediction in your database." },
+      {
+        name: "description",
+        content: "Search and filter every stored email prediction in your database.",
+      },
     ],
   }),
   component: HistoryPage,
@@ -43,14 +46,7 @@ function HistoryPage() {
   const [page, setPage] = useState(1);
 
   // TanStack Query with Intelligent Predictive Idle Prefetching
-  const {
-    emails,
-    totalCount,
-    pageCount,
-    isLoading,
-    isFetching,
-    error,
-  } = usePredictiveHistory({
+  const { emails, totalCount, pageCount, isLoading, isFetching, error } = usePredictiveHistory({
     page,
     limit: PAGE_SIZE,
     label: filter,
@@ -143,7 +139,8 @@ function HistoryPage() {
                 <div>
                   <p className="text-sm font-semibold">No emails found</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    No stored email matches "<span className="font-medium text-foreground">{debouncedSearch}</span>".
+                    No stored email matches "
+                    <span className="font-medium text-foreground">{debouncedSearch}</span>".
                   </p>
                 </div>
                 <Button
@@ -215,7 +212,9 @@ function HistoryPage() {
                           {rowNumber}
                         </td>
                         <td className="py-3 text-muted-foreground text-xs font-medium pr-2">
-                          {email.sent_at || email.received_at ? formatDate(email.sent_at || email.received_at!) : "—"}
+                          {email.sent_at || email.received_at
+                            ? formatDate(email.sent_at || email.received_at!)
+                            : "—"}
                         </td>
                         <td className="py-3 font-medium pr-2">
                           <HighlightText
@@ -258,7 +257,8 @@ function HistoryPage() {
         {!isLoading && totalCount > 0 && (
           <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              Page {page} of {pageCount} · {totalCount} total prediction{totalCount !== 1 ? "s" : ""}
+              Page {page} of {pageCount} · {totalCount} total prediction
+              {totalCount !== 1 ? "s" : ""}
             </span>
             <div className="flex gap-2">
               <Button

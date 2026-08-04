@@ -8,7 +8,7 @@ interface HyperparametersModalProps {
   onClose: () => void;
   modelName: string;
   version: string;
-  hyperparameters: Record<string, any>;
+  hyperparameters: Record<string, unknown>;
 }
 
 export function HyperparametersModal({
@@ -101,7 +101,11 @@ export function HyperparametersModal({
 
           {/* Footer */}
           <div className="flex justify-end pt-2">
-            <Button variant="outline" onClick={onClose} className="rounded-xl font-semibold text-xs px-5">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="rounded-xl font-semibold text-xs px-5"
+            >
               Close
             </Button>
           </div>

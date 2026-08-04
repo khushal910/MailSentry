@@ -1,17 +1,16 @@
 import logging
-from fastapi import APIRouter, Depends, Request, Response, HTTPException, status
 
-from app.core.config import settings
+from fastapi import APIRouter, Depends, Request, Response, status
+
 from app.dependencies.auth import get_current_user
 from app.schemas.profile_schema import (
-    ProfileResponse,
-    UpdateUsernameRequest,
-    RequestEmailChangeRequest,
-    VerifyEmailOtpRequest,
     ChangePasswordRequest,
+    RequestEmailChangeRequest,
+    UpdateUsernameRequest,
+    VerifyEmailOtpRequest,
 )
 from app.services.profile_service import ProfileService
-from app.utils.main_utile import return_response, create_access_token
+from app.utils.main_utile import create_access_token, return_response, set_auth_cookie
 
 logger = logging.getLogger("mailsentry.profile_api")
 
@@ -35,9 +34,7 @@ def _set_jwt_cookie(response: Response, user_id: str, username: str) -> str:
 
 
 @profile_router.get(
-    "/profile",
-    summary="Get authenticated user profile details",
-    response_model=None
+    "/profile", summary="Get authenticated user profile details", response_model=None
 )
 async def get_profile(current_user: dict = Depends(get_current_user)):
     """
@@ -55,9 +52,7 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
 
 
 @profile_router.patch(
-    "/profile/username",
-    summary="Update username",
-    response_model=None
+    "/profile/username", summary="Update username", response_model=None
 )
 async def update_username(
     payload: UpdateUsernameRequest,
@@ -79,7 +74,9 @@ async def update_username(
     )
 
     # Regenerate JWT and set cookie
-    new_jwt = _set_jwt_cookie(response, user_id=user_id, username=updated_profile["username"])
+    new_jwt = _set_jwt_cookie(
+        response, user_id=user_id, username=updated_profile["username"]
+    )
 
     return return_response(
         status_code=status.HTTP_200_OK,
@@ -94,7 +91,7 @@ async def update_username(
 @profile_router.post(
     "/profile/request-email-change",
     summary="Request email change (sends OTP)",
-    response_model=None
+    response_model=None,
 )
 async def request_email_change(
     payload: RequestEmailChangeRequest,
@@ -125,7 +122,7 @@ async def request_email_change(
 @profile_router.post(
     "/profile/verify-email-otp",
     summary="Verify OTP and complete email change",
-    response_model=None
+    response_model=None,
 )
 async def verify_email_otp(
     payload: VerifyEmailOtpRequest,
@@ -148,7 +145,9 @@ async def verify_email_otp(
     )
 
     # Regenerate JWT and set cookie
-    new_jwt = _set_jwt_cookie(response, user_id=user_id, username=updated_profile["username"])
+    new_jwt = _set_jwt_cookie(
+        response, user_id=user_id, username=updated_profile["username"]
+    )
 
     msg = "Email address updated successfully"
     if "notice" in updated_profile:
@@ -167,7 +166,7 @@ async def verify_email_otp(
 @profile_router.post(
     "/profile/password",
     summary="Change password for local accounts",
-    response_model=None
+    response_model=None,
 )
 async def change_password(
     payload: ChangePasswordRequest,
@@ -192,7 +191,9 @@ async def change_password(
     )
 
     # Regenerate JWT and set cookie
-    new_jwt = _set_jwt_cookie(response, user_id=user_id, username=current_user["username"])
+    new_jwt = _set_jwt_cookie(
+        response, user_id=user_id, username=current_user["username"]
+    )
 
     return return_response(
         status_code=status.HTTP_200_OK,

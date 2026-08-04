@@ -1,9 +1,14 @@
 import logging
-from datetime import datetime, timezone, timedelta
-from fastapi import HTTPException, status, Depends
+from datetime import datetime, timezone
+
+from fastapi import Depends, HTTPException, status
+
+from app.dependencies.google_auth_deps import (
+    get_google_account_repository,
+    get_google_oauth_service,
+)
 from app.repositories.google_account_repository import GoogleAccountRepository
 from app.services.auth.google_oauth_service import GoogleOAuthService
-from app.dependencies.google_auth_deps import get_google_oauth_service, get_google_account_repository
 
 logger = logging.getLogger("mailsentry.gmail_token_manager")
 
@@ -23,7 +28,11 @@ class GmailTokenManager:
         oauth_service: GoogleOAuthService | None = None,
     ):
         self.repo = repo if repo is not None else GoogleAccountRepository()
-        self.oauth_service = oauth_service if oauth_service is not None else GoogleOAuthService(repo=self.repo)
+        self.oauth_service = (
+            oauth_service
+            if oauth_service is not None
+            else GoogleOAuthService(repo=self.repo)
+        )
 
     async def get_valid_access_token(self, google_email: str) -> str:
         """
@@ -38,10 +47,12 @@ class GmailTokenManager:
         account_doc = self.repo.find_by_email(email)
 
         if not account_doc:
-            logger.error(f"GmailTokenManager: No Google account found for email {email}")
+            logger.error(
+                f"GmailTokenManager: No Google account found for email {email}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Google account for {email} is not linked to MailSentry."
+                detail=f"Google account for {email} is not linked to MailSentry.",
             )
 
         access_token_expiry = account_doc.get("access_token_expiry")
@@ -68,7 +79,9 @@ class GmailTokenManager:
             fresh_token = await self.oauth_service.refresh_google_access_token(email)
             return fresh_token
 
-        logger.debug(f"GmailTokenManager: Access token for {email} is valid until {access_token_expiry}.")
+        logger.debug(
+            f"GmailTokenManager: Access token for {email} is valid until {access_token_expiry}."
+        )
         # To strictly comply with Database Rules ("Never store plaintext access tokens permanently"),
         # a fresh token is requested from Google whenever a caller asks for an active access_token.
         fresh_token = await self.oauth_service.refresh_google_access_token(email)

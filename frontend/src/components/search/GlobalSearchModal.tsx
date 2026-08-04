@@ -36,8 +36,6 @@ export function GlobalSearchModal({
 
   if (!isOpen) return null;
 
-  let cumulativeIndex = 0;
-
   const modalContent = (
     <AnimatePresence>
       <div
@@ -68,9 +66,7 @@ export function GlobalSearchModal({
               className="h-9 w-full border-0 bg-transparent text-sm md:text-base font-medium focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70"
               autoComplete="off"
             />
-            {isLoading && (
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand mr-2" />
-            )}
+            {isLoading && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand mr-2" />}
             {query && (
               <button
                 onClick={() => setQuery("")}
@@ -136,7 +132,10 @@ export function GlobalSearchModal({
                 </div>
                 <div className="mt-3 flex flex-wrap justify-center gap-1.5 text-xs text-muted-foreground">
                   <span className="font-medium">Suggestions:</span>
-                  <button onClick={() => setQuery("Invoice")} className="text-brand hover:underline">
+                  <button
+                    onClick={() => setQuery("Invoice")}
+                    className="text-brand hover:underline"
+                  >
                     Subject
                   </button>
                   <span>·</span>
@@ -148,40 +147,46 @@ export function GlobalSearchModal({
                     Spam
                   </button>
                   <span>·</span>
-                  <button onClick={() => setQuery("Settings")} className="text-brand hover:underline">
+                  <button
+                    onClick={() => setQuery("Settings")}
+                    className="text-brand hover:underline"
+                  >
                     Settings
                   </button>
                 </div>
               </div>
             ) : (
               <div className="space-y-4 py-2">
-                {groups.map((group) => {
-                  const groupStartIndex = cumulativeIndex;
-                  cumulativeIndex += group.items.length;
+                {(() => {
+                  let runningIndex = 0;
+                  return groups.map((group) => {
+                    const groupStartIndex = runningIndex;
+                    runningIndex += group.items.length;
 
-                  return (
-                    <div key={group.category} className="space-y-1">
-                      <div className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
-                        {group.category}
+                    return (
+                      <div key={group.category} className="space-y-1">
+                        <div className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                          {group.category}
+                        </div>
+                        {group.items.map((item, idx) => {
+                          const globalIndex = groupStartIndex + idx;
+                          const isSelected = globalIndex === selectedIndex;
+
+                          return (
+                            <SearchResultItem
+                              key={item.id}
+                              item={item}
+                              isSelected={isSelected}
+                              query={query}
+                              onSelect={() => selectAndExecute(item)}
+                              onMouseEnter={() => setSelectedIndex(globalIndex)}
+                            />
+                          );
+                        })}
                       </div>
-                      {group.items.map((item, idx) => {
-                        const globalIndex = groupStartIndex + idx;
-                        const isSelected = globalIndex === selectedIndex;
-
-                        return (
-                          <SearchResultItem
-                            key={item.id}
-                            item={item}
-                            isSelected={isSelected}
-                            query={query}
-                            onSelect={() => selectAndExecute(item)}
-                            onMouseEnter={() => setSelectedIndex(globalIndex)}
-                          />
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             )}
           </div>
@@ -190,16 +195,24 @@ export function GlobalSearchModal({
           <div className="flex items-center justify-between border-t border-border/60 bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1">
-                <kbd className="rounded border border-border/60 bg-background px-1.5 py-0.5 text-[10px]">↑</kbd>
-                <kbd className="rounded border border-border/60 bg-background px-1.5 py-0.5 text-[10px]">↓</kbd>
+                <kbd className="rounded border border-border/60 bg-background px-1.5 py-0.5 text-[10px]">
+                  ↑
+                </kbd>
+                <kbd className="rounded border border-border/60 bg-background px-1.5 py-0.5 text-[10px]">
+                  ↓
+                </kbd>
                 Navigate
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="rounded border border-border/60 bg-background px-1.5 py-0.5 text-[10px]">↵</kbd>
+                <kbd className="rounded border border-border/60 bg-background px-1.5 py-0.5 text-[10px]">
+                  ↵
+                </kbd>
                 Select
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="rounded border border-border/60 bg-background px-1.5 py-0.5 text-[10px]">ESC</kbd>
+                <kbd className="rounded border border-border/60 bg-background px-1.5 py-0.5 text-[10px]">
+                  ESC
+                </kbd>
                 Close
               </span>
             </div>
@@ -212,7 +225,5 @@ export function GlobalSearchModal({
     </AnimatePresence>
   );
 
-  return typeof document !== "undefined"
-    ? createPortal(modalContent, document.body)
-    : null;
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : null;
 }

@@ -1,21 +1,20 @@
 import asyncio
 import unittest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import HTTPException
-from app.core.config import settings
 
+from app.core.config import settings
 
 # Module under test
 from app.services.gmail_fetch_service import (
-    GmailFetchService,
-    FetchResult,
-    _USER_LOCKS,
-    _LOCK_ACQUIRED_AT,
     _LAST_FETCH_AT,
+    _LOCK_ACQUIRED_AT,
+    _USER_LOCKS,
+    FetchResult,
+    GmailFetchService,
 )
-
 
 USER_ID = "user_abc123"
 GOOGLE_ACCOUNT = {
@@ -86,7 +85,6 @@ def _make_service(
     return svc
 
 
-
 class TestGmailFetchServiceRateLimit(unittest.TestCase):
     """Rate limiting enforced correctly."""
 
@@ -99,7 +97,6 @@ class TestGmailFetchServiceRateLimit(unittest.TestCase):
 
     def tearDown(self):
         self.patcher.stop()
-
 
     def test_first_call_is_allowed(self):
         svc = _make_service()
@@ -196,7 +193,10 @@ class TestGmailFetchServiceZeroEmails(unittest.TestCase):
     def test_zero_emails_to_dict(self):
         svc = _make_service(emails=[])
         result = run(svc.run_fetch_pipeline(USER_ID, GOOGLE_ACCOUNT))
-        self.assertEqual(result.to_dict(), {"fetched": 0, "classified": 0, "skipped": 0, "new_emails": []})
+        self.assertEqual(
+            result.to_dict(),
+            {"fetched": 0, "classified": 0, "skipped": 0, "new_emails": []},
+        )
 
 
 class TestGmailFetchServicePartialFailure(unittest.TestCase):
@@ -283,12 +283,15 @@ class TestFetchResultToDict(unittest.TestCase):
 
     def test_to_dict(self):
         r = FetchResult(fetched=5, classified=4, skipped=1)
-        self.assertEqual(r.to_dict(), {"fetched": 5, "classified": 4, "skipped": 1, "new_emails": []})
+        self.assertEqual(
+            r.to_dict(), {"fetched": 5, "classified": 4, "skipped": 1, "new_emails": []}
+        )
 
     def test_defaults(self):
         r = FetchResult()
-        self.assertEqual(r.to_dict(), {"fetched": 0, "classified": 0, "skipped": 0, "new_emails": []})
-
+        self.assertEqual(
+            r.to_dict(), {"fetched": 0, "classified": 0, "skipped": 0, "new_emails": []}
+        )
 
 
 if __name__ == "__main__":

@@ -7,18 +7,29 @@ interface RecentSearchesProps {
   onClear: () => void;
 }
 
-export function RecentSearches({
-  searches,
-  onSelectSearch,
-  onClear,
-}: RecentSearchesProps) {
+export function RecentSearches({ searches, onSelectSearch, onClear }: RecentSearchesProps) {
   const suggestions = [
-    { label: "Search Subject", term: "Invoice", icon: Mail, subtitle: 'Find emails with subject "Invoice"' },
+    {
+      label: "Search Subject",
+      term: "Invoice",
+      icon: Mail,
+      subtitle: 'Find emails with subject "Invoice"',
+    },
     { label: "Search Sender", term: "Amazon", icon: Search, subtitle: 'Find emails from "Amazon"' },
-    { label: "Filter Spam", term: "Spam", icon: Wand2, subtitle: 'Filter spam predicted emails' },
-    { label: "Security & Passwords", term: "Password", icon: Shield, subtitle: 'Change password or security' },
-    { label: "User Settings", term: "Settings", icon: Settings, subtitle: 'Appearance & dark mode' },
-    { label: "User Profile", term: "Profile", icon: User, subtitle: 'Account info & avatar' },
+    { label: "Filter Spam", term: "Spam", icon: Wand2, subtitle: "Filter spam predicted emails" },
+    {
+      label: "Security & Passwords",
+      term: "Password",
+      icon: Shield,
+      subtitle: "Change password or security",
+    },
+    {
+      label: "User Settings",
+      term: "Settings",
+      icon: Settings,
+      subtitle: "Appearance & dark mode",
+    },
+    { label: "User Profile", term: "Profile", icon: User, subtitle: "Account info & avatar" },
   ];
 
   return (

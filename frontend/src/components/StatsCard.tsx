@@ -13,8 +13,10 @@ interface StatsCardProps {
 
 const accentClasses: Record<NonNullable<StatsCardProps["accent"]>, string> = {
   brand: "text-brand bg-brand/10 border-brand/20 shadow-[0_0_15px_-3px_rgba(79,70,229,0.3)]",
-  success: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]",
-  destructive: "text-rose-500 bg-rose-500/10 border-rose-500/20 shadow-[0_0_15px_-3px_rgba(244,63,94,0.3)]",
+  success:
+    "text-emerald-500 bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]",
+  destructive:
+    "text-rose-500 bg-rose-500/10 border-rose-500/20 shadow-[0_0_15px_-3px_rgba(244,63,94,0.3)]",
   cyan: "text-cyan bg-cyan/10 border-cyan/20 shadow-[0_0_15px_-3px_rgba(6,182,212,0.3)]",
 };
 
@@ -42,9 +44,7 @@ export function StatsCard({
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {label}
           </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
-            {value}
-          </p>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{value}</p>
           {trend && <p className="mt-1.5 text-xs font-medium text-muted-foreground">{trend}</p>}
         </div>
         <span

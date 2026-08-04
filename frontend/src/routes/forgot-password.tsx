@@ -9,11 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader } from "@/components/Loader";
 import { authApi } from "@/services/authApi";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
@@ -167,9 +163,7 @@ function ForgotPasswordPage() {
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             </div>
             {emailForm.formState.errors.email && (
-              <p className="text-xs text-destructive">
-                {emailForm.formState.errors.email.message}
-              </p>
+              <p className="text-xs text-destructive">{emailForm.formState.errors.email.message}</p>
             )}
           </div>
           <Button
@@ -190,18 +184,32 @@ function ForgotPasswordPage() {
               6-Digit Verification Code
             </Label>
 
-            <InputOTP
-              maxLength={6}
-              value={otp}
-              onChange={(v) => setOtp(v)}
-            >
+            <InputOTP maxLength={6} value={otp} onChange={(v) => setOtp(v)}>
               <InputOTPGroup className="gap-2">
-                <InputOTPSlot index={0} className="w-11 h-12 text-lg font-semibold border-brand/20" />
-                <InputOTPSlot index={1} className="w-11 h-12 text-lg font-semibold border-brand/20" />
-                <InputOTPSlot index={2} className="w-11 h-12 text-lg font-semibold border-brand/20" />
-                <InputOTPSlot index={3} className="w-11 h-12 text-lg font-semibold border-brand/20" />
-                <InputOTPSlot index={4} className="w-11 h-12 text-lg font-semibold border-brand/20" />
-                <InputOTPSlot index={5} className="w-11 h-12 text-lg font-semibold border-brand/20" />
+                <InputOTPSlot
+                  index={0}
+                  className="w-11 h-12 text-lg font-semibold border-brand/20"
+                />
+                <InputOTPSlot
+                  index={1}
+                  className="w-11 h-12 text-lg font-semibold border-brand/20"
+                />
+                <InputOTPSlot
+                  index={2}
+                  className="w-11 h-12 text-lg font-semibold border-brand/20"
+                />
+                <InputOTPSlot
+                  index={3}
+                  className="w-11 h-12 text-lg font-semibold border-brand/20"
+                />
+                <InputOTPSlot
+                  index={4}
+                  className="w-11 h-12 text-lg font-semibold border-brand/20"
+                />
+                <InputOTPSlot
+                  index={5}
+                  className="w-11 h-12 text-lg font-semibold border-brand/20"
+                />
               </InputOTPGroup>
             </InputOTP>
           </div>
@@ -248,7 +256,10 @@ function ForgotPasswordPage() {
                 className="pr-10"
                 {...resetForm.register("password", {
                   required: "Password is required",
-                  minLength: { value: Number(import.meta.env.VITE_PASSWORD_MIN_LENGTH), message: `Minimum ${import.meta.env.VITE_PASSWORD_MIN_LENGTH} characters` },
+                  minLength: {
+                    value: Number(import.meta.env.VITE_PASSWORD_MIN_LENGTH),
+                    message: `Minimum ${import.meta.env.VITE_PASSWORD_MIN_LENGTH} characters`,
+                  },
                 })}
               />
               <button

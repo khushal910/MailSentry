@@ -1,16 +1,17 @@
 import logging
 import urllib.parse
+from datetime import datetime, timedelta, timezone
+
 import httpx
-from datetime import datetime, timezone, timedelta
-from fastapi import Request, Response, HTTPException, status
-from google.oauth2 import id_token as google_id_token
+from fastapi import HTTPException, Request, Response, status
 from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 
 from app.core.config import settings
 from app.repositories.google_account_repository import GoogleAccountRepository
 from app.utils.encryption_util import encrypt_token
-from app.utils.oauth_state_util import generate_oauth_state, validate_oauth_state as validate_oauth_state_util
-
+from app.utils.oauth_state_util import generate_oauth_state
+from app.utils.oauth_state_util import validate_oauth_state as validate_oauth_state_util
 
 logger = logging.getLogger("mailsentry.google_oauth.service")
 
@@ -47,7 +48,7 @@ class GoogleOAuthService:
             logger.error("GOOGLE_CLIENT_ID environment variable is missing.")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Google Client ID is not configured on the server."
+                detail="Google Client ID is not configured on the server.",
             )
 
         # 1. Check if user already has a valid stored refresh token in MongoDB
@@ -70,10 +71,14 @@ class GoogleOAuthService:
 
         if returning_user:
             params["include_granted_scopes"] = "true"
-            logger.info("Generated Google OAuth authorization URL for RETURNING user (prompt=consent omitted).")
+            logger.info(
+                "Generated Google OAuth authorization URL for RETURNING user (prompt=consent omitted)."
+            )
         else:
             params["prompt"] = "consent"
-            logger.info("Generated Google OAuth authorization URL for FIRST-TIME user (prompt=consent included).")
+            logger.info(
+                "Generated Google OAuth authorization URL for FIRST-TIME user (prompt=consent included)."
+            )
 
         auth_url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
         return state, auth_url
@@ -90,7 +95,7 @@ class GoogleOAuthService:
             logger.error("GOOGLE_CLIENT_ID environment variable is missing.")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Google Client ID is not configured on the server."
+                detail="Google Client ID is not configured on the server.",
             )
 
         state = generate_oauth_state()
@@ -106,11 +111,16 @@ class GoogleOAuthService:
         }
 
         auth_url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
-        logger.info("Generated Google OAuth connect URL with access_type=offline and prompt=consent.")
+        logger.info(
+            "Generated Google OAuth connect URL with access_type=offline and prompt=consent."
+        )
         return state, auth_url
 
     def generate_auth_url(
-        self, response: Response, user_id: str | None = None, google_email: str | None = None
+        self,
+        response: Response,
+        user_id: str | None = None,
+        google_email: str | None = None,
     ) -> str:
         """
         Legacy wrapper kept for backward compatibility.
@@ -127,7 +137,6 @@ class GoogleOAuthService:
         cookie_state = request.cookies.get("oauth_state")
         validate_oauth_state_util(cookie_state=cookie_state, param_state=state_param)
 
-
     async def exchange_code_for_tokens(self, code: str) -> dict:
         """
         Exchanges the authorization code for tokens (access_token, refresh_token, id_token, expires_in).
@@ -137,14 +146,14 @@ class GoogleOAuthService:
         if not code or not code.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Authorization code is missing or empty."
+                detail="Authorization code is missing or empty.",
             )
 
         if not settings.GOOGLE_CLIENT_SECRET:
             logger.error("GOOGLE_CLIENT_SECRET environment variable is missing.")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Google Client Secret is not configured on the server."
+                detail="Google Client Secret is not configured on the server.",
             )
 
         payload = {
@@ -161,42 +170,50 @@ class GoogleOAuthService:
                 data = resp.json()
 
             if resp.status_code >= 500:
-                logger.error(f"Google OAuth server returned 5xx error: {resp.status_code}")
+                logger.error(
+                    f"Google OAuth server returned 5xx error: {resp.status_code}"
+                )
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Google server error while exchanging authorization code."
+                    detail="Google server error while exchanging authorization code.",
                 )
 
             if resp.status_code != 200 or "error" in data:
-                error_msg = data.get("error_description") or data.get("error") or "Invalid authorization code"
+                error_msg = (
+                    data.get("error_description")
+                    or data.get("error")
+                    or "Invalid authorization code"
+                )
                 logger.error(f"Failed to exchange authorization code: {error_msg}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid authorization code: {error_msg}"
+                    detail=f"Invalid authorization code: {error_msg}",
                 )
 
             # Validate expected fields in token payload
             if "id_token" not in data or "access_token" not in data:
-                logger.error("Required tokens missing from Google OAuth token response.")
+                logger.error(
+                    "Required tokens missing from Google OAuth token response."
+                )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid token response from Google: id_token or access_token missing."
+                    detail="Invalid token response from Google: id_token or access_token missing.",
                 )
 
             return data
         except HTTPException:
             raise
         except httpx.HTTPError as e:
-            logger.error(f"HTTP error connecting to Google token endpoint: {str(e)}")
+            logger.error(f"HTTP error connecting to Google token endpoint: {e!s}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Google server error: {str(e)}"
+                detail=f"Google server error: {e!s}",
             )
         except Exception as e:
-            logger.error(f"Unexpected error during code exchange: {str(e)}")
+            logger.error(f"Unexpected error during code exchange: {e!s}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Google server error: {str(e)}"
+                detail=f"Google server error: {e!s}",
             )
 
     def verify_id_token(self, id_token_str: str) -> dict:
@@ -214,10 +231,10 @@ class GoogleOAuthService:
                 clock_skew_in_seconds=10,
             )
         except Exception as e:
-            logger.error(f"Invalid Google ID Token: {str(e)}")
+            logger.error(f"Invalid Google ID Token: {e!s}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid Google ID Token: {str(e)}"
+                detail=f"Invalid Google ID Token: {e!s}",
             )
 
         email = user_info.get("email")
@@ -225,7 +242,7 @@ class GoogleOAuthService:
             logger.error("Email missing from Google ID token payload.")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email missing from Google ID token payload."
+                detail="Email missing from Google ID token payload.",
             )
 
         google_user_id = user_info.get("sub")
@@ -233,7 +250,7 @@ class GoogleOAuthService:
             logger.error("Google user ID (sub) missing from ID token.")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Google user ID missing from ID token."
+                detail="Google user ID missing from ID token.",
             )
 
         return {
@@ -255,8 +272,9 @@ class GoogleOAuthService:
         - Else if user exists by email: links Google account & updates google_connected=True.
         - Else: auto-creates a new MailSentry account using Google profile.
         """
-        from app.db.mongodb import get_database
         from bson import ObjectId
+
+        from app.db.mongodb import get_database
 
         db = get_database()
         users_col = db[settings.USER_COLLECTION_NAME]
@@ -268,7 +286,9 @@ class GoogleOAuthService:
         if current_user_id:
             try:
                 if ObjectId.is_valid(current_user_id):
-                    existing_user = users_col.find_one({"_id": ObjectId(current_user_id)})
+                    existing_user = users_col.find_one(
+                        {"_id": ObjectId(current_user_id)}
+                    )
                 else:
                     existing_user = users_col.find_one({"_id": current_user_id})
             except Exception:
@@ -277,7 +297,6 @@ class GoogleOAuthService:
         # If current_user_id was not provided or invalid/stale, fall back to email lookup
         if not existing_user:
             existing_user = users_col.find_one({"email": email})
-
 
         if existing_user:
             users_col.update_one(
@@ -288,17 +307,24 @@ class GoogleOAuthService:
                         "updated_at": now,
                         "last_login_at": now,
                     },
-                    "$addToSet": {"providers": "google"}
-                }
+                    "$addToSet": {"providers": "google"},
+                },
             )
             existing_user["google_connected"] = True
             existing_user["last_login_at"] = now
-            logger.info(f"Linked Google account ({email}) to user: {existing_user.get('_id')}")
+            logger.info(
+                f"Linked Google account ({email}) to user: {existing_user.get('_id')}"
+            )
             return existing_user
 
         # User does not exist — auto-create new MailSentry account
-        raw_name = user_info.get("given_name") or user_info.get("name") or email.split("@")[0]
-        base_username = "".join(c for c in raw_name if c.isalnum() or c in ("_", "-")).strip() or "user"
+        raw_name = (
+            user_info.get("given_name") or user_info.get("name") or email.split("@")[0]
+        )
+        base_username = (
+            "".join(c for c in raw_name if c.isalnum() or c in ("_", "-")).strip()
+            or "user"
+        )
         username = base_username
 
         counter = 1
@@ -322,7 +348,9 @@ class GoogleOAuthService:
         try:
             result = users_col.insert_one(new_user)
             new_user["_id"] = result.inserted_id
-            logger.info(f"Auto-created new MailSentry user via Google OAuth: {email} (username: {username})")
+            logger.info(
+                f"Auto-created new MailSentry user via Google OAuth: {email} (username: {username})"
+            )
             return new_user
         except Exception:
             # Fallback check if user was inserted concurrently
@@ -336,14 +364,13 @@ class GoogleOAuthService:
                             "updated_at": now,
                             "last_login_at": now,
                         },
-                        "$addToSet": {"providers": "google"}
-                    }
+                        "$addToSet": {"providers": "google"},
+                    },
                 )
                 existing_user["google_connected"] = True
                 existing_user["last_login_at"] = now
                 return existing_user
             raise
-
 
     def persist_google_account(
         self,
@@ -362,15 +389,21 @@ class GoogleOAuthService:
         self.repo.ensure_indexes()
 
         if refresh_token:
-            logger.info("New refresh token received from Google. Encrypting and updating MongoDB.")
+            logger.info(
+                "New refresh token received from Google. Encrypting and updating MongoDB."
+            )
             encrypted_refresh_token = encrypt_token(refresh_token)
         else:
-            logger.info("No new refresh token in Google response (returning user). Preserving existing refresh token.")
+            logger.info(
+                "No new refresh token in Google response (returning user). Preserving existing refresh token."
+            )
             encrypted_refresh_token = None
-        
+
         access_token_expiry = None
         if expires_in is not None:
-            access_token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            access_token_expiry = datetime.now(timezone.utc) + timedelta(
+                seconds=expires_in
+            )
 
         saved_doc = self.repo.upsert_account(
             google_email=google_email,
@@ -392,17 +425,19 @@ class GoogleOAuthService:
         """
         decrypted_rt = self.repo.get_decrypted_refresh_token(google_email)
         if not decrypted_rt:
-            logger.error(f"Cannot refresh access token: No refresh token found for email {google_email}")
+            logger.error(
+                f"Cannot refresh access token: No refresh token found for email {google_email}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No refresh token available. User must re-authenticate with Google."
+                detail="No refresh token available. User must re-authenticate with Google.",
             )
 
         if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
             logger.error("Google Client ID or Client Secret missing in settings.")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Google OAuth server configuration missing."
+                detail="Google OAuth server configuration missing.",
             )
 
         payload = {
@@ -419,11 +454,17 @@ class GoogleOAuthService:
                 data = resp.json()
 
             if resp.status_code != 200 or "error" in data:
-                error_msg = data.get("error_description") or data.get("error") or "Unknown refresh error"
-                logger.error(f"Google token refresh failed for {google_email}: {error_msg}")
+                error_msg = (
+                    data.get("error_description")
+                    or data.get("error")
+                    or "Unknown refresh error"
+                )
+                logger.error(
+                    f"Google token refresh failed for {google_email}: {error_msg}"
+                )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Failed to refresh Google access token: {error_msg}"
+                    detail=f"Failed to refresh Google access token: {error_msg}",
                 )
 
             access_token = data.get("access_token")
@@ -433,7 +474,7 @@ class GoogleOAuthService:
                 logger.error("No access_token returned in Google refresh response.")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid response from Google token refresh endpoint."
+                    detail="Invalid response from Google token refresh endpoint.",
                 )
 
             # Calculate and store updated expiry
@@ -443,7 +484,9 @@ class GoogleOAuthService:
             # Check if Google optionally rotated the refresh_token
             new_rt = data.get("refresh_token")
             if new_rt:
-                logger.info(f"Google issued a rotated refresh token for {google_email}. Updating MongoDB.")
+                logger.info(
+                    f"Google issued a rotated refresh token for {google_email}. Updating MongoDB."
+                )
                 encrypted_new_rt = encrypt_token(new_rt)
                 self.repo.upsert_account(
                     google_email=google_email,
@@ -451,14 +494,18 @@ class GoogleOAuthService:
                     access_token_expiry=new_expiry,
                 )
 
-            logger.info(f"Successfully refreshed Google access token for {google_email}. Expires in {expires_in}s.")
+            logger.info(
+                f"Successfully refreshed Google access token for {google_email}. Expires in {expires_in}s."
+            )
             return access_token
 
         except httpx.HTTPError as e:
-            logger.error(f"HTTP error during Google token refresh for {google_email}: {str(e)}")
+            logger.error(
+                f"HTTP error during Google token refresh for {google_email}: {e!s}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to connect to Google token endpoint: {str(e)}"
+                detail=f"Failed to connect to Google token endpoint: {e!s}",
             )
 
     def get_user_google_credentials(self, google_email: str) -> dict:
@@ -470,8 +517,12 @@ class GoogleOAuthService:
         return {
             "google_email": google_email,
             "refresh_token": decrypted_rt,
-            "google_connected": account_doc.get("google_connected", False) if account_doc else False,
-            "access_token_expiry": account_doc.get("access_token_expiry") if account_doc else None,
+            "google_connected": (
+                account_doc.get("google_connected", False) if account_doc else False
+            ),
+            "access_token_expiry": (
+                account_doc.get("access_token_expiry") if account_doc else None
+            ),
         }
 
 
@@ -479,17 +530,22 @@ class GoogleOAuthService:
 def generate_google_auth_url(response: Response) -> str:
     return GoogleOAuthService().generate_auth_url(response)
 
+
 def validate_oauth_state(request: Request, state_param: str | None) -> None:
     GoogleOAuthService().validate_csrf_state(request, state_param)
+
 
 async def exchange_code_for_tokens(code: str) -> dict:
     return await GoogleOAuthService().exchange_code_for_tokens(code)
 
+
 def verify_id_token_and_extract_user(id_token_str: str) -> dict:
     return GoogleOAuthService().verify_id_token(id_token_str)
 
+
 def find_or_create_user_from_google_profile(user_info: dict) -> dict:
     return GoogleOAuthService().find_or_create_user(user_info)
+
 
 def save_or_update_google_account(
     google_email: str,

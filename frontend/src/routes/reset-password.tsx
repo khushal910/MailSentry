@@ -68,9 +68,7 @@ function ResetPasswordPage() {
               minLength: { value: 8, message: "Minimum 8 characters" },
             })}
           />
-          {errors.password && (
-            <p className="text-xs text-destructive">{errors.password.message}</p>
-          )}
+          {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">Confirm password</Label>
@@ -82,9 +80,7 @@ function ResetPasswordPage() {
               validate: (v) => v === password || "Passwords must match",
             })}
           />
-          {errors.confirm && (
-            <p className="text-xs text-destructive">{errors.confirm.message}</p>
-          )}
+          {errors.confirm && <p className="text-xs text-destructive">{errors.confirm.message}</p>}
         </div>
         <Button
           type="submit"

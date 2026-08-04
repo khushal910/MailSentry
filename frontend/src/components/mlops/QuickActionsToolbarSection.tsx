@@ -1,21 +1,14 @@
-import {
-  Download,
-  ExternalLink,
-  RefreshCw,
-  Terminal,
-  BarChart3,
-} from "lucide-react";
+import { Download, ExternalLink, RefreshCw, Terminal, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { downloadPklFile } from "@/utils/downloadHelper";
 import { toast } from "sonner";
 
 interface QuickActionsProps {
   onRefresh: () => void;
+  onDeploy?: () => void;
 }
 
-export function QuickActionsToolbarSection({
-  onRefresh,
-}: QuickActionsProps) {
+export function QuickActionsToolbarSection({ onRefresh, onDeploy }: QuickActionsProps) {
   return (
     <div className="rounded-xl border border-border/80 bg-card p-5 shadow-xs space-y-3">
       <span className="block text-xs sm:text-sm font-extrabold text-muted-foreground uppercase tracking-wider">

@@ -1,18 +1,19 @@
-from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional, List
 import re
+
+from pydantic import BaseModel, EmailStr, Field, validator
+
 
 class ProfileResponse(BaseModel):
     id: str
     username: str
     email: EmailStr
     role: str = "user"
-    providers: List[str] = ["local"]
+    providers: list[str] = ["local"]
     is_active: bool = True
     google_connected: bool = False
-    google_email: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    google_email: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class UpdateUsernameRequest(BaseModel):

@@ -28,7 +28,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Type
+from typing import Any
 
 import numpy as np
 
@@ -52,7 +52,7 @@ class BasePredictor(ABC):
     """
 
     @abstractmethod
-    def predict(self, subject: str, body: str) -> Dict[str, Any]:
+    def predict(self, subject: str, body: str) -> dict[str, Any]:
         """
         Classify email content.
 
@@ -76,7 +76,7 @@ class SklearnPredictor(BasePredictor):
         self.label_encoder = self._load_artifact(champion_dir, "label_encoder.pkl")
 
     @staticmethod
-    def _load_artifact(champion_dir: str, filename: str) -> Optional[Any]:
+    def _load_artifact(champion_dir: str, filename: str) -> Any | None:
         """Load a pickle/joblib artifact from champion_dir or champion_dir/preprocessor/."""
         import joblib
 
@@ -94,7 +94,7 @@ class SklearnPredictor(BasePredictor):
                 logger.warning("Failed to load %s: %s", filename, exc)
         return None
 
-    def predict(self, subject: str, body: str) -> Dict[str, Any]:
+    def predict(self, subject: str, body: str) -> dict[str, Any]:
         from app.services.ml_preprocessing import MLPreprocessing
 
         subject_str = (subject or "").strip()
@@ -106,7 +106,9 @@ class SklearnPredictor(BasePredictor):
 
         try:
             # Vectorize
-            if self.preprocessor is not None and hasattr(self.preprocessor, "transform"):
+            if self.preprocessor is not None and hasattr(
+                self.preprocessor, "transform"
+            ):
                 X_features = self.preprocessor.transform([cleaned_text])
             else:
                 X_features = [cleaned_text]
@@ -163,8 +165,13 @@ class SklearnPredictor(BasePredictor):
             logger.warning("Sklearn prediction fallback engaged: %s", err)
             combined_text = f"{subject_str} {body_str}".lower()
             spam_keywords = [
-                "spam", "winner", "lottery", "claim",
-                "prize", "free money", "urgent security",
+                "spam",
+                "winner",
+                "lottery",
+                "claim",
+                "prize",
+                "free money",
+                "urgent security",
             ]
             if any(kw in combined_text for kw in spam_keywords):
                 predicted_label = "spam"
@@ -192,8 +199,9 @@ class TransformerPredictor(BasePredictor):
             )
         self.bundle: TransformerBundle = model
 
-    def predict(self, subject: str, body: str) -> Dict[str, Any]:
+    def predict(self, subject: str, body: str) -> dict[str, Any]:
         import torch
+
         from app.services.ml_preprocessing import MLPreprocessing
 
         subject_str = (subject or "").strip()
@@ -226,8 +234,13 @@ class TransformerPredictor(BasePredictor):
             logger.warning("Transformer prediction fallback engaged: %s", err)
             combined_text = f"{subject_str} {body_str}".lower()
             spam_keywords = [
-                "spam", "winner", "lottery", "claim",
-                "prize", "free money", "urgent security",
+                "spam",
+                "winner",
+                "lottery",
+                "claim",
+                "prize",
+                "free money",
+                "urgent security",
             ]
             if any(kw in combined_text for kw in spam_keywords):
                 predicted_label = "spam"
@@ -259,13 +272,13 @@ class PredictorFactory:
         "transformers" → TransformerPredictor
     """
 
-    _registry: Dict[str, Type[BasePredictor]] = {
+    _registry: dict[str, type[BasePredictor]] = {
         "sklearn": SklearnPredictor,
         "transformers": TransformerPredictor,
     }
 
     @classmethod
-    def register(cls, framework: str, predictor_class: Type[BasePredictor]) -> None:
+    def register(cls, framework: str, predictor_class: type[BasePredictor]) -> None:
         """Register a new predictor at runtime."""
         cls._registry[framework] = predictor_class
         logger.info(
@@ -273,9 +286,7 @@ class PredictorFactory:
         )
 
     @classmethod
-    def create(
-        cls, metadata: dict, model: Any, champion_dir: str
-    ) -> BasePredictor:
+    def create(cls, metadata: dict, model: Any, champion_dir: str) -> BasePredictor:
         """Create the appropriate predictor based on ``metadata["framework"]``."""
         framework = metadata.get("framework", "")
         predictor_class = cls._registry.get(framework)
@@ -311,20 +322,22 @@ class PredictionEngine:
         PredictionEngine.reload()                  # reset cache
     """
 
-    _instance: Optional["PredictionEngine"] = None
+    _instance: PredictionEngine | None = None
     _initialized: bool = False
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> "PredictionEngine":
+    def __new__(cls, *args: Any, **kwargs: Any) -> PredictionEngine:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, registry_path: Optional[str] = None) -> None:
+    def __init__(self, registry_path: str | None = None) -> None:
         if PredictionEngine._initialized:
             return
 
         if not registry_path:
-            backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            backend_dir = os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            )
             registry_path = os.path.join(backend_dir, "models")
 
         possible_dirs = [
@@ -334,7 +347,11 @@ class PredictionEngine:
         ]
 
         champion_dir = next(
-            (d for d in possible_dirs if os.path.exists(os.path.join(d, "metadata.json"))),
+            (
+                d
+                for d in possible_dirs
+                if os.path.exists(os.path.join(d, "metadata.json"))
+            ),
             os.path.join(registry_path, "production"),
         )
         meta_path = os.path.join(champion_dir, "metadata.json")
@@ -345,8 +362,8 @@ class PredictionEngine:
                 "PredictionEngine will operate in fallback mode.",
                 meta_path,
             )
-            self.metadata: Optional[dict] = None
-            self.predictor: Optional[BasePredictor] = None
+            self.metadata: dict | None = None
+            self.predictor: BasePredictor | None = None
             PredictionEngine._initialized = True
             return
 
@@ -365,14 +382,12 @@ class PredictionEngine:
         model = loader.load(champion_dir, self.metadata)
 
         # Create predictor via factory
-        self.predictor = PredictorFactory.create(
-            self.metadata, model, champion_dir
-        )
+        self.predictor = PredictorFactory.create(self.metadata, model, champion_dir)
 
         PredictionEngine._initialized = True
         logger.info("PredictionEngine ready — model cached in memory.")
 
-    def predict(self, subject: str, body: str) -> Dict[str, Any]:
+    def predict(self, subject: str, body: str) -> dict[str, Any]:
         """
         Classify an email.  Delegates to the cached predictor strategy.
 
@@ -387,8 +402,13 @@ class PredictionEngine:
         body_str = (body or "").strip()
         combined = f"{subject_str} {body_str}".lower()
         spam_keywords = [
-            "spam", "winner", "lottery", "claim",
-            "prize", "free money", "urgent security",
+            "spam",
+            "winner",
+            "lottery",
+            "claim",
+            "prize",
+            "free money",
+            "urgent security",
         ]
         is_spam = any(kw in combined for kw in spam_keywords)
         return {

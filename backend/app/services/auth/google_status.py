@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+
 from app.repositories.google_account_repository import GoogleAccountRepository
 
 
@@ -61,6 +62,7 @@ def disconnect_google_service(
     4. On database error, rollback state and return 500 error.
     """
     import logging
+
     from fastapi import HTTPException, status
 
     logger = logging.getLogger(__name__)
@@ -78,7 +80,7 @@ def disconnect_google_service(
         return {
             "success": True,
             "connected": False,
-            "message": "Gmail account already disconnected"
+            "message": "Gmail account already disconnected",
         }
 
     try:
@@ -91,17 +93,19 @@ def disconnect_google_service(
         return {
             "success": True,
             "connected": False,
-            "message": "Gmail account disconnected successfully"
+            "message": "Gmail account disconnected successfully",
         }
     except HTTPException:
         # Rollback: restore user.google_connected=True on error
         repo.update_user_google_connected(user_id, True, now)
         raise
     except Exception as e:
-        logger.error(f"Database error disconnecting Google account for user_id={user_id}: {str(e)}")
+        logger.error(
+            f"Database error disconnecting Google account for user_id={user_id}: {e!s}"
+        )
         # Rollback: restore user.google_connected=True on error
         repo.update_user_google_connected(user_id, True, now)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error disconnecting Google account: {str(e)}"
+            detail=f"Database error disconnecting Google account: {e!s}",
         )

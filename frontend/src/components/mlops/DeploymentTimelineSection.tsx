@@ -11,7 +11,7 @@ export interface TimelineEvent {
   commit: string;
   experiment: string;
   reason: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 function formatDDMMYY(timestamp: string) {
@@ -25,7 +25,11 @@ function formatDDMMYY(timestamp: string) {
   return `${day}/${month}/${year}, ${time}`;
 }
 
-export function DeploymentTimelineSection({ historyEvents = [] }: { historyEvents?: any[] }) {
+export function DeploymentTimelineSection({
+  historyEvents = [],
+}: {
+  historyEvents?: Record<string, unknown>[];
+}) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const toggleExpand = (id: string) => {
@@ -33,54 +37,90 @@ export function DeploymentTimelineSection({ historyEvents = [] }: { historyEvent
   };
 
   // Build real timeline events dynamically from historyList
-  const eventsToDisplay: TimelineEvent[] = historyEvents.length > 0
-    ? historyEvents.map((item, idx) => ({
-        id: `evt-${item.version || 'v'}-${idx}`,
-        type: item.is_active ? "Promotion" : "Archive",
-        version: item.version || `v${idx + 1}`,
-        timestamp: item.deployment_date || item.trained_at || "2026-08-03T17:24:08Z",
-        user: item.deployed_by || "khushalsatani009",
-        commit: item.commit || "a1b2c3d",
-        experiment: item.experiment_name || "spam_classification_v2",
-        reason: item.description || `${item.algorithm || item.model_name} evaluated and stored in registry.`,
-        details: {
-          framework: item.framework || "sklearn",
-          serialization: item.serialization || "joblib",
-          accuracy: `${item.accuracy || 98.79}%`,
-          f1_score: `${item.f1_score || 98.82}%`,
-          inference_latency: `${item.inference_time_ms || 1.74} ms`,
-          model_size: `${item.model_size_mb || 0.05} MB`,
-        },
-      }))
-    : [
-        {
-          id: "evt-v2",
-          type: "Promotion",
-          version: "v2",
-          timestamp: "2026-08-03T17:24:08Z",
-          user: "khushalsatani009",
-          commit: "a1b2c3d",
-          experiment: "spam_classification_v2",
-          reason: "LogisticRegression model evaluated (F1: 98.82%) and promoted to active serving.",
-          details: {
-            framework: "sklearn",
-            solver: "liblinear",
-            inference_time: "1.74 ms",
+  const eventsToDisplay: TimelineEvent[] =
+    historyEvents.length > 0
+      ? historyEvents.map((item, idx) => {
+          const v = String(item.version || `v${idx + 1}`);
+          const isActive = Boolean(item.is_active);
+          return {
+            id: `evt-${v}-${idx}`,
+            type: isActive ? "Promotion" : "Archive",
+            version: v,
+            timestamp: String(item.deployment_date || item.trained_at || "2026-08-03T17:24:08Z"),
+            user: String(item.deployed_by || "khushalsatani009"),
+            commit: String(item.commit || "a1b2c3d"),
+            experiment: String(item.experiment_name || item.experiment || "spam_classification_v2"),
+            reason:
+              (item.description as string) ||
+              `${item.algorithm || item.model_name || "Model"} evaluated and stored in registry.`,
+            details: {
+              framework: String(item.framework || "sklearn"),
+              serialization: String(item.serialization || "joblib"),
+              accuracy: `${item.accuracy || 98.79}%`,
+              f1_score: `${item.f1_score || 98.82}%`,
+              inference_latency: `${item.inference_time_ms || 1.74} ms`,
+              model_size: `${item.model_size_mb || 0.05} MB`,
+            },
+          };
+        })
+      : [
+          {
+            id: "evt-v2",
+            type: "Promotion",
+            version: "v2",
+            timestamp: "2026-08-03T17:24:08Z",
+            user: "khushalsatani009",
+            commit: "a1b2c3d",
+            experiment: "spam_classification_v2",
+            reason:
+              "LogisticRegression model evaluated (F1: 98.82%) and promoted to active serving.",
+            details: {
+              framework: "sklearn",
+              solver: "liblinear",
+              inference_time: "1.74 ms",
+            },
           },
-        },
-      ];
+        ];
 
   const getEventBadge = (type: string) => {
     switch (type) {
       case "Promotion":
       case "Deployment":
-        return <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-500 font-extrabold text-xs px-2.5 py-0.5">{type}</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-500 font-extrabold text-xs px-2.5 py-0.5"
+          >
+            {type}
+          </Badge>
+        );
       case "Rollback":
-        return <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-500 font-extrabold text-xs px-2.5 py-0.5">{type}</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="border-amber-500/40 bg-amber-500/10 text-amber-500 font-extrabold text-xs px-2.5 py-0.5"
+          >
+            {type}
+          </Badge>
+        );
       case "Archive":
-        return <Badge variant="outline" className="border-border text-muted-foreground font-extrabold text-xs px-2.5 py-0.5">{type}</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="border-border text-muted-foreground font-extrabold text-xs px-2.5 py-0.5"
+          >
+            {type}
+          </Badge>
+        );
       default:
-        return <Badge variant="outline" className="border-blue-500/40 bg-blue-500/10 text-blue-500 font-extrabold text-xs px-2.5 py-0.5">{type}</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="border-blue-500/40 bg-blue-500/10 text-blue-500 font-extrabold text-xs px-2.5 py-0.5"
+          >
+            {type}
+          </Badge>
+        );
     }
   };
 
@@ -89,9 +129,13 @@ export function DeploymentTimelineSection({ historyEvents = [] }: { historyEvent
       <div className="flex items-center justify-between border-b border-border/60 pb-3">
         <div className="flex items-center gap-2.5">
           <History className="h-5 w-5 text-brand" />
-          <h2 className="text-lg sm:text-xl font-bold text-foreground">Deployment Audit Timeline</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-foreground">
+            Deployment Audit Timeline
+          </h2>
         </div>
-        <span className="text-xs sm:text-sm text-muted-foreground font-semibold">{eventsToDisplay.length} Total Events</span>
+        <span className="text-xs sm:text-sm text-muted-foreground font-semibold">
+          {eventsToDisplay.length} Total Events
+        </span>
       </div>
 
       {/* Vertical Timeline */}
@@ -108,8 +152,12 @@ export function DeploymentTimelineSection({ historyEvents = [] }: { historyEvent
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
                     {getEventBadge(evt.type)}
-                    <span className="font-bold text-sm text-foreground font-mono">{evt.version}</span>
-                    <span className="text-xs sm:text-sm text-foreground font-semibold">• {evt.reason}</span>
+                    <span className="font-bold text-sm text-foreground font-mono">
+                      {evt.version}
+                    </span>
+                    <span className="text-xs sm:text-sm text-foreground font-semibold">
+                      • {evt.reason}
+                    </span>
                   </div>
 
                   <button
@@ -118,7 +166,11 @@ export function DeploymentTimelineSection({ historyEvents = [] }: { historyEvent
                     className="text-xs sm:text-sm font-bold text-brand flex items-center gap-1 hover:underline"
                   >
                     {isExpanded ? "Hide Details" : "View Details"}
-                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
 

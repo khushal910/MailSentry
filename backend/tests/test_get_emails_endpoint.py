@@ -1,12 +1,12 @@
 import unittest
-from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
-from main import app
 from app.dependencies.auth import get_current_user
 from app.utils.main_utile import create_access_token
-
+from main import app
 
 USER_ID = "507f1f77bcf86cd799439011"
 
@@ -62,8 +62,7 @@ class TestGetEmailsEndpoint(unittest.TestCase):
         MockRepo.return_value.get_user_emails.return_value = MOCK_EMAILS
 
         response = self.client.get(
-            "/api/emails",
-            headers={"Authorization": f"Bearer {self.token}"}
+            "/api/emails", headers={"Authorization": f"Bearer {self.token}"}
         )
         self.assertEqual(response.status_code, 200)
         body = response.json()
@@ -80,8 +79,7 @@ class TestGetEmailsEndpoint(unittest.TestCase):
         MockRepo.return_value.get_user_emails.return_value = MOCK_EMAILS
 
         response = self.client.get(
-            "/api/emails",
-            headers={"Authorization": f"Bearer {self.token}"}
+            "/api/emails", headers={"Authorization": f"Bearer {self.token}"}
         )
         emails = response.json()["data"]["emails"]
         for email in emails:
@@ -97,8 +95,7 @@ class TestGetEmailsEndpoint(unittest.TestCase):
         MockRepo.return_value.get_user_emails.return_value = []
 
         response = self.client.get(
-            "/api/emails",
-            headers={"Authorization": f"Bearer {self.token}"}
+            "/api/emails", headers={"Authorization": f"Bearer {self.token}"}
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["emails"], [])
@@ -107,8 +104,7 @@ class TestGetEmailsEndpoint(unittest.TestCase):
         """Returns 422 for invalid limit (0 or negative)."""
         app.dependency_overrides[get_current_user] = lambda: self.mock_user
         response = self.client.get(
-            "/api/emails?limit=0",
-            headers={"Authorization": f"Bearer {self.token}"}
+            "/api/emails?limit=0", headers={"Authorization": f"Bearer {self.token}"}
         )
         self.assertIn(response.status_code, [400, 422])
 
@@ -116,8 +112,7 @@ class TestGetEmailsEndpoint(unittest.TestCase):
         """Returns 422 for invalid page (0 or negative)."""
         app.dependency_overrides[get_current_user] = lambda: self.mock_user
         response = self.client.get(
-            "/api/emails?page=0",
-            headers={"Authorization": f"Bearer {self.token}"}
+            "/api/emails?page=0", headers={"Authorization": f"Bearer {self.token}"}
         )
         self.assertIn(response.status_code, [400, 422])
 
@@ -125,8 +120,7 @@ class TestGetEmailsEndpoint(unittest.TestCase):
         """Returns 422 when limit exceeds max of 100."""
         app.dependency_overrides[get_current_user] = lambda: self.mock_user
         response = self.client.get(
-            "/api/emails?limit=200",
-            headers={"Authorization": f"Bearer {self.token}"}
+            "/api/emails?limit=200", headers={"Authorization": f"Bearer {self.token}"}
         )
         self.assertIn(response.status_code, [400, 422])
 
@@ -138,14 +132,14 @@ class TestGetEmailsEndpoint(unittest.TestCase):
 
         response = self.client.get(
             "/api/emails?limit=5&page=3",
-            headers={"Authorization": f"Bearer {self.token}"}
+            headers={"Authorization": f"Bearer {self.token}"},
         )
         self.assertEqual(response.status_code, 200)
         MockRepo.return_value.get_user_emails.assert_called_once_with(
             user_id=USER_ID,
             predicted_label=None,
             limit=5,
-            skip=10  # (page-1) * limit = 2 * 5 = 10
+            skip=10,  # (page-1) * limit = 2 * 5 = 10
         )
 
     @patch("app.api.emails.EmailRepository")
@@ -155,17 +149,12 @@ class TestGetEmailsEndpoint(unittest.TestCase):
         MockRepo.return_value.get_user_emails.return_value = [MOCK_EMAILS[0]]
 
         response = self.client.get(
-            "/api/emails?label=spam",
-            headers={"Authorization": f"Bearer {self.token}"}
+            "/api/emails?label=spam", headers={"Authorization": f"Bearer {self.token}"}
         )
         self.assertEqual(response.status_code, 200)
         MockRepo.return_value.get_user_emails.assert_called_once_with(
-            user_id=USER_ID,
-            predicted_label="spam",
-            limit=20,
-            skip=0
+            user_id=USER_ID, predicted_label="spam", limit=20, skip=0
         )
-
 
     @patch("app.api.emails.EmailRepository")
     def test_get_emails_returns_total_count(self, MockRepo):
@@ -176,7 +165,7 @@ class TestGetEmailsEndpoint(unittest.TestCase):
 
         response = self.client.get(
             "/api/emails?limit=10&page=1",
-            headers={"Authorization": f"Bearer {self.token}"}
+            headers={"Authorization": f"Bearer {self.token}"},
         )
         self.assertEqual(response.status_code, 200)
         data = response.json()["data"]
@@ -193,20 +182,14 @@ class TestGetEmailsEndpoint(unittest.TestCase):
 
         response = self.client.get(
             "/api/emails?search=khushal",
-            headers={"Authorization": f"Bearer {self.token}"}
+            headers={"Authorization": f"Bearer {self.token}"},
         )
         self.assertEqual(response.status_code, 200)
         MockRepo.return_value.get_user_emails.assert_called_once_with(
-            user_id=USER_ID,
-            predicted_label=None,
-            search="khushal",
-            limit=20,
-            skip=0
+            user_id=USER_ID, predicted_label=None, search="khushal", limit=20, skip=0
         )
         MockRepo.return_value.count_user_emails.assert_called_once_with(
-            user_id=USER_ID,
-            predicted_label=None,
-            search="khushal"
+            user_id=USER_ID, predicted_label=None, search="khushal"
         )
 
 

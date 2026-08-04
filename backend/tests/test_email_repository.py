@@ -1,14 +1,15 @@
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
+
 from bson import ObjectId
 
 from app.repositories.email_repository import EmailRepository
-from app.schemas.email import EmailCreateSchema
 
 
 class MockDatabase:
     """Mock Database implementation for testing EmailRepository."""
+
     def __init__(self, emails_col, users_col, google_col):
         self.emails_col = emails_col
         self.users_col = users_col
@@ -34,7 +35,7 @@ class TestEmailRepository(unittest.TestCase):
         self.db_mock = MockDatabase(
             emails_col=self.mock_emails_col,
             users_col=self.mock_users_col,
-            google_col=self.mock_google_col
+            google_col=self.mock_google_col,
         )
         self.repo = EmailRepository(db=self.db_mock)
 
@@ -43,7 +44,7 @@ class TestEmailRepository(unittest.TestCase):
         self.repo.ensure_indexes()
         calls = self.mock_emails_col.create_index.call_args_list
         self.assertTrue(len(calls) >= 4)
-        
+
         # Check compound unique index call
         compound_call = calls[0]
         index_spec = compound_call[0][0]
@@ -54,8 +55,11 @@ class TestEmailRepository(unittest.TestCase):
     def test_verify_user_exists(self):
         """Verifies checking user existence in users collection."""
         user_id = str(ObjectId())
-        self.mock_users_col.find_one.return_value = {"_id": ObjectId(user_id), "username": "testuser"}
-        
+        self.mock_users_col.find_one.return_value = {
+            "_id": ObjectId(user_id),
+            "username": "testuser",
+        }
+
         exists = self.repo.verify_user_exists(user_id)
         self.assertTrue(exists)
 
@@ -66,7 +70,7 @@ class TestEmailRepository(unittest.TestCase):
     def test_verify_user_access(self):
         """Verifies security check: only allow operations if user exists and has granted access."""
         user_id = str(ObjectId())
-        
+
         # Case 1: User does not exist
         self.mock_users_col.find_one.return_value = None
         self.assertFalse(self.repo.verify_user_access(user_id))
@@ -80,7 +84,7 @@ class TestEmailRepository(unittest.TestCase):
         self.mock_google_col.find_one.return_value = {
             "user_id": user_id,
             "google_connected": True,
-            "refresh_token": "valid_token"
+            "refresh_token": "valid_token",
         }
         self.assertTrue(self.repo.verify_user_access(user_id))
 
@@ -93,7 +97,7 @@ class TestEmailRepository(unittest.TestCase):
             "user_id": user_id,
             "message_id": "msg_001",
             "subject": "Test Email",
-            "predicted_label": "spam"
+            "predicted_label": "spam",
         }
 
         with self.assertRaises(ValueError) as ctx:
@@ -104,7 +108,10 @@ class TestEmailRepository(unittest.TestCase):
         """Should raise PermissionError if user exists but has not granted access (check_access=True)."""
         user_id = str(ObjectId())
         # User exists in users collection
-        self.mock_users_col.find_one.return_value = {"_id": ObjectId(user_id), "google_connected": False}
+        self.mock_users_col.find_one.return_value = {
+            "_id": ObjectId(user_id),
+            "google_connected": False,
+        }
         # Google account collection missing or not connected
         self.mock_google_col.find_one.return_value = None
 
@@ -112,7 +119,7 @@ class TestEmailRepository(unittest.TestCase):
             "user_id": user_id,
             "message_id": "msg_002",
             "subject": "Test Security",
-            "predicted_label": "important"
+            "predicted_label": "important",
         }
 
         with self.assertRaises(PermissionError) as ctx:
@@ -124,11 +131,14 @@ class TestEmailRepository(unittest.TestCase):
         user_id = str(ObjectId())
         message_id = "msg_12345"
 
-        self.mock_users_col.find_one.return_value = {"_id": ObjectId(user_id), "google_connected": True}
+        self.mock_users_col.find_one.return_value = {
+            "_id": ObjectId(user_id),
+            "google_connected": True,
+        }
         self.mock_google_col.find_one.return_value = {
             "user_id": user_id,
             "google_connected": True,
-            "refresh_token": "token"
+            "refresh_token": "token",
         }
 
         saved_doc = {
@@ -136,7 +146,7 @@ class TestEmailRepository(unittest.TestCase):
             "message_id": message_id,
             "subject": "Updated Subject",
             "predicted_label": "important",
-            "predicted_score": 0.95
+            "predicted_score": 0.95,
         }
         self.mock_emails_col.find_one.return_value = saved_doc
 
@@ -147,7 +157,7 @@ class TestEmailRepository(unittest.TestCase):
             "predicted_label": "important",
             "predicted_score": 0.95,
             "fetch_time": datetime.now(timezone.utc),
-            "classified_at": datetime.now(timezone.utc)
+            "classified_at": datetime.now(timezone.utc),
         }
 
         res = self.repo.save_email(email_payload, check_access=True)
@@ -170,7 +180,7 @@ class TestEmailRepository(unittest.TestCase):
             "user_id": user_id,
             "message_id": "msg_long",
             "subject": long_subject,
-            "predicted_label": "spam"
+            "predicted_label": "spam",
         }
 
         sanitized = self.repo.sanitize_email_data(email_data)
@@ -188,7 +198,7 @@ class TestEmailRepository(unittest.TestCase):
             "body": "SUPER SECRET FULL EMAIL BODY CONTENT THAT SHOULD NOT BE STORED",
             "attachments": [{"filename": "secret.pdf", "data": "binary"}],
             "predicted_label": "promotions",
-            "predicted_score": 0.82
+            "predicted_score": 0.82,
         }
 
         sanitized = self.repo.sanitize_email_data(email_data)

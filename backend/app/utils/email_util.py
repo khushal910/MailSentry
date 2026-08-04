@@ -28,10 +28,11 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
+
 from app.core.config import settings
 
-
 # ── Internal sender ────────────────────────────────────────────────────────────
+
 
 def _send_email(to_email: str, subject: str, html_body: str, text_body: str) -> None:
     """
@@ -63,8 +64,8 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str) -> 
     # Parts are added from least-preferred to most-preferred (text first, HTML last).
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"]    = formataddr((settings.EMAIL_FROM_NAME, settings.EMAIL_FROM))
-    msg["To"]      = to_email
+    msg["From"] = formataddr((settings.EMAIL_FROM_NAME, settings.EMAIL_FROM))
+    msg["To"] = to_email
 
     # Attach plain-text first (lower priority — fallback)
     msg.attach(MIMEText(text_body, "plain", "utf-8"))
@@ -91,12 +92,13 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str) -> 
 
 # ── HTML template builder ──────────────────────────────────────────────────────
 
+
 def _build_otp_html(otp: str, expire_minutes: int = 10) -> str:
     """
     Build a classic, high-contrast, clean HTML email body for OTP delivery.
     Compatible with Gmail, Outlook, Apple Mail, and mobile clients.
     """
-    app_name  = settings.APP_NAME or "MailSentry"
+    app_name = settings.APP_NAME or "MailSentry"
     from_name = settings.EMAIL_FROM_NAME or app_name
 
     return f"""<!DOCTYPE html>
@@ -116,7 +118,7 @@ def _build_otp_html(otp: str, expire_minutes: int = 10) -> str:
 
         <!-- Outer Container Card -->
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:540px;background-color:#ffffff;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);overflow:hidden;">
-          
+
           <!-- Header Banner -->
           <tr>
             <td style="background:linear-gradient(135deg, #4f46e5 0%, #6d28d9 100%);padding:32px 40px;text-align:center;">
@@ -230,6 +232,7 @@ Your account remains secure.
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+
 def send_reset_otp_email(email: str, otp: str, expire_minutes: int = 10) -> None:
     """
     Send a password-reset OTP email to the given address.
@@ -265,14 +268,14 @@ def send_reset_otp_email(email: str, otp: str, expire_minutes: int = 10) -> None
         # After sending, persist hash_otp(otp) → reset_otp_hash in MongoDB
     """
     app_name = settings.APP_NAME or "MailSentry"
-    subject  = f"Your {app_name} password reset code"
+    subject = f"Your {app_name} password reset code"
 
     html_body = _build_otp_html(otp, expire_minutes)
     text_body = _build_otp_text(otp, expire_minutes)
 
     _send_email(
-        to_email  = email,
-        subject   = subject,
-        html_body = html_body,
-        text_body = text_body,
+        to_email=email,
+        subject=subject,
+        html_body=html_body,
+        text_body=text_body,
     )
