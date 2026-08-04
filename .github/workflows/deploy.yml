@@ -86,7 +86,9 @@ jobs:
           if [ -z "$VERCEL_TOKEN" ]; then
             echo "VERCEL_TOKEN secret is not set. Vercel's automatic GitHub integration handles deployment automatically."
           else
-            echo "Deploying frontend via Official Vercel CLI..."
+            echo "Linking Vercel project and deploying via Official Vercel CLI..."
+            mkdir -p .vercel
+            echo "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$VERCEL_PROJECT_ID\"}" > .vercel/project.json
             npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
             npx vercel build --prod --token=$VERCEL_TOKEN
             npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
