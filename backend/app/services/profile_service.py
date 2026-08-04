@@ -26,7 +26,9 @@ class ProfileService:
     def __init__(self, google_repo: GoogleAccountRepository | None = None):
         self.google_repo = google_repo or GoogleAccountRepository()
 
-    def _get_user(self, user_id: str) -> dict[str, Any]:
+    def _get_user(
+        self, user_id: str, projection: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         db = get_database()
         users_col = db[settings.USER_COLLECTION_NAME]
         query = (
@@ -34,7 +36,7 @@ class ProfileService:
             if ObjectId.is_valid(user_id)
             else {"_id": str(user_id)}
         )
-        user = users_col.find_one(query)
+        user = users_col.find_one(query, projection)
         if not user:
             logger.error(
                 f"[AUDIT] Profile operation failed — User ID={user_id} not found in database."
@@ -49,7 +51,7 @@ class ProfileService:
         """
         Retrieves user profile details including linked Google account status.
         """
-        user = self._get_user(user_id)
+        user = self._get_user(user_id, projection={"password": 0, "email_otp_hash": 0})
         google_acc = self.google_repo.find_by_user_id(user_id)
 
         created_at_str = None

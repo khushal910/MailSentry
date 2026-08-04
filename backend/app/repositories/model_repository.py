@@ -44,7 +44,7 @@ class ModelRepository:
             )
             logger.info("Indexes ensured on models collection.")
         except OperationFailure as e:
-            if e.code == 85:
+            if e.code in (85, 86):
                 logger.info(
                     f"Model index already exists on collection: {e.details.get('errmsg', str(e))}"
                 )

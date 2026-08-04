@@ -32,12 +32,18 @@ class GoogleAccountRepository:
         - Unique index on google_email (unique=True)
         """
         try:
-            self.collection.create_index("user_id", unique=True, sparse=True)
-            self.collection.create_index("google_user_id", unique=True, sparse=True)
-            self.collection.create_index("google_email", unique=True)
+            self.collection.create_index(
+                "user_id", unique=True, sparse=True, name="uniq_google_user_id"
+            )
+            self.collection.create_index(
+                "google_user_id", unique=True, sparse=True, name="uniq_google_account_user_id"
+            )
+            self.collection.create_index(
+                "google_email", unique=True, name="uniq_google_email"
+            )
             logger.info("Indexes ensured on google_accounts collection.")
         except OperationFailure as e:
-            if e.code == 85:
+            if e.code in (85, 86):
                 logger.info(
                     f"Google account index already exists on collection: {e.details.get('errmsg', str(e))}"
                 )

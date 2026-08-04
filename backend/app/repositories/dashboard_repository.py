@@ -51,7 +51,7 @@ class DashboardRepository:
             )
             logger.info("Dashboard performance indexes ensured.")
         except OperationFailure as e:
-            if e.code == 85:
+            if e.code in (85, 86):
                 logger.info(
                     f"Dashboard index already exists on collection: {e.details.get('errmsg', str(e))}"
                 )

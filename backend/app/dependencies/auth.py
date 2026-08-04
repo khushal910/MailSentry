@@ -38,11 +38,12 @@ async def get_current_user(request: Request) -> dict:
     db = get_database()
     users_col = db[settings.USER_COLLECTION_NAME]
 
+    projection = {"password": 0, "email_otp_hash": 0, "reset_token_hash": 0}
     try:
         if ObjectId.is_valid(user_id):
-            user = users_col.find_one({"_id": ObjectId(user_id)})
+            user = users_col.find_one({"_id": ObjectId(user_id)}, projection)
         else:
-            user = users_col.find_one({"_id": user_id})
+            user = users_col.find_one({"_id": user_id}, projection)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user ID in token"

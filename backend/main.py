@@ -16,11 +16,13 @@ async def lifespan(app: FastAPI):
         from app.repositories.email_repository import EmailRepository
         from app.repositories.model_repository import ModelRepository
         from app.repositories.dashboard_repository import DashboardRepository
+        from app.repositories.google_account_repository import GoogleAccountRepository
         from app.services.ml_model_service import MLModelService
 
         EmailRepository().ensure_indexes()
         ModelRepository().ensure_indexes()
         DashboardRepository().ensure_indexes()
+        GoogleAccountRepository().ensure_indexes()
         MLModelService().load_latest_model()
     except Exception as e:
         print(f"Startup initialization warning: {e}")

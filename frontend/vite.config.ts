@@ -12,4 +12,19 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (id.includes("recharts")) return "recharts";
+              if (id.includes("lucide-react")) return "lucide-icons";
+              if (id.includes("framer-motion")) return "framer-motion";
+            }
+          },
+        },
+      },
+    },
+  },
 });
