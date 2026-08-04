@@ -189,8 +189,10 @@ class EmailRepository:
             if predicted_score < 0.0 or predicted_score > 1.0:
                 predicted_score = max(0.0, min(1.0, predicted_score))
 
-        sent_at = data.get("sent_at") or data.get("received_at")
-        received_at = data.get("received_at") or data.get("sent_at")
+        raw_date = data.get("sent_at") or data.get("received_at")
+        parsed_sent = _parse_utc_dt(raw_date, classified_at)
+        sent_at = parsed_sent.isoformat()
+        received_at = parsed_sent.isoformat()
 
         sanitized = {
             "user_id": user_id,
@@ -198,14 +200,14 @@ class EmailRepository:
             "thread_id": data.get("thread_id"),
             "subject": subject,
             "snippet": snippet,
-            "predicted_label": str(data.get("predicted_label", "inbox")),
+            "predicted_label": str(data.get("predicted_label", "ham")),
             "predicted_score": predicted_score,
             "fetch_time": fetch_time,
             "classified_at": classified_at,
             "received_at": received_at,
             "sent_at": sent_at,
+            "updated_at": now,
         }
-
         return sanitized
 
     def save_email(
@@ -329,7 +331,13 @@ class EmailRepository:
 
         cursor = (
             self.collection.find(query)
-            .sort("classified_at", DESCENDING)
+            .sort([
+                ("sent_at", DESCENDING),
+                ("received_at", DESCENDING),
+                ("classified_at", DESCENDING),
+                ("fetch_time", DESCENDING),
+                ("_id", DESCENDING)
+            ])
             .skip(skip)
             .limit(limit)
         )

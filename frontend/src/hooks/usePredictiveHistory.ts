@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { emailsApi, type GetEmailsResponse } from "@/services/emailsApi";
 
@@ -80,8 +80,26 @@ export function usePredictiveHistory({
     }
   }, [query.data, query.isFetching, page, limit, activeLabel, activeSearch, queryClient]);
 
+  // Ensure latest emails are always listed first (descending by visible timestamp)
+  const sortedEmails = useMemo(() => {
+    const rawEmails = query.data?.emails ?? [];
+    return [...rawEmails].sort((a, b) => {
+      const getTimestamp = (item: any) => {
+        const dateCandidates = [item.sent_at, item.received_at, item.classified_at, item.fetch_time];
+        for (const dateVal of dateCandidates) {
+          if (!dateVal) continue;
+          if (typeof dateVal === "number") return dateVal;
+          const parsed = new Date(dateVal).getTime();
+          if (!isNaN(parsed) && parsed > 0) return parsed;
+        }
+        return 0;
+      };
+      return getTimestamp(b) - getTimestamp(a); // Descending: Latest date (Today) first
+    });
+  }, [query.data?.emails]);
+
   return {
-    emails: query.data?.emails ?? [],
+    emails: sortedEmails,
     totalCount: query.data?.total_count ?? query.data?.total ?? query.data?.count ?? 0,
     pageCount: Math.max(
       1,
