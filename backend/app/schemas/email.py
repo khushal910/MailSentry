@@ -11,9 +11,7 @@ class EmailBaseSchema(BaseModel):
 
     user_id: str = Field(..., description="ID of the user in users collection")
     message_id: str = Field(..., min_length=1, description="Unique Gmail message ID")
-    thread_id: str | None = Field(
-        default=None, description="Optional Gmail thread ID"
-    )
+    thread_id: str | None = Field(default=None, description="Optional Gmail thread ID")
     subject: str = Field(
         default="", max_length=255, description="Email subject, max 255 chars"
     )
@@ -51,7 +49,6 @@ class EmailBaseSchema(BaseModel):
 
 class EmailCreateSchema(EmailBaseSchema):
     """Schema used when inserting or updating a classified email."""
-
 
 
 class EmailInDBSchema(EmailBaseSchema):

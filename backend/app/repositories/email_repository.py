@@ -108,9 +108,7 @@ class EmailRepository:
 
             return False
         except Exception as e:
-            logger.error(
-                f"Error verifying user existence for user_id={user_id}: {e!s}"
-            )
+            logger.error(f"Error verifying user existence for user_id={user_id}: {e!s}")
             return False
 
     def verify_user_access(self, user_id: str) -> bool:
@@ -294,9 +292,7 @@ class EmailRepository:
                 if res:
                     saved.append(res)
             except (ValueError, PermissionError) as err:
-                logger.warning(
-                    f"Skipping email save due to validation error: {err!s}"
-                )
+                logger.warning(f"Skipping email save due to validation error: {err!s}")
         return saved
 
     def find_by_message_id(

@@ -53,7 +53,7 @@ jobs:
         run: |
           echo "Checking Python formatting with Black and isort..."
           black --check app tests
-          isort --check-only app tests
+          isort --check-only --profile black app tests
 
       - name: "6. Stage 4: Code Linting (Ruff)"
         run: |

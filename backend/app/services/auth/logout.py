@@ -11,6 +11,4 @@ def logout(response: Response):
 
         return return_response(status_code=200, message="Logout successful")
     except Exception as e:
-        return return_response(
-            status_code=500, message=f"Error during logout: {e!s}"
-        )
+        return return_response(status_code=500, message=f"Error during logout: {e!s}")

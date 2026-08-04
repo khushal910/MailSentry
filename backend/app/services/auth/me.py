@@ -1,5 +1,3 @@
-
-
 def get_me(user: dict) -> dict:
     """
     Formats the raw MongoDB user document into the shape the frontend expects:
