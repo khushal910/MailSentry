@@ -162,7 +162,7 @@ Hero Section
 
 Large heading
 
-Protect your Inbox with AI
+Protect your Inbox with MailSentry AI
 
 Subheading:
 

@@ -16,6 +16,11 @@ import os
 import sys
 import shutil
 import tempfile
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
 from datetime import datetime, timezone
 from typing import Any, Dict, Tuple
 import pandas as pd
@@ -296,21 +301,20 @@ class ModelTrainer:
             candidate_score = candidate_model.metrics[self.model_evaluate_metric]
             production_score_val = production_metrics[self.model_evaluate_metric]
 
-            logger.info(
-                "Production champion %s (%s): %.6f | Candidate model %s (%s): %.6f",
-                meta.model_name,
-                self.model_evaluate_metric,
-                production_score_val,
-                candidate_model.name,
-                self.model_evaluate_metric,
-                candidate_score,
-            )
+            logger.info("==================================================================")
+            logger.info("  PRODUCTION MODEL EVALUATION & COMPARISON LOG")
+            logger.info("  Best Newly Trained Model in Current Run: %s (%s: %.6f)", candidate_model.name, self.model_evaluate_metric, candidate_score)
+            logger.info("  Active Production Champion Model:       %s (%s: %.6f)", meta.model_name, self.model_evaluate_metric, production_score_val)
 
             if candidate_score > production_score_val:
-                logger.info("Candidate model outperforms production champion.")
+                logger.info("  RESULT: Candidate '%s' OUTPERFORMS current production '%s' (%.6f > %.6f)!", candidate_model.name, meta.model_name, candidate_score, production_score_val)
+                logger.info("  ACTION: Promoting '%s' as the NEW Production Model!", candidate_model.name)
+                logger.info("==================================================================")
                 return candidate_model, True
 
-            logger.info("Production champion retained.")
+            logger.info("  RESULT: Existing production model '%s' (%.6f) is STILL BETTER than candidate '%s' (%.6f).", meta.model_name, production_score_val, candidate_model.name, candidate_score)
+            logger.info("  ACTION: Production model '%s' retained. Newly trained '%s' will NOT replace production.", meta.model_name, candidate_model.name)
+            logger.info("==================================================================")
             return _ModelEvaluation(
                 name=meta.model_name,
                 model=production_model,
@@ -335,8 +339,14 @@ class ModelTrainer:
         Eliminates all framework-specific conditionals.
         """
         try:
+            # Always save the finalized winning model object to artifact/model_trainer/model.pkl
+            os.makedirs(os.path.dirname(self.train_model_config.trained_model_file_path), exist_ok=True)
+            import joblib
+            joblib.dump(winner.model, self.train_model_config.trained_model_file_path)
+            logger.info("Saved finalized champion model '%s' to pipeline artifact: %s", winner.name, self.train_model_config.trained_model_file_path)
+
             if should_save:
-                logger.info("Saving best model to ModelRegistry: %s", winner.name)
+                logger.info("Promoting & saving new best model '%s' to ModelRegistry & Backend Storage.", winner.name)
 
                 is_transformer = (
                     winner.name.lower().startswith("distilbert")
@@ -407,7 +417,7 @@ class ModelTrainer:
 
                     logger.info("Successfully persisted winning model '%s' to ModelRegistry.", winner.name)
             else:
-                logger.info("Keeping existing production model unchanged.")
+                logger.info("Keeping existing production model '%s' in backend storage unchanged.", winner.name)
         except Exception as exc:
             raise MyException(exc, sys) from exc
 

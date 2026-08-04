@@ -163,7 +163,7 @@ function LandingPage() {
             </div>
             <h1 className="mt-6 text-5xl font-bold leading-[1.05] tracking-tight md:text-6xl">
               Protect your inbox with{" "}
-              <span className="gradient-text">AI</span>
+              <span className="gradient-text">MailSentry AI</span>
             </h1>
             <p className="mt-5 max-w-lg text-base text-muted-foreground md:text-lg">
               Detect spam emails instantly using Machine Learning. MailSentry
