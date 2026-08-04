@@ -2,6 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from app.api.router import auth_router
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.mongodb import MongoDB
@@ -34,6 +35,32 @@ app = FastAPI(
   lifespan=lifespan
 )
 
+
+# -----------------------------------------------------------------------------
+# Middleware Configuration
+# -----------------------------------------------------------------------------
+# GZipMiddleware handles HTTP response compression for eligible responses.
+# - What GZipMiddleware does: Automatically compresses outgoing HTTP responses
+#   using Gzip compression when the client supports it via the 'Accept-Encoding: gzip' header.
+# - Why minimum_size is set to 1000: Setting minimum_size=1000 bytes (1 KB) ensures
+#   that small responses (e.g., small JSON status messages, health checks, or auth tokens)
+#   are not compressed. Compressing tiny responses adds CPU overhead without meaningful
+#   network savings and can even increase payload size due to gzip header overhead.
+# - When responses are compressed: Responses are compressed ONLY when:
+#     1. The request includes an 'Accept-Encoding: gzip' header.
+#     2. The uncompressed response body is >= 1000 bytes.
+#     3. The response status code is not 204 No Content or 304 Not Modified.
+# - Benefits & Trade-offs:
+#     - Benefits: Dramatically reduces network transfer size (up to 70-80% reduction for large
+#       JSON lists like emails, logs, or dashboard metrics), resulting in faster page load times,
+#       reduced bandwidth costs, and lower latency over mobile/slow connections.
+#     - Trade-offs: Slight CPU overhead on the server during compression, which is mitigated by
+#       bypassing compression for responses under 1000 bytes.
+# -----------------------------------------------------------------------------
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1000
+)
 
 app.add_middleware(
     CORSMiddleware,
