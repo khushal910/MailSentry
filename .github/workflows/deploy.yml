@@ -1,5 +1,5 @@
 # =========================================================================
-# MailSentry Enterprise Production Deployment (CD) Workflow
+# MailSentry Production Deployment (CD) Workflow
 # =========================================================================
 
 name: MailSentry Production CD & Post-Deploy Verification
@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: 1. Checkout Repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2 - Official GitHub checkout action pinned to commit SHA
+        uses: actions/checkout@v4
 
       - name: 2. Validate Branch & Pipeline Status
         run: |
@@ -67,10 +67,10 @@ jobs:
 
     steps:
       - name: 1. Checkout Repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2 - Official GitHub checkout action
+        uses: actions/checkout@v4
 
       - name: 2. Setup Node.js (20) & Cache
-        uses: actions/setup-node@39370e3970a688276ed703d6388b27295da39454 # v4.1.0 - Official setup-node action
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"

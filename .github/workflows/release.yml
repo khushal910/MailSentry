@@ -1,5 +1,5 @@
 # =========================================================================
-# MailSentry Enterprise Release & Tagging Workflow
+# MailSentry Release & Tagging Workflow
 # =========================================================================
 
 name: MailSentry Production Tag & Release
@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: 1. Checkout Repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2 - Official GitHub checkout action pinned to commit SHA
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -36,7 +36,7 @@ jobs:
           fi
 
       - name: 3. Generate Changelog & Create GitHub Release
-        uses: softprops/action-gh-release@c95fe0f26b377c9cb6211cf4e334a1796d13d7c5 # v2.2.1 - Release action pinned to commit SHA
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: "MailSentry Security & Classifier Release ${{ env.RELEASE_TAG }}"
