@@ -78,6 +78,7 @@ jobs:
           ENVIRONMENT: "testing"
         run: |
           mkdir -p reports htmlcov
+          touch htmlcov/.gitkeep htmlcov/index.html
           python -m pytest tests/ \
             --cov=app \
             --cov-report=term-missing \
@@ -149,8 +150,12 @@ jobs:
         if: always()
         run: |
           echo "## 📊 Backend Code Coverage Report" >> $GITHUB_STEP_SUMMARY
-          if [ -f "backend/coverage.xml" ]; then
-            COV_LINE=$(grep -m1 '<coverage' backend/coverage.xml || echo "")
+          COV_FILE="coverage.xml"
+          if [ ! -f "$COV_FILE" ] && [ -f "backend/coverage.xml" ]; then
+            COV_FILE="backend/coverage.xml"
+          fi
+          if [ -f "$COV_FILE" ]; then
+            COV_LINE=$(grep -m1 '<coverage' "$COV_FILE" || echo "")
             LINE_RATE=$(echo "$COV_LINE" | sed -n 's/.*line-rate="\([^"]*\)".*/\1/p')
             if [ -n "$LINE_RATE" ]; then
               PERCENT=$(python3 -c "print(round(float('$LINE_RATE') * 100, 2))")
@@ -201,10 +206,10 @@ jobs:
       - name: 1. Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 2. Setup Node.js (22) & NPM Cache
+      - name: 2. Setup Node.js (24) & NPM Cache
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: "npm"
           cache-dependency-path: "frontend/package*.json"
 
