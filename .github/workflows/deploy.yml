@@ -58,51 +58,18 @@ jobs:
           fi
 
   # =========================================================================
-  # JOB 3: AUTOMATED FRONTEND DEPLOYMENT VIA OFFICIAL VERCEL CLI
-  # =========================================================================
-  deploy-frontend:
-    name: Deploy Frontend Application (Official Vercel CLI)
-    needs: [pre-deploy-ci]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: 1. Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: 2. Setup Node.js (22) & Cache
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: "frontend/package*.json"
-
-      - name: 3. Install Dependencies & Deploy via Official Vercel CLI
-        working-directory: ./frontend
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          if [ -z "$VERCEL_TOKEN" ]; then
-            echo "VERCEL_TOKEN secret is not set. Vercel's automatic GitHub integration handles deployment automatically."
-          else
-            echo "Linking Vercel project and deploying via Official Vercel CLI..."
-            mkdir -p .vercel
-            echo "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$VERCEL_PROJECT_ID\"}" > .vercel/project.json
-            npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-            npx vercel build --prod --token=$VERCEL_TOKEN
-            npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
-          fi
-
-  # =========================================================================
-  # JOB 4: POST-DEPLOYMENT HEALTH & INFERENCE VERIFICATION
+  # JOB 3: POST-DEPLOYMENT HEALTH & INFERENCE VERIFICATION
   # =========================================================================
   post-deploy-verification:
     name: Post-Deployment Verification & Health Probe
-    needs: [deploy-backend, deploy-frontend]
+    needs: [deploy-backend]
     runs-on: ubuntu-latest
 
     steps:
+      - name: 0. Frontend Deployment Ownership Note
+        run: |
+          echo "Frontend deployment is handled automatically by Vercel Git Integration; no GitHub Actions frontend deploy job is required."
+
       - name: 1. Wait for Cloud Deployments to Stabilize
         run: |
           echo "Waiting 25 seconds for cloud serverless containers & Render instances to stabilize..."
@@ -146,7 +113,7 @@ jobs:
           echo "| Component | Status | Environment | Target |" >> $GITHUB_STEP_SUMMARY
           echo "| --- | --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
           echo "| **Backend API** | ✅ Deployed | Production | Render Cloud |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Frontend Web App** | ✅ Deployed | Production | Vercel Edge (Official CLI) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Frontend Web App** | ✅ Deployed | Production | Vercel Git Integration |" >> $GITHUB_STEP_SUMMARY
           echo "| **ML Model Engine** | ✅ Validated | Production | In-Memory Cached |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Commit SHA:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
