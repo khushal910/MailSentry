@@ -72,7 +72,7 @@ export function ArtifactIntegrityAccordionSection({ model }: ArtifactIntegrityAc
                     )}
                   </Button>
                 </div>
-                <span className="block text-xs sm:text-sm text-foreground font-bold truncate bg-background p-2.5 rounded-lg border border-border/40">
+                <span className="block text-xs sm:text-sm text-foreground/80 font-medium truncate bg-background p-2.5 rounded-lg border border-border/40">
                   {h.value}
                 </span>
               </div>

@@ -250,8 +250,8 @@ function ProductionModelPage() {
                       </span>
                     </div>
 
-                    <span className="text-xs sm:text-sm font-semibold text-muted-foreground">
-                      Algorithm: <strong className="text-foreground font-extrabold">{model.algorithm || model.algorithm_type}</strong>
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">
+                      Algorithm: <strong className="text-foreground/85 font-semibold">{model.algorithm || model.algorithm_type}</strong>
                     </span>
                   </div>
 
@@ -440,13 +440,13 @@ function MetaRow({
 }) {
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-border/30">
-      <span className="text-muted-foreground font-semibold">{label}</span>
+      <span className="text-muted-foreground font-medium">{label}</span>
       <span
         className={cn(
-          "font-extrabold text-foreground truncate max-w-[240px]",
-          isMono && "font-mono text-xs sm:text-sm",
-          isStatus && "text-emerald-500 font-bold",
-          isLink && "text-brand hover:underline cursor-pointer"
+          "font-medium text-foreground/80 truncate max-w-[240px]",
+          isMono && "font-mono text-xs sm:text-sm text-foreground/75 font-normal",
+          isStatus && "text-emerald-500/90 font-medium",
+          isLink && "text-brand/90 hover:underline cursor-pointer font-medium"
         )}
       >
         {value}
@@ -458,8 +458,8 @@ function MetaRow({
 function HealthBadge({ label, status }: { label: string; status: string }) {
   return (
     <div className="p-3 rounded-lg border border-border/60 bg-muted/30 flex items-center justify-between min-w-0">
-      <span className="text-xs sm:text-sm font-semibold text-muted-foreground truncate">{label}</span>
-      <span className="text-xs font-extrabold text-emerald-500 flex items-center gap-1.5 shrink-0 ml-2">
+      <span className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{label}</span>
+      <span className="text-xs font-semibold text-emerald-500 flex items-center gap-1.5 shrink-0 ml-2">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
@@ -483,12 +483,12 @@ function MetricRow({
 }) {
   return (
     <div className="flex items-center justify-between py-0.5">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-muted-foreground font-medium">{label}</span>
       <span
         className={cn(
-          "font-extrabold font-mono text-foreground text-xs sm:text-sm",
-          isHighlight && "text-brand",
-          isGreen && "text-emerald-500"
+          "font-semibold font-mono text-foreground/80 text-xs sm:text-sm",
+          isHighlight && "text-brand/90",
+          isGreen && "text-emerald-500/90"
         )}
       >
         {value}

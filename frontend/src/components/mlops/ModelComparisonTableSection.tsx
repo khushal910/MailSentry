@@ -76,8 +76,8 @@ export function ModelComparisonTableSection({
                     isChanged ? "bg-amber-500/10 font-bold" : ""
                   )}
                 >
-                  <td className="py-3 px-4 font-bold text-foreground">{row.label}</td>
-                  <td className="py-3 px-4 font-extrabold text-foreground font-mono text-xs sm:text-sm">{valCurr}</td>
+                  <td className="py-3 px-4 font-medium text-muted-foreground">{row.label}</td>
+                  <td className="py-3 px-4 font-semibold text-foreground/85 font-mono text-xs sm:text-sm">{valCurr}</td>
                   <td className="py-3 px-4 text-muted-foreground font-mono text-xs sm:text-sm">{valPrev}</td>
                   <td className="py-3 px-4 text-right font-mono text-xs">
                     {isChanged ? (

@@ -73,20 +73,20 @@ export function CandidateModelSection({
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs sm:text-sm">
         <div>
-          <span className="block text-xs text-muted-foreground font-semibold">Experiment</span>
-          <span className="font-bold text-foreground">{candidate.experiment_name}</span>
+          <span className="block text-xs text-muted-foreground font-medium">Experiment</span>
+          <span className="font-medium text-foreground/80">{candidate.experiment_name}</span>
         </div>
         <div>
-          <span className="block text-xs text-muted-foreground font-semibold">Dataset Version</span>
-          <span className="font-mono font-bold text-foreground">{candidate.dataset_version}</span>
+          <span className="block text-xs text-muted-foreground font-medium">Dataset Version</span>
+          <span className="font-mono font-medium text-foreground/80">{candidate.dataset_version}</span>
         </div>
         <div>
-          <span className="block text-xs text-muted-foreground font-semibold">MLflow Run ID</span>
-          <span className="font-mono text-xs font-bold text-brand truncate block">{candidate.mlflow_run_id}</span>
+          <span className="block text-xs text-muted-foreground font-medium">MLflow Run ID</span>
+          <span className="font-mono text-xs font-medium text-brand/90 truncate block">{candidate.mlflow_run_id}</span>
         </div>
         <div>
-          <span className="block text-xs text-muted-foreground font-semibold">Trained At</span>
-          <span className="font-bold text-foreground">{candidate.training_date}</span>
+          <span className="block text-xs text-muted-foreground font-medium">Trained At</span>
+          <span className="font-medium text-foreground/80">{candidate.training_date}</span>
         </div>
       </div>
     </div>
