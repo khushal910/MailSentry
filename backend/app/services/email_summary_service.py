@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from bson import ObjectId
@@ -84,6 +85,8 @@ class EmailSummaryService:
             return {
                 "email_id": str(email_doc["_id"]),
                 "summary": existing_summary.strip(),
+                "summary_created_at": email_doc.get("summary_created_at"),
+                "summary_model": email_doc.get("summary_model"),
                 "cached": True,
             }
 
@@ -110,9 +113,16 @@ class EmailSummaryService:
 
         # Step 4: Call Gemini API asynchronously using SummaryService
         generated_summary = await self._call_gemini_api(body_text)
+        summary_model = getattr(self.summary_service, "model_name", "gemini-2.5-flash")
+        summary_created_at = datetime.now(timezone.utc)
 
-        # Step 5: Store generated summary back into MongoDB inside the same email document
-        updated = self.repository.update_summary(clean_id, generated_summary)
+        # Step 5: Store generated summary, summary_created_at, and summary_model back into MongoDB inside the same email document
+        updated = self.repository.update_summary(
+            email_id=clean_id,
+            summary=generated_summary,
+            summary_model=summary_model,
+            summary_created_at=summary_created_at,
+        )
         if not updated:
             logger.warning(
                 f"Failed to update summary in database for email_id='{clean_id}', "
@@ -126,6 +136,8 @@ class EmailSummaryService:
         return {
             "email_id": str(email_doc["_id"]),
             "summary": generated_summary,
+            "summary_created_at": summary_created_at.isoformat(),
+            "summary_model": summary_model,
             "cached": False,
         }
 

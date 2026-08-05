@@ -443,9 +443,16 @@ class EmailRepository:
             logger.error(f"Error finding email by ID '{clean_id}': {e!s}")
             return None
 
-    def update_summary(self, email_id: str, summary: str) -> bool:
+    def update_summary(
+        self,
+        email_id: str,
+        summary: str,
+        summary_model: str | None = "gemini-2.5-flash",
+        summary_created_at: datetime | str | None = None,
+    ) -> bool:
         """
-        Updates or sets the 'summary' field of an email document in MongoDB.
+        Updates or sets the 'summary', 'summary_created_at', and 'summary_model' fields
+        of an existing email document in MongoDB.
         """
         if not email_id or not str(email_id).strip():
             return False
@@ -458,11 +465,29 @@ class EmailRepository:
             query = {"_id": clean_id}
 
         now = datetime.now(timezone.utc)
-        try:
-            result = self.collection.update_one(
-                query,
-                {"$set": {"summary": str(summary).strip(), "updated_at": now}},
+
+        if summary_created_at is None:
+            created_at_val: datetime | str = now
+        elif isinstance(summary_created_at, datetime):
+            created_at_val = (
+                summary_created_at.replace(tzinfo=timezone.utc)
+                if summary_created_at.tzinfo is None
+                else summary_created_at
             )
+        else:
+            created_at_val = str(summary_created_at).strip()
+
+        model_name = str(summary_model).strip() if summary_model else "gemini-2.5-flash"
+
+        update_payload = {
+            "summary": str(summary).strip(),
+            "summary_created_at": created_at_val,
+            "summary_model": model_name,
+            "updated_at": now,
+        }
+
+        try:
+            result = self.collection.update_one(query, {"$set": update_payload})
             return result.modified_count > 0 or result.matched_count > 0
         except Exception as e:
             logger.error(f"Error updating summary for email ID '{clean_id}': {e!s}")

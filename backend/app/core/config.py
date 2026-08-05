@@ -150,7 +150,7 @@ class Settings:
             or os.getenv("GOOGLE_API_KEY")
             or ""
         )
-        GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
     except Exception as e:
         print(f"Error loading environment variables: {e!s}")

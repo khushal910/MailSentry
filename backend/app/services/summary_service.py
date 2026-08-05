@@ -50,7 +50,7 @@ class SummaryService:
         self.model_name = (
             model_name
             or getattr(settings, "GEMINI_MODEL", "")
-            or os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+            or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         )
         self.timeout = timeout
 

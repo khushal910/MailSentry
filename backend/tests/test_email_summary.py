@@ -76,12 +76,19 @@ async def test_generates_and_stores_summary_when_not_cached(summary_service, moc
 
         assert result["email_id"] == email_id
         assert result["summary"] == generated_text
+        assert result["summary_model"] == "gemini-2.5-flash"
+        assert result["summary_created_at"] is not None
         assert result["cached"] is False
 
         # Verify Gemini API was called with the body text
         mock_gemini.assert_called_once_with(email_body)
-        # Verify MongoDB was updated with the new summary
-        mock_repo.update_summary.assert_called_once_with(email_id, generated_text)
+        # Verify MongoDB was updated with summary, summary_model, and summary_created_at
+        mock_repo.update_summary.assert_called_once()
+        call_kwargs = mock_repo.update_summary.call_args.kwargs
+        assert call_kwargs["email_id"] == email_id
+        assert call_kwargs["summary"] == generated_text
+        assert call_kwargs["summary_model"] == "gemini-2.5-flash"
+        assert call_kwargs["summary_created_at"] is not None
 
 
 @pytest.mark.anyio
