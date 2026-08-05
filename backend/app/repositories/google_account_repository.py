@@ -36,7 +36,10 @@ class GoogleAccountRepository:
                 "user_id", unique=True, sparse=True, name="uniq_google_user_id"
             )
             self.collection.create_index(
-                "google_user_id", unique=True, sparse=True, name="uniq_google_account_user_id"
+                "google_user_id",
+                unique=True,
+                sparse=True,
+                name="uniq_google_account_user_id",
             )
             self.collection.create_index(
                 "google_email", unique=True, name="uniq_google_email"
