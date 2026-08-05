@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MailX, X, SearchX, RefreshCw } from "lucide-react";
+import { Search, MailX, X, SearchX, RefreshCw, Sparkles } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { EmailLabelBadge } from "@/components/EmailLabelBadge";
 import { Button } from "@/components/ui/button";
@@ -34,14 +34,14 @@ export const Route = createFileRoute("/dashboard/history")({
   component: HistoryPage,
 });
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 15;
 
 function HistoryPage() {
   const navigate = useNavigate();
 
   // Search and Filter states
   const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  const debouncedSearch = useDebounce(searchTerm, 250);
 
   const [filter, setFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
@@ -74,12 +74,16 @@ function HistoryPage() {
 
   return (
     <PageTransition>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Prediction History</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            All classified emails stored in your MailSentry database. Click any email to view AI Summary.
-          </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>All classified emails stored in your MailSentry database.</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary/15 via-brand/20 to-sky-500/15 px-3 py-1 text-xs font-semibold text-primary border border-primary/30 shadow-sm animate-pulse">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              Click any email to view AI Summary
+            </span>
+          </div>
         </div>
         {isFetching && !isLoading && (
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary shadow-sm">
