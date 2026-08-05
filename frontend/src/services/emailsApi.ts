@@ -135,4 +135,13 @@ export const emailsApi = {
     });
     return data.data;
   },
+
+  /**
+   * GET /emails/{email_id}/summary
+   * Returns AI summary for specified email_id using Gemini API.
+   */
+  async getEmailSummary(emailId: string) {
+    const { emailSummaryService } = await import("./emailSummaryService");
+    return emailSummaryService.getEmailSummary(emailId);
+  },
 };

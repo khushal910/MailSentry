@@ -18,7 +18,8 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { usePredictiveHistory } from "@/hooks/usePredictiveHistory";
 import { HighlightText } from "@/components/HighlightText";
 import { GmailOpenButton } from "@/components/GmailOpenButton";
-import { getGmailUrl, openGmailInNewTab } from "@/utils/gmail";
+import { getGmailUrl } from "@/utils/gmail";
+import { EmailSummaryModal, type HistoryEmailItem } from "@/components/EmailSummaryModal";
 
 export const Route = createFileRoute("/dashboard/history")({
   head: () => ({
@@ -45,6 +46,10 @@ function HistoryPage() {
   const [filter, setFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
 
+  // Selected email for AI summary modal
+  const [selectedEmail, setSelectedEmail] = useState<HistoryEmailItem | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   // TanStack Query with Intelligent Predictive Idle Prefetching
   const { emails, totalCount, pageCount, isLoading, isFetching, error } = usePredictiveHistory({
     page,
@@ -53,13 +58,32 @@ function HistoryPage() {
     search: debouncedSearch,
   });
 
+  const handleRowClick = (emailDoc: any, e: React.MouseEvent) => {
+    // Prevent triggering if user clicked an interactive child (e.g. Gmail open button)
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a, input, select, [role='button']")) return;
+
+    setSelectedEmail({
+      email_id: emailDoc.message_id || emailDoc._id || emailDoc.id,
+      message_id: emailDoc.message_id,
+      subject: emailDoc.subject,
+      sender: emailDoc.sender,
+      body: emailDoc.snippet || emailDoc.body,
+      snippet: emailDoc.snippet,
+      prediction: emailDoc.predicted_label,
+      predicted_label: emailDoc.predicted_label,
+      predicted_score: emailDoc.predicted_score,
+    });
+    setIsModalOpen(true);
+  };
+
   return (
     <PageTransition>
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Prediction History</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            All classified emails stored in your MailSentry database.
+            All classified emails stored in your MailSentry database. Click any email to view AI Summary.
           </p>
         </div>
         {isFetching && !isLoading && (
@@ -198,15 +222,8 @@ function HistoryPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         transition={{ delay: index * 0.02 }}
-                        onClick={(e) => {
-                          // Prevent triggering if user clicked a button or interactive child
-                          const target = e.target as HTMLElement;
-                          if (target.closest("button, a, input, select, [role='button']")) return;
-                          if (gmailUrl) openGmailInNewTab(gmailUrl);
-                        }}
-                        className={`border-b border-border/40 last:border-0 transition-colors group ${
-                          gmailUrl ? "hover:bg-muted/30 cursor-pointer" : "hover:bg-muted/10"
-                        }`}
+                        onClick={(e) => handleRowClick(email, e)}
+                        className="border-b border-border/40 last:border-0 transition-colors group hover:bg-muted/30 cursor-pointer"
                       >
                         <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground">
                           {rowNumber}
@@ -281,6 +298,17 @@ function HistoryPage() {
           </div>
         )}
       </div>
+
+      {/* AI Email Summary Modal */}
+      <EmailSummaryModal
+        email={selectedEmail}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedEmail(null);
+        }}
+      />
     </PageTransition>
   );
 }
+
