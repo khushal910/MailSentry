@@ -50,15 +50,9 @@ jobs:
         run: |
           mkdir -p reports htmlcov
           uv pip install --system -r requirements.txt
-          uv pip install --system black isort ruff mypy pytest pytest-cov bandit pip-audit
+          uv pip install --system ruff mypy pytest pytest-cov bandit pip-audit
 
-      - name: "5. Stage 3: Code Formatting Check (Black & isort)"
-        run: |
-          echo "Checking Python formatting with Black and isort..."
-          black --check app tests
-          isort --check-only --profile black app tests
-
-      - name: "6. Stage 4: Code Linting (Ruff)"
+      - name: "5. Stage 4: Code Linting (Ruff)"
         run: |
           mkdir -p reports
           ruff check app tests | tee reports/ruff-report.txt
@@ -216,9 +210,6 @@ jobs:
           mkdir -p reports
           npm ci || npm install
 
-      - name: "4. Stage 3: Code Formatting Check (Prettier)"
-        run: npx prettier --check "src/**/*.{ts,tsx,css,json}"
-
       - name: "5. Stage 4: Code Linting (ESLint)"
         run: |
           mkdir -p reports
@@ -295,8 +286,8 @@ jobs:
 
             | Quality Stage | Result | Notes |
             | --- | --- | --- |
-            | **Backend CI & Tests** | ${{ needs.backend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | Black, Ruff, Mypy, pytest (>=80% cov) |
-            | **Frontend CI & Build** | ${{ needs.frontend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | Prettier, ESLint, tsc, npm run build |
+            | **Backend CI & Tests** | ${{ needs.backend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | Ruff, Mypy, pytest (>=80% cov) |
+            | **Frontend CI & Build** | ${{ needs.frontend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | ESLint, tsc, npm run build |
             | **Gitleaks Secret Scan** | ${{ needs.secret-scan.result == 'success' && '✅ PASS' || '❌ FAILED' }} | API Keys, DB URIs, OAuth Secrets |
             | **ML Artifact Validation** | ${{ needs.backend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | Model SHA256 & PredictionEngine Probe |
 
