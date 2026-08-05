@@ -74,3 +74,5 @@ dagshub>=0.7.0
 python-dateutil==2.8.2
 PyYAML==6.0.3
 
+
+google-genai=1.2.0

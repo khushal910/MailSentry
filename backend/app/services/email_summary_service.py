@@ -40,6 +40,20 @@ class EmailSummaryService:
             summary_service if summary_service is not None else SummaryService()
         )
 
+    def _extract_clean_email(self, *candidates: Any) -> str:
+        for cand in candidates:
+            if not cand or not isinstance(cand, str):
+                continue
+            cleaned = cand.strip()
+            # Filter out raw MongoDB ObjectIds or 24-character hex IDs
+            if ObjectId.is_valid(cleaned) or (len(cleaned) == 24 and all(c in "0123456789abcdefABCDEF" for c in cleaned)):
+                continue
+            if "@" in cleaned or "." in cleaned:
+                return cleaned
+            if cleaned and not cleaned.isalnum():
+                return cleaned
+        return ""
+
     def _format_summary_response(
         self,
         email_doc: dict[str, Any],
@@ -63,11 +77,26 @@ class EmailSummaryService:
             or getattr(self.summary_service, "model_name", "gemini-2.5-flash")
         )
 
+        sender_val = self._extract_clean_email(
+            email_doc.get("sender"),
+            email_doc.get("from"),
+            email_doc.get("sender_email"),
+            email_doc.get("from_email"),
+        )
+
+        receiver_val = self._extract_clean_email(
+            email_doc.get("receiver"),
+            email_doc.get("to"),
+            email_doc.get("recipient"),
+            email_doc.get("receiver_email"),
+            email_doc.get("user_email"),
+        )
+
         return {
             "email_id": doc_id,
             "subject": email_doc.get("subject", ""),
-            "sender": email_doc.get("sender") or email_doc.get("from") or email_doc.get("user_id", ""),
-            "receiver": email_doc.get("receiver") or email_doc.get("to") or "",
+            "sender": sender_val or "Unknown Sender",
+            "receiver": receiver_val or "Authenticated User",
             "predicted_label": email_doc.get("predicted_label") or email_doc.get("prediction", "ham"),
             "predicted_score": email_doc.get("predicted_score"),
             "sent_at": email_doc.get("sent_at") or email_doc.get("received_at") or email_doc.get("classified_at"),

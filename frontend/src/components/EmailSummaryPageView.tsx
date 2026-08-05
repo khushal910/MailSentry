@@ -14,6 +14,9 @@ import {
   User,
   ShieldCheck,
   Zap,
+  Target,
+  Tag,
+  Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmailLabelBadge } from "@/components/EmailLabelBadge";
@@ -76,31 +79,42 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
     const cleanLines: string[] = [];
 
     lines.forEach((line) => {
-      const lower = line.toLowerCase();
-      if (lower.startsWith("purpose:") || lower.startsWith("- purpose:")) {
-        purpose = line.replace(/^[-*]?\s*purpose:\s*/i, "");
-      } else if (lower.startsWith("important dates:") || lower.startsWith("- important dates:")) {
-        dates = line.replace(/^[-*]?\s*important dates:\s*/i, "");
-      } else if (lower.startsWith("required actions:") || lower.startsWith("- required actions:")) {
-        actions = line.replace(/^[-*]?\s*required actions:\s*/i, "");
-      } else if (lower.startsWith("deadlines:") || lower.startsWith("- deadlines:")) {
-        const dl = line.replace(/^[-*]?\s*deadlines:\s*/i, "");
+      // Strip leading bullet markers (*, -, •, 1.) and bold markdown asterisks (**)
+      const strippedLine = line
+        .replace(/^[-*•\d.]+\s*/, "")
+        .replace(/\*\*/g, "")
+        .trim();
+      const lower = strippedLine.toLowerCase();
+
+      if (lower.startsWith("purpose:")) {
+        purpose = strippedLine.replace(/^purpose:\s*/i, "").trim();
+      } else if (lower.startsWith("important dates:") || lower.startsWith("dates:")) {
+        dates = strippedLine.replace(/^(important\s+)?dates:\s*/i, "").trim();
+      } else if (
+        lower.startsWith("required actions:") ||
+        lower.startsWith("actions:") ||
+        lower.startsWith("action items:")
+      ) {
+        actions = strippedLine.replace(/^(required\s+)?actions?( items)?:\s*/i, "").trim();
+      } else if (lower.startsWith("deadlines:") || lower.startsWith("deadline:")) {
+        const dl = strippedLine.replace(/^deadlines?:\s*/i, "").trim();
         if (dl && dl.toLowerCase() !== "none" && dl.toLowerCase() !== "n/a") {
           dates = dates ? `${dates} | Deadline: ${dl}` : `Deadline: ${dl}`;
         }
-      } else if (lower.startsWith("tone:") || lower.startsWith("- tone:")) {
-        tone = line.replace(/^[-*]?\s*tone:\s*/i, "");
+      } else if (lower.startsWith("tone:")) {
+        tone = strippedLine.replace(/^tone:\s*/i, "").trim();
       } else {
-        cleanLines.push(line);
+        // Keep in main text summary body (cleaning outer asterisks for clean display)
+        cleanLines.push(line.replace(/\*\*/g, ""));
       }
     });
 
     return {
-      mainText: cleanLines.join("\n") || rawSummary,
-      purpose,
-      dates,
-      actions,
-      tone,
+      mainText: cleanLines.join("\n") || rawSummary.replace(/\*\*/g, ""),
+      purpose: purpose.replace(/\*\*/g, ""),
+      dates: dates.replace(/\*\*/g, ""),
+      actions: actions.replace(/\*\*/g, ""),
+      tone: tone.replace(/\*\*/g, ""),
     };
   };
 
@@ -112,13 +126,22 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
     }
   };
 
+  const formatDisplayEmail = (rawVal?: string, fallback = "Unknown") => {
+    if (!rawVal) return fallback;
+    const s = String(rawVal).trim();
+    if (/^[0-9a-fA-F]{24}$/.test(s)) return fallback;
+    return s;
+  };
+
   const parsed = data ? parseSummarySections(data.summary) : null;
   const gmailUrl = data ? getGmailUrl(data.message_id, data.thread_id) : null;
+  const displaySender = formatDisplayEmail(data?.sender, "Unknown Sender");
+  const displayReceiver = formatDisplayEmail(data?.receiver, "Authenticated User");
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 pb-12 animate-in fade-in duration-300">
       {/* Navigation & Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/40 pb-4">
         <Button
           variant="outline"
           size="sm"
@@ -172,35 +195,32 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
       {/* SKELETON LOADERS WHILE LOADING */}
       {isLoading && (
         <div className="space-y-6">
-          {/* Top Card Skeleton */}
+          {/* Main Summary Skeleton */}
+          <div className="glass rounded-2xl p-6 md:p-8 space-y-4 animate-pulse border-2 border-primary/20">
+            <div className="flex items-center justify-between pb-2">
+              <div className="h-7 w-48 rounded-lg bg-primary/20" />
+              <div className="h-6 w-32 rounded-full bg-muted/40" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-5 w-full rounded bg-primary/10" />
+              <div className="h-5 w-5/6 rounded bg-primary/10" />
+              <div className="h-5 w-4/6 rounded bg-primary/10" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+              <div className="h-20 rounded-xl bg-muted/30" />
+              <div className="h-20 rounded-xl bg-muted/30" />
+              <div className="h-20 rounded-xl bg-muted/30" />
+              <div className="h-20 rounded-xl bg-muted/30" />
+            </div>
+          </div>
+
+          {/* Metadata Skeleton */}
           <div className="glass rounded-2xl p-6 md:p-8 space-y-4 animate-pulse">
             <div className="flex items-center justify-between gap-4">
               <div className="h-6 w-24 rounded-full bg-muted/60" />
               <div className="h-4 w-32 rounded bg-muted/40" />
             </div>
             <div className="h-8 w-3/4 rounded-lg bg-muted/70" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <div className="h-5 w-48 rounded bg-muted/50" />
-              <div className="h-5 w-48 rounded bg-muted/50" />
-            </div>
-          </div>
-
-          {/* Summary Card Skeleton */}
-          <div className="glass rounded-2xl p-6 md:p-8 space-y-4 animate-pulse">
-            <div className="flex items-center justify-between pb-2">
-              <div className="h-6 w-40 rounded-lg bg-muted/60" />
-              <div className="h-5 w-28 rounded-full bg-muted/40" />
-            </div>
-            <div className="space-y-2">
-              <div className="h-4 w-full rounded bg-muted/50" />
-              <div className="h-4 w-5/6 rounded bg-muted/50" />
-              <div className="h-4 w-4/6 rounded bg-muted/50" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
-              <div className="h-20 rounded-xl bg-muted/30" />
-              <div className="h-20 rounded-xl bg-muted/30" />
-              <div className="h-20 rounded-xl bg-muted/30" />
-            </div>
           </div>
         </div>
       )}
@@ -227,70 +247,32 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
       {/* CONTENT WHEN FINISHED LOADING */}
       {!isLoading && !error && data && (
         <>
-          {/* TOP CARD: Email Metadata */}
-          <div className="glass rounded-2xl p-6 md:p-8 border border-border/60 shadow-lg">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-4">
-              <div className="flex items-center gap-2.5">
-                <EmailLabelBadge label={data.predicted_label || "ham"} />
-                {typeof data.predicted_score === "number" && (
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full border border-border/50">
-                    <ShieldCheck className="h-3.5 w-3.5 text-brand" />
-                    {formatConfidence(data.predicted_score)} confidence
-                  </span>
-                )}
-              </div>
-              {data.sent_at && (
-                <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                  {formatDate(data.sent_at)}
-                </span>
-              )}
-            </div>
+          {/* PROMINENT HIGHLIGHTED AI EXECUTIVE SUMMARY CARD (FEATURED FIRST) */}
+          <div className="glass rounded-2xl p-6 md:p-8 border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-background to-primary/5 shadow-2xl relative overflow-hidden">
+            {/* Subtle Glowing Background Accents */}
+            <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-32 w-32 rounded-full bg-brand/15 blur-2xl pointer-events-none" />
 
-            <h1 className="mt-4 text-xl md:text-2xl font-bold tracking-tight text-foreground leading-snug">
-              {data.subject || "(No Subject)"}
-            </h1>
-
-            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-medium text-muted-foreground bg-muted/20 rounded-xl p-3.5 border border-border/40">
-              <div className="flex items-center gap-2 min-w-0">
-                <User className="h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate">
-                  <strong className="text-foreground">From:</strong> {data.sender || "Unknown Sender"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 min-w-0">
-                <Mail className="h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate">
-                  <strong className="text-foreground">To:</strong> {data.receiver || "Authenticated User"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* SUMMARY CARD: AI Generated Summary */}
-          <div className="glass rounded-2xl p-6 md:p-8 border border-primary/25 bg-primary/5 shadow-xl relative overflow-hidden">
-            {/* Subtle Gradient Accent Background */}
-            <div className="absolute top-0 right-0 -mt-8 -mr-8 h-32 w-32 rounded-full bg-primary/10 blur-2xl pointer-events-none" />
-
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary/15 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                  <Sparkles className="h-4 w-4 animate-pulse" />
+            {/* AI Summary Header */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary/20 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/30">
+                  <Sparkles className="h-5 w-5 animate-pulse" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-foreground">Executive AI Summary</h2>
-                  <p className="text-[11px] text-muted-foreground">Powered by Google Gemini 2.5 Flash</p>
+                  <h2 className="text-lg font-bold text-foreground tracking-tight">AI Executive Summary</h2>
+                  <p className="text-xs text-muted-foreground font-medium">Google Gemini 2.5 Flash Summary Engine</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
                 {data.cached ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/80 px-3 py-1 text-xs font-medium text-muted-foreground border border-border/50 shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground border border-border/60 shadow-sm">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    Cached in Database
+                    Cached in MongoDB
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-3 py-1 text-xs font-medium border border-emerald-500/30 shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-3 py-1 text-xs font-semibold border border-emerald-500/30 shadow-sm">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Generated via Gemini API
                   </span>
@@ -298,56 +280,128 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
               </div>
             </div>
 
-            {/* AI Summary Text */}
-            <div className="mt-5 text-sm md:text-base leading-relaxed text-foreground font-normal whitespace-pre-line">
+            {/* Highlighted Main Summary Box */}
+            <div className="mt-5 rounded-xl border border-primary/20 bg-background/80 p-5 text-sm md:text-base leading-relaxed text-foreground font-medium shadow-inner whitespace-pre-line">
               {parsed?.mainText}
             </div>
 
-            {/* Key Structured Insights Cards */}
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-              {/* Action Items */}
-              <div className="rounded-xl border border-border/50 bg-background/60 p-4 space-y-1.5 shadow-sm">
-                <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-                  <CheckSquare className="h-4 w-4" />
-                  Action Items
+            {/* 4-Card Structured Insights Grid (Purpose, Action Items, Dates, Tone) */}
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-1">
+              {/* Purpose Card */}
+              <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-4 space-y-1.5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400">
+                  <Target className="h-4 w-4 shrink-0" />
+                  Purpose
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {parsed?.actions || "No specific action items explicitly requested in body."}
+                <p className="text-xs text-foreground/80 leading-relaxed font-medium">
+                  {parsed?.purpose || "Informational communication."}
                 </p>
               </div>
 
-              {/* Important Dates & Deadlines */}
-              <div className="rounded-xl border border-border/50 bg-background/60 p-4 space-y-1.5 shadow-sm">
-                <div className="flex items-center gap-2 text-xs font-semibold text-amber-500">
-                  <Calendar className="h-4 w-4" />
-                  Important Dates & Deadlines
+              {/* Action Items Card */}
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-1.5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-bold text-primary">
+                  <CheckSquare className="h-4 w-4 shrink-0" />
+                  Action Items
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <p className="text-xs text-foreground/80 leading-relaxed font-medium">
+                  {parsed?.actions || "No required action items specified."}
+                </p>
+              </div>
+
+              {/* Dates & Deadlines Card */}
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-1.5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-600 dark:text-amber-400">
+                  <Calendar className="h-4 w-4 shrink-0" />
+                  Dates & Deadlines
+                </div>
+                <p className="text-xs text-foreground/80 leading-relaxed font-medium">
                   {parsed?.dates || "No specific dates or deadlines extracted."}
                 </p>
               </div>
 
-              {/* Email Tone */}
-              <div className="rounded-xl border border-border/50 bg-background/60 p-4 space-y-1.5 shadow-sm">
-                <div className="flex items-center gap-2 text-xs font-semibold text-indigo-500">
-                  <MessageSquare className="h-4 w-4" />
+              {/* Email Tone Card */}
+              <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4 space-y-1.5 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                  <MessageSquare className="h-4 w-4 shrink-0" />
                   Email Tone
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed capitalize">
-                  {parsed?.tone || "Professional / Informational"}
+                <p className="text-xs text-foreground/80 leading-relaxed font-medium capitalize">
+                  {parsed?.tone || "Professional"}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* ORIGINAL EMAIL CONTENT PREVIEW */}
+          {/* EMAIL METADATA CARD (WITH EXPLICIT LABELS FOR SUBJECT, FROM, TO, CATEGORY, DATE) */}
+          <div className="glass rounded-2xl p-6 md:p-8 border border-border/60 shadow-lg space-y-5">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Inbox className="h-4 w-4 text-primary" />
+                Email Metadata & Classification Details
+              </h3>
+              {data.sent_at && (
+                <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  <strong className="text-foreground">Sent Date:</strong> {formatDate(data.sent_at)}
+                </span>
+              )}
+            </div>
+
+            {/* EXPLICIT SUBJECT FIELD */}
+            <div className="space-y-1.5 bg-muted/20 rounded-xl p-4 border border-border/40">
+              <span className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                <Tag className="h-3.5 w-3.5" />
+                Subject:
+              </span>
+              <h1 className="text-lg md:text-xl font-bold tracking-tight text-foreground leading-snug">
+                {data.subject || "(No Subject)"}
+              </h1>
+            </div>
+
+            {/* SENDER, RECEIVER & CATEGORY BADGE GRID */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-medium">
+              {/* FROM (Sender) */}
+              <div className="rounded-xl bg-muted/20 p-3.5 border border-border/40 space-y-1">
+                <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                  <User className="h-3.5 w-3.5 text-primary" /> From (Sender):
+                </span>
+                <p className="font-semibold text-foreground truncate">{displaySender}</p>
+              </div>
+
+              {/* TO (Receiver) */}
+              <div className="rounded-xl bg-muted/20 p-3.5 border border-border/40 space-y-1">
+                <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                  <Mail className="h-3.5 w-3.5 text-primary" /> To (Receiver):
+                </span>
+                <p className="font-semibold text-foreground truncate">{displayReceiver}</p>
+              </div>
+
+              {/* CATEGORY / PREDICTION */}
+              <div className="rounded-xl bg-muted/20 p-3.5 border border-border/40 space-y-1">
+                <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Category / Prediction:
+                </span>
+                <div className="flex items-center gap-2 pt-0.5">
+                  <EmailLabelBadge label={data.predicted_label || "ham"} />
+                  {typeof data.predicted_score === "number" && (
+                    <span className="text-[11px] font-semibold text-muted-foreground">
+                      {(data.predicted_score * 100).toFixed(1)}% score
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* FULL EMAIL BODY PREVIEW */}
           <div className="glass rounded-2xl p-6 border border-border/50 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Mail className="h-3.5 w-3.5" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Mail className="h-3.5 w-3.5 text-primary" />
               Full Email Body Preview
             </h3>
-            <div className="rounded-xl border border-border/40 bg-muted/20 p-4 text-xs font-mono leading-relaxed text-muted-foreground max-h-60 overflow-y-auto whitespace-pre-wrap">
-              {data.body || "(No text body available for preview)"}
+            <div className="rounded-xl border border-border/40 bg-muted/30 p-4 text-xs font-mono leading-relaxed text-muted-foreground max-h-60 overflow-y-auto whitespace-pre-wrap">
+              {data.body || "(No text body content available for preview)"}
             </div>
           </div>
         </>
