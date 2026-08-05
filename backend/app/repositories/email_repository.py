@@ -424,18 +424,21 @@ class EmailRepository:
 
     def find_by_id(self, email_id: str) -> dict[str, Any] | None:
         """
-        Finds an email document in MongoDB by _id (supporting both ObjectId and string formats).
+        Finds an email document in MongoDB by message_id or _id (supporting ObjectId, message_id, and string formats).
         Returns None if email_id is invalid or document is not found.
         """
         if not email_id or not str(email_id).strip():
             return None
 
         clean_id = str(email_id).strip()
-        query: dict[str, Any] = {}
+        or_conditions: list[dict[str, Any]] = [
+            {"message_id": clean_id},
+            {"_id": clean_id},
+        ]
         if ObjectId.is_valid(clean_id):
-            query = {"$or": [{"_id": ObjectId(clean_id)}, {"_id": clean_id}]}
-        else:
-            query = {"_id": clean_id}
+            or_conditions.append({"_id": ObjectId(clean_id)})
+
+        query = {"$or": or_conditions}
 
         try:
             return self.collection.find_one(query)
@@ -452,17 +455,20 @@ class EmailRepository:
     ) -> bool:
         """
         Updates or sets the 'summary', 'summary_created_at', and 'summary_model' fields
-        of an existing email document in MongoDB.
+        of an existing email document in MongoDB (by message_id or _id).
         """
         if not email_id or not str(email_id).strip():
             return False
 
         clean_id = str(email_id).strip()
-        query: dict[str, Any] = {}
+        or_conditions: list[dict[str, Any]] = [
+            {"message_id": clean_id},
+            {"_id": clean_id},
+        ]
         if ObjectId.is_valid(clean_id):
-            query = {"$or": [{"_id": ObjectId(clean_id)}, {"_id": clean_id}]}
-        else:
-            query = {"_id": clean_id}
+            or_conditions.append({"_id": ObjectId(clean_id)})
+
+        query = {"$or": or_conditions}
 
         now = datetime.now(timezone.utc)
 

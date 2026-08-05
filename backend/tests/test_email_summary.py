@@ -172,3 +172,28 @@ def test_endpoint_get_email_summary_cached():
 
     app.dependency_overrides.clear()
 
+
+@pytest.mark.anyio
+async def test_gmail_message_id_lookup_success(summary_service, mock_repo):
+    """
+    Test lookup when email_id is a 16-character Gmail message_id string (e.g. '19fcdab11a9f0ff7').
+    """
+    gmail_msg_id = "19fcdab11a9f0ff7"
+    email_doc_id = str(ObjectId())
+
+    mock_repo.find_by_id.return_value = {
+        "_id": ObjectId(email_doc_id),
+        "message_id": gmail_msg_id,
+        "user_id": "user123",
+        "subject": "Gmail Message Test",
+        "body": "Body content of Gmail message.",
+        "summary": "Cached summary for Gmail message ID.",
+    }
+
+    result = await summary_service.get_or_generate_summary(email_id=gmail_msg_id)
+
+    assert result["summary"] == "Cached summary for Gmail message ID."
+    assert result["cached"] is True
+    mock_repo.find_by_id.assert_called_with(gmail_msg_id)
+
+
