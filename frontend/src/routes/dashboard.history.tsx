@@ -63,18 +63,13 @@ function HistoryPage() {
     const target = e.target as HTMLElement;
     if (target.closest("button, a, input, select, [role='button']")) return;
 
-    setSelectedEmail({
-      email_id: emailDoc.message_id || emailDoc._id || emailDoc.id,
-      message_id: emailDoc.message_id,
-      subject: emailDoc.subject,
-      sender: emailDoc.sender,
-      body: emailDoc.snippet || emailDoc.body,
-      snippet: emailDoc.snippet,
-      prediction: emailDoc.predicted_label,
-      predicted_label: emailDoc.predicted_label,
-      predicted_score: emailDoc.predicted_score,
-    });
-    setIsModalOpen(true);
+    const targetId = emailDoc.message_id || emailDoc._id || emailDoc.id;
+    if (targetId) {
+      navigate({
+        to: "/dashboard/email-summary/$emailId",
+        params: { emailId: String(targetId) },
+      });
+    }
   };
 
   return (

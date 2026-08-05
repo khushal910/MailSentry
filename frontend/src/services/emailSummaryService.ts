@@ -2,10 +2,19 @@ import apiClient from "./apiClient";
 
 export interface EmailSummaryData {
   email_id: string;
+  subject?: string;
+  sender?: string;
+  receiver?: string;
+  predicted_label?: string;
+  predicted_score?: number;
+  sent_at?: string;
+  body?: string;
   summary: string;
   summary_created_at?: string | null;
   summary_model?: string | null;
   cached: boolean;
+  message_id?: string;
+  thread_id?: string;
 }
 
 export interface EmailSummaryApiResponse {

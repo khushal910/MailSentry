@@ -23,6 +23,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as EmailSummaryEmailIdRouteImport } from './routes/email-summary.$emailId'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
 import { Route as DashboardProductionModelRouteImport } from './routes/dashboard.production-model'
@@ -30,6 +31,7 @@ import { Route as DashboardHistoryRouteImport } from './routes/dashboard.history
 import { Route as DashboardClassifierRouteImport } from './routes/dashboard.classifier'
 import { Route as DashboardAutoClassifierRouteImport } from './routes/dashboard.auto-classifier'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as DashboardEmailSummaryEmailIdRouteImport } from './routes/dashboard.email-summary.$emailId'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
@@ -101,6 +103,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
+const EmailSummaryEmailIdRoute = EmailSummaryEmailIdRouteImport.update({
+  id: '/email-summary/$emailId',
+  path: '/email-summary/$emailId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -137,6 +144,12 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardEmailSummaryEmailIdRoute =
+  DashboardEmailSummaryEmailIdRouteImport.update({
+    id: '/email-summary/$emailId',
+    path: '/email-summary/$emailId',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -159,7 +172,9 @@ export interface FileRoutesByFullPath {
   '/dashboard/production-model': typeof DashboardProductionModelRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/email-summary/$emailId': typeof EmailSummaryEmailIdRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/email-summary/$emailId': typeof DashboardEmailSummaryEmailIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -181,7 +196,9 @@ export interface FileRoutesByTo {
   '/dashboard/production-model': typeof DashboardProductionModelRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/email-summary/$emailId': typeof EmailSummaryEmailIdRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/email-summary/$emailId': typeof DashboardEmailSummaryEmailIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -205,7 +222,9 @@ export interface FileRoutesById {
   '/dashboard/production-model': typeof DashboardProductionModelRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/email-summary/$emailId': typeof EmailSummaryEmailIdRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/email-summary/$emailId': typeof DashboardEmailSummaryEmailIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -230,7 +249,9 @@ export interface FileRouteTypes {
     | '/dashboard/production-model'
     | '/dashboard/profile'
     | '/dashboard/settings'
+    | '/email-summary/$emailId'
     | '/dashboard/'
+    | '/dashboard/email-summary/$emailId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -252,7 +273,9 @@ export interface FileRouteTypes {
     | '/dashboard/production-model'
     | '/dashboard/profile'
     | '/dashboard/settings'
+    | '/email-summary/$emailId'
     | '/dashboard'
+    | '/dashboard/email-summary/$emailId'
   id:
     | '__root__'
     | '/'
@@ -275,7 +298,9 @@ export interface FileRouteTypes {
     | '/dashboard/production-model'
     | '/dashboard/profile'
     | '/dashboard/settings'
+    | '/email-summary/$emailId'
     | '/dashboard/'
+    | '/dashboard/email-summary/$emailId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -293,6 +318,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  EmailSummaryEmailIdRoute: typeof EmailSummaryEmailIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -395,6 +421,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/email-summary/$emailId': {
+      id: '/email-summary/$emailId'
+      path: '/email-summary/$emailId'
+      fullPath: '/email-summary/$emailId'
+      preLoaderRoute: typeof EmailSummaryEmailIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/settings': {
       id: '/dashboard/settings'
       path: '/settings'
@@ -444,6 +477,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/email-summary/$emailId': {
+      id: '/dashboard/email-summary/$emailId'
+      path: '/email-summary/$emailId'
+      fullPath: '/dashboard/email-summary/$emailId'
+      preLoaderRoute: typeof DashboardEmailSummaryEmailIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
   }
 }
 
@@ -455,6 +495,7 @@ interface DashboardRouteChildren {
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardEmailSummaryEmailIdRoute: typeof DashboardEmailSummaryEmailIdRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
@@ -465,6 +506,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardEmailSummaryEmailIdRoute: DashboardEmailSummaryEmailIdRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
@@ -486,6 +528,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  EmailSummaryEmailIdRoute: EmailSummaryEmailIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
