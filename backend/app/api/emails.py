@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, Query, status
@@ -118,3 +119,45 @@ async def get_user_emails(
             "total": total_count,
         },
     )
+
+
+def get_email_repository() -> EmailRepository:
+    return EmailRepository()
+
+
+def get_email_summary_service(
+    repo: EmailRepository = Depends(get_email_repository),
+):
+    from app.services.email_summary_service import EmailSummaryService
+
+    return EmailSummaryService(repository=repo)
+
+
+@emails_router.get(
+    "/emails/{email_id}/summary",
+    summary="Get or generate concise summary for an email",
+    status_code=status.HTTP_200_OK,
+)
+async def get_email_summary(
+    email_id: str,
+    summary_service: Any = Depends(get_email_summary_service),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    GET /emails/{email_id}/summary
+
+    Retrieves or lazily generates a concise summary for an email document.
+    - If a non-empty 'summary' field exists in MongoDB, returns it immediately without calling Gemini API.
+    - If 'summary' does not exist, reads the email body, sends it to Gemini API using a professional prompt,
+      stores the generated summary back into MongoDB in the same document, and returns it.
+    """
+    user_id = str(current_user["_id"])
+    result = await summary_service.get_or_generate_summary(
+        email_id=email_id, current_user_id=user_id
+    )
+    return return_response(
+        status_code=status.HTTP_200_OK,
+        message="Email summary retrieved successfully",
+        data=result,
+    )
+

@@ -421,3 +421,50 @@ class EmailRepository:
         """
         res = self.collection.delete_many({"user_id": str(user_id)})
         return res.deleted_count
+
+    def find_by_id(self, email_id: str) -> dict[str, Any] | None:
+        """
+        Finds an email document in MongoDB by _id (supporting both ObjectId and string formats).
+        Returns None if email_id is invalid or document is not found.
+        """
+        if not email_id or not str(email_id).strip():
+            return None
+
+        clean_id = str(email_id).strip()
+        query: dict[str, Any] = {}
+        if ObjectId.is_valid(clean_id):
+            query = {"$or": [{"_id": ObjectId(clean_id)}, {"_id": clean_id}]}
+        else:
+            query = {"_id": clean_id}
+
+        try:
+            return self.collection.find_one(query)
+        except Exception as e:
+            logger.error(f"Error finding email by ID '{clean_id}': {e!s}")
+            return None
+
+    def update_summary(self, email_id: str, summary: str) -> bool:
+        """
+        Updates or sets the 'summary' field of an email document in MongoDB.
+        """
+        if not email_id or not str(email_id).strip():
+            return False
+
+        clean_id = str(email_id).strip()
+        query: dict[str, Any] = {}
+        if ObjectId.is_valid(clean_id):
+            query = {"$or": [{"_id": ObjectId(clean_id)}, {"_id": clean_id}]}
+        else:
+            query = {"_id": clean_id}
+
+        now = datetime.now(timezone.utc)
+        try:
+            result = self.collection.update_one(
+                query,
+                {"$set": {"summary": str(summary).strip(), "updated_at": now}},
+            )
+            return result.modified_count > 0 or result.matched_count > 0
+        except Exception as e:
+            logger.error(f"Error updating summary for email ID '{clean_id}': {e!s}")
+            return False
+

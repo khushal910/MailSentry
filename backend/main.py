@@ -89,6 +89,7 @@ app.include_router(google_status_router, prefix="/api/google", tags=["Google Sta
 app.include_router(gmail_router, prefix="/api/gmail", tags=["Gmail"])
 app.include_router(classify_router, prefix="/api", tags=["Email Classification"])
 app.include_router(emails_router, prefix="/api", tags=["Emails"])
+app.include_router(emails_router, tags=["Emails Root"])
 app.include_router(profile_router, prefix="/api", tags=["Profile"])
 app.include_router(profile_router, prefix="/api/v1", tags=["Profile V1"])
 app.include_router(dashboard_router, prefix="/api", tags=["Dashboard"])

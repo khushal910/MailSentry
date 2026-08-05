@@ -143,6 +143,15 @@ class Settings:
         )
         FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8080")
 
+        # Gemini API Config
+        GEMINI_API_KEY = (
+            os.getenv("GEMINI_API_KEY")
+            or os.getenv("GEMINI_API")
+            or os.getenv("GOOGLE_API_KEY")
+            or ""
+        )
+        GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+
     except Exception as e:
         print(f"Error loading environment variables: {e!s}")
 
