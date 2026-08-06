@@ -171,7 +171,7 @@ class TestEmailRepository(unittest.TestCase):
         self.assertEqual(res["subject"], "Updated Subject")
 
     def test_subject_length_validation_and_truncation(self):
-        """Enforces subject <= 255 chars validation."""
+        """Preserves full subject without artificial truncation."""
         user_id = str(ObjectId())
         self.mock_users_col.find_one.return_value = {"_id": ObjectId(user_id)}
 
@@ -184,8 +184,8 @@ class TestEmailRepository(unittest.TestCase):
         }
 
         sanitized = self.repo.sanitize_email_data(email_data)
-        self.assertEqual(len(sanitized["subject"]), 255)
-        self.assertEqual(sanitized["subject"], "A" * 255)
+        self.assertEqual(len(sanitized["subject"]), 300)
+        self.assertEqual(sanitized["subject"], "A" * 300)
 
     def test_minimal_fields_no_body_or_attachments(self):
         """Sanitizer strips extra fields like full body or attachments to preserve privacy and minimal storage."""

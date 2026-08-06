@@ -24,7 +24,7 @@ import joblib
 from src.logger import logger
 from src.exception import MyException
 from pandas import DataFrame
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import FeatureUnion, Pipeline
 from sklearn.preprocessing import LabelEncoder
 from src.utils.main_utils import read_csv, read_yaml_file
 from src.entity.config_entity import (
@@ -167,37 +167,46 @@ class DataTransformation:
             y_test = test_df[target_column]
 
             # ----------------------------------------------
-            # TF-IDF Pipeline
+            # Combined Word + Character TF-IDF FeatureUnion Pipeline
             # ----------------------------------------------
             logger.info(
-                "Initializing TF-IDF vectorizer with parameters: "
-                "max_features=7000, stop_words=english, ngram_range=(1,2), "
-                "min_df=2, max_df=0.95, sublinear_tf=True"
+                "Initializing combined Word TF-IDF and Character TF-IDF FeatureUnion"
             )
-            preprocessor = Pipeline(
+            word_vectorizer = TfidfVectorizer(
+                analyzer="word",
+                max_features=7000,
+                stop_words="english",
+                ngram_range=(1, 2),
+                min_df=2,
+                max_df=0.95,
+                sublinear_tf=True,
+            )
+
+            char_vectorizer = TfidfVectorizer(
+                analyzer="char",
+                max_features=5000,
+                ngram_range=(2, 5),
+                min_df=2,
+                sublinear_tf=True,
+            )
+
+            combined_features = FeatureUnion(
                 [
-                    (
-                        "tfidf",
-                        TfidfVectorizer(
-                            max_features=7000,
-                            stop_words="english",
-                            ngram_range=(1, 2),
-                            min_df=2,
-                            max_df=0.95,
-                            sublinear_tf=True,
-                        ),
-                    )
+                    ("word_tfidf", word_vectorizer),
+                    ("char_tfidf", char_vectorizer),
                 ]
             )
 
-            logger.info("Fitting TF-IDF on training data")
+            preprocessor = Pipeline([("features", combined_features)])
+
+            logger.info("Fitting combined Word + Char TF-IDF FeatureUnion on training data")
             X_train = preprocessor.fit_transform(X_train)
             logger.info(
-                f"TF-IDF fitted. Training matrix shape: {X_train.shape}, "
-                f"vocabulary size: {len(preprocessor.named_steps['tfidf'].vocabulary_)}"
+                f"FeatureUnion fitted. Training matrix shape: {X_train.shape} "
+                f"(Sparse matrix with {X_train.shape[1]} total features)"
             )
 
-            logger.info("Transforming test data with TF-IDF")
+            logger.info("Transforming test data with FeatureUnion")
             X_test = preprocessor.transform(X_test)
             logger.info(f"Test matrix shape: {X_test.shape}")
 
