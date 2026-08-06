@@ -131,6 +131,8 @@ class Settings:
         FETCH_LOCK_TTL_SECONDS = int(os.getenv("FETCH_LOCK_TTL_SECONDS", 60))
         # Max emails to fetch from Gmail API per fetch operation (default 50)
         FETCH_MAX_RESULTS = int(os.getenv("FETCH_MAX_RESULTS", 50))
+        # Classification decision threshold (default 0.50)
+        CLASSIFICATION_THRESHOLD = float(os.getenv("CLASSIFICATION_THRESHOLD", 0.50))
 
         # Google OAuth
         GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")

@@ -95,12 +95,14 @@ class SklearnPredictor(BasePredictor):
         return None
 
     def predict(self, subject: str, body: str) -> dict[str, Any]:
+        from app.core.config import settings
         from app.services.ml_preprocessing import MLPreprocessing
 
         subject_str = (subject or "").strip()
         body_str = (body or "").strip()
         cleaned_text = MLPreprocessing.preprocess_email_text(subject_str, body_str)
 
+        threshold = float(getattr(settings, "CLASSIFICATION_THRESHOLD", 0.50))
         predicted_label = "inbox"
         predicted_score = 0.85
 
@@ -113,53 +115,45 @@ class SklearnPredictor(BasePredictor):
             else:
                 X_features = [cleaned_text]
 
-            # Predict class
-            if hasattr(self.model, "predict"):
-                try:
-                    res = self.model.predict(X_features)
-                except ValueError as val_err:
-                    if "Expected 2D array" in str(val_err):
-                        arr = np.array(X_features).reshape(-1, 1)
-                        res = self.model.predict(arr)
-                    else:
-                        res = None
-
-                if res is not None and len(res) > 0:
-                    raw_val = res[0]
-                    if self.label_encoder is not None and hasattr(
-                        self.label_encoder, "inverse_transform"
-                    ):
-                        try:
-                            decoded = self.label_encoder.inverse_transform([raw_val])
-                            predicted_label = str(decoded[0])
-                        except Exception:
-                            predicted_label = (
-                                "spam"
-                                if str(raw_val) in ("1", "1.0", "Spam", "spam")
-                                else "inbox"
-                            )
-                    elif isinstance(raw_val, (int, float)):
-                        predicted_label = "spam" if int(raw_val) == 1 else "inbox"
-                    else:
-                        predicted_label = str(raw_val)
-
-            # Confidence score
+            # Determine class & score based on probabilities and configurable threshold
             if hasattr(self.model, "predict_proba"):
                 try:
-                    proba = self.model.predict_proba(X_features)
-                    if proba is not None and len(proba) > 0:
-                        predicted_score = round(float(np.max(proba[0])), 4)
-                except Exception:
-                    pass
+                    proba = self.model.predict_proba(X_features)[0]
+                    if len(proba) >= 2:
+                        spam_prob = float(proba[1])
+                        is_spam = spam_prob >= threshold
+                        predicted_label = "spam" if is_spam else "inbox"
+                        predicted_score = round(float(spam_prob if is_spam else proba[0]), 4)
+                    else:
+                        predicted_score = round(float(proba[0]), 4)
+                        predicted_label = "spam" if predicted_score >= threshold else "inbox"
+                except Exception as proba_err:
+                    logger.warning("predict_proba error: %s", proba_err)
             elif hasattr(self.model, "decision_function"):
                 try:
-                    dec = self.model.decision_function(X_features)
-                    if dec is not None and len(dec) > 0:
-                        val = float(dec[0])
-                        prob = 1.0 / (1.0 + np.exp(-abs(val)))
-                        predicted_score = round(float(prob), 4)
-                except Exception:
-                    pass
+                    dec = float(self.model.decision_function(X_features)[0])
+                    spam_prob = 1.0 / (1.0 + np.exp(-dec))
+                    is_spam = spam_prob >= threshold
+                    predicted_label = "spam" if is_spam else "inbox"
+                    predicted_score = round(float(spam_prob if is_spam else 1.0 - spam_prob), 4)
+                except Exception as dec_err:
+                    logger.warning("decision_function error: %s", dec_err)
+            elif hasattr(self.model, "predict"):
+                try:
+                    res = self.model.predict(X_features)
+                    if res is not None and len(res) > 0:
+                        raw_val = res[0]
+                        if self.label_encoder is not None and hasattr(
+                            self.label_encoder, "inverse_transform"
+                        ):
+                            decoded = self.label_encoder.inverse_transform([raw_val])
+                            predicted_label = str(decoded[0])
+                        elif isinstance(raw_val, (int, float)):
+                            predicted_label = "spam" if int(raw_val) == 1 else "inbox"
+                        else:
+                            predicted_label = str(raw_val)
+                except Exception as pred_err:
+                    logger.warning("predict error: %s", pred_err)
 
         except Exception as err:
             logger.warning("Sklearn prediction fallback engaged: %s", err)
@@ -202,12 +196,14 @@ class TransformerPredictor(BasePredictor):
     def predict(self, subject: str, body: str) -> dict[str, Any]:
         import torch
 
+        from app.core.config import settings
         from app.services.ml_preprocessing import MLPreprocessing
 
         subject_str = (subject or "").strip()
         body_str = (body or "").strip()
         cleaned_text = MLPreprocessing.preprocess_email_text(subject_str, body_str)
 
+        threshold = float(getattr(settings, "CLASSIFICATION_THRESHOLD", 0.50))
         predicted_label = "inbox"
         predicted_score = 0.85
 
@@ -224,11 +220,16 @@ class TransformerPredictor(BasePredictor):
 
             with torch.no_grad():
                 outputs = self.bundle.model(**inputs)
-                probs = torch.softmax(outputs.logits, dim=-1).cpu().numpy()
+                probs = torch.softmax(outputs.logits, dim=-1).cpu().numpy()[0]
 
-            predicted_class = int(np.argmax(probs[0]))
-            predicted_score = round(float(np.max(probs[0])), 4)
-            predicted_label = "spam" if predicted_class == 1 else "inbox"
+            if len(probs) >= 2:
+                spam_prob = float(probs[1])
+                is_spam = spam_prob >= threshold
+                predicted_label = "spam" if is_spam else "inbox"
+                predicted_score = round(float(spam_prob if is_spam else probs[0]), 4)
+            else:
+                predicted_score = round(float(probs[0]), 4)
+                predicted_label = "spam" if predicted_score >= threshold else "inbox"
 
         except Exception as err:
             logger.warning("Transformer prediction fallback engaged: %s", err)
