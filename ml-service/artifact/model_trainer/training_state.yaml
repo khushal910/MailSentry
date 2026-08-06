@@ -1,39 +1,43 @@
 training_started_at: '2026-08-03T17:10:19.415633+00:00'
-last_updated_at: '2026-08-03T18:20:06.290119+00:00'
+last_updated_at: '2026-08-06T08:28:15.709099+00:00'
 training_version: 1.0.0
 models:
   LightGBM:
     status: completed
-    completed_at: '2026-08-03T17:17:25.802206+00:00'
+    completed_at: '2026-08-06T08:28:15.544773+00:00'
     checkpoint: artifact\model_trainer\checkpoints\LightGBM
-    config_hash: 6dd114b0a639a5bd77925b2a953636078cad3afe77057813aea55e2a57201670
+    config_hash: bc406210a7895b46a13fef9374b82df21216334ff3a676ccfb3e258ae92fd848
   LogisticRegression:
     status: completed
-    completed_at: '2026-08-03T17:24:05.969161+00:00'
+    completed_at: '2026-08-06T07:43:32.964142+00:00'
     checkpoint: artifact\model_trainer\checkpoints\LogisticRegression
-    config_hash: b2e61b4113c1ac8d86fe6ff7322f9c90ff5e743290269d01cd67731180fb24e0
+    config_hash: 86e8234b8d6999b0b8e1ec03fc8ada5b1affca8e016220507d5a80e06c53a2d2
   RandomForest:
     status: completed
-    completed_at: '2026-08-03T17:45:06.120584+00:00'
+    completed_at: '2026-08-06T07:48:35.789711+00:00'
     checkpoint: artifact\model_trainer\checkpoints\RandomForest
-    config_hash: b0262d8e3b2c73fb52306e21d28c0713f4074f82746457c07717a5cd15346c47
+    config_hash: cc994013b4161eec00c271bb1b14a4726d81b50dc201915d6a3d7ee3782c95b7
   XGBClassifier:
-    status: completed
-    completed_at: '2026-08-03T17:56:10.389675+00:00'
-    checkpoint: artifact\model_trainer\checkpoints\XGBClassifier
-    config_hash: bc542e14ae879c060767e8624d57f19302d6a88a9a99d7f3f7adff06fc1fc0d2
+    status: failed
+    failed_at: '2026-08-06T07:53:57.069921+00:00'
+    reason: 'Error occurred in python script: [C:\Users\Abc\Desktop\MailSentry\ml-service\src\utils\mlflow_utils.py]
+      at line number [86]: `_estimator_type` undefined.  Please use appropriate mixin
+      to define estimator type.'
   CatBoostClassifier:
     status: completed
-    completed_at: '2026-08-03T18:10:07.735334+00:00'
+    completed_at: '2026-08-06T08:04:45.839832+00:00'
     checkpoint: artifact\model_trainer\checkpoints\CatBoostClassifier
-    config_hash: 85c82ae54fe7100c387098eff00e4d3be76d915d9bebc9b4888eca58a6d37dc6
+    config_hash: 61f2041d8a2a11f48024261e5f1026e674b0e6d5e35f0ea638103a36e75f2ede
   LinearSVC:
     status: completed
-    completed_at: '2026-08-03T18:10:52.047103+00:00'
+    completed_at: '2026-08-06T08:05:20.810764+00:00'
     checkpoint: artifact\model_trainer\checkpoints\LinearSVC
-    config_hash: 7e18a6041a768d7d0028c8af6aaa55fa9771a5d545e6e2222dbbb30ebef07115
+    config_hash: 8b60f5ee8b983963608ea61e8052e0b5f71ca243616968523a803cca4dcb4a87
   ExtraTrees:
     status: completed
-    completed_at: '2026-08-03T18:20:06.290119+00:00'
+    completed_at: '2026-08-06T08:25:58.200343+00:00'
     checkpoint: artifact\model_trainer\checkpoints\ExtraTrees
-    config_hash: 3fd552fdf85a90a83ee7836a3d7e8f83f6f456102edf7776a44eb7fac07a9f2e
+    config_hash: 8bb016d22b49ecbae75747385e55c3e07f90ef7560cc69a307aeffd215957229
+  DistilBERT:
+    status: pending
+    updated_at: '2026-08-06T08:28:15.709099+00:00'

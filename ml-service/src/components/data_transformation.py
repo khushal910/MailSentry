@@ -339,29 +339,29 @@ class DataTransformation:
                 self.data_transformation_config.transform_test_tfidf_file, index=False
             )
 
-            # Save Raw Text CSV files only if DistilBERT training is enabled
-            if getattr(self.train_model_config, "enable_distilbert", False):
-                logger.info(
-                    f"DistilBERT enabled. Saving raw text train data to {self.data_transformation_config.transform_train_raw_file}"
+            # Validate and Save Raw Text CSV files for transformer models
+            if train_raw_df.empty or train_raw_df.shape[0] == 0:
+                raise ValueError(
+                    f"train_raw_df is empty before saving to {self.data_transformation_config.transform_train_raw_file}. Shape={train_raw_df.shape}"
                 )
-                train_raw_df.to_csv(
-                    self.data_transformation_config.transform_train_raw_file, index=False
+            if test_raw_df.empty or test_raw_df.shape[0] == 0:
+                raise ValueError(
+                    f"test_raw_df is empty before saving to {self.data_transformation_config.transform_test_raw_file}. Shape={test_raw_df.shape}"
                 )
 
-                logger.info(
-                    f"Saving raw text test data to {self.data_transformation_config.transform_test_raw_file}"
-                )
-                test_raw_df.to_csv(
-                    self.data_transformation_config.transform_test_raw_file, index=False
-                )
-            else:
-                logger.info("DistilBERT disabled (ENABLE_DISTILBERT=false). Creating lightweight placeholder raw text CSVs for DVC contract compliance.")
-                pd.DataFrame(columns=["email_text", "target"]).to_csv(
-                    self.data_transformation_config.transform_train_raw_file, index=False
-                )
-                pd.DataFrame(columns=["email_text", "target"]).to_csv(
-                    self.data_transformation_config.transform_test_raw_file, index=False
-                )
+            logger.info(
+                f"Saving raw text train data (Shape={train_raw_df.shape}) to {self.data_transformation_config.transform_train_raw_file}"
+            )
+            train_raw_df.to_csv(
+                self.data_transformation_config.transform_train_raw_file, index=False
+            )
+
+            logger.info(
+                f"Saving raw text test data (Shape={test_raw_df.shape}) to {self.data_transformation_config.transform_test_raw_file}"
+            )
+            test_raw_df.to_csv(
+                self.data_transformation_config.transform_test_raw_file, index=False
+            )
 
             # Save preprocessor and label encoder locally to ml-service artifact directory
             logger.info(
