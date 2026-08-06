@@ -78,7 +78,6 @@ function AutoClassifierPage() {
   // Auto Classifier strictly represents the queue of UNCLASSIFIED emails (max 50 new)
   const [unclassifiedEmails, setUnclassifiedEmails] = useState<UnclassifiedEmail[]>([]);
 
-  const hasFetchedOnce = useRef(false);
   const isJobActiveRef = useRef(false);
   const activeJobIdRef = useRef<string | null>(null);
 
@@ -101,7 +100,14 @@ function AutoClassifierPage() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to fetch unclassified emails.";
-      if (msg.toLowerCase().includes("wait")) {
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes("not connected") ||
+        lower.includes("connect google") ||
+        lower.includes("unauthorized")
+      ) {
+        setPageState("gmail-not-connected");
+      } else if (lower.includes("wait")) {
         toast.warning(msg, { duration: 5000 });
       } else {
         setFetchError(msg);
@@ -279,22 +285,30 @@ function AutoClassifierPage() {
   /* ─── on mount: check Gmail status, then fetch unclassified queue ─── */
   useEffect(() => {
     let isMounted = true;
-    if (hasFetchedOnce.current) return;
-    hasFetchedOnce.current = true;
 
     (async () => {
       try {
+        setPageState("loading");
         const status = await googleAuthApi.getStatus();
         if (!isMounted) return;
         if (!status.connected) {
           setPageState("gmail-not-connected");
           return;
         }
-        setPageState("loading");
+
         await triggerFetch();
-        if (isMounted) setPageState("ready");
-      } catch {
-        if (isMounted) setPageState("error");
+        if (isMounted) {
+          setPageState((prev) => (prev === "gmail-not-connected" ? prev : "ready"));
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        const msg = err instanceof Error ? err.message : "";
+        const lower = msg.toLowerCase();
+        if (lower.includes("not connected") || lower.includes("connect google")) {
+          setPageState("gmail-not-connected");
+        } else {
+          setPageState("error");
+        }
       }
     })();
 
@@ -330,7 +344,7 @@ function AutoClassifierPage() {
           message="Something went wrong loading the page."
           onRetry={() => {
             setPageState("loading");
-            hasFetchedOnce.current = false;
+            void triggerFetch().then(() => setPageState("ready"));
           }}
         />
       </PageTransition>
