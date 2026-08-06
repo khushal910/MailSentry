@@ -79,6 +79,8 @@ function AutoClassifierPage() {
   const [unclassifiedEmails, setUnclassifiedEmails] = useState<UnclassifiedEmail[]>([]);
 
   const hasFetchedOnce = useRef(false);
+  const isJobActiveRef = useRef(false);
+  const activeJobIdRef = useRef<string | null>(null);
 
   /* ─── Fetch unclassified emails from Gmail ─── */
   const triggerFetch = useCallback(async () => {
@@ -111,7 +113,7 @@ function AutoClassifierPage() {
 
   /* ─── Classify displayed unclassified emails ─── */
   const handleClassify = async () => {
-    if (unclassifiedEmails.length === 0) return;
+    if (unclassifiedEmails.length === 0 || isClassifying) return;
     setIsClassifying(true);
     setFetchError(null);
     const startMs = Date.now();
@@ -119,6 +121,11 @@ function AutoClassifierPage() {
     try {
       // Step 1: Start background job (returns in <100ms)
       const job = await emailsApi.startClassifyJob(unclassifiedEmails);
+      const currentJobId = job.job_id;
+
+      isJobActiveRef.current = true;
+      activeJobIdRef.current = currentJobId;
+
       setJobProgress({
         processed: job.processed,
         total: job.total || unclassifiedEmails.length,
@@ -128,11 +135,23 @@ function AutoClassifierPage() {
         estRemainingSec: 0,
       });
 
-      // Step 2: Poll status every 1.0s until complete or failed
+      // Step 2: Poll status sequentially every 1.0s until complete or failed
       await new Promise<void>((resolve, reject) => {
-        const pollInterval = setInterval(async () => {
+        const pollStep = async () => {
+          if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
+            resolve();
+            return;
+          }
+
           try {
-            const statusRes = await emailsApi.getJobStatus(job.job_id);
+            const statusRes = await emailsApi.getJobStatus(currentJobId);
+
+            // Ignore response if job was completed/cancelled while HTTP request was in flight
+            if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
+              resolve();
+              return;
+            }
+
             const nowMs = Date.now();
             const total = statusRes.total || unclassifiedEmails.length;
             const processed = statusRes.processed;
@@ -143,17 +162,16 @@ function AutoClassifierPage() {
                 ? Math.max(1, Math.ceil((total - processed) * avgItemSec))
                 : 0;
 
-            setJobProgress({
-              processed,
-              total,
-              status: statusRes.status,
-              current_subject: statusRes.current_subject,
-              startTime: startMs,
-              estRemainingSec,
-            });
-
             if (statusRes.status === "completed") {
-              clearInterval(pollInterval);
+              isJobActiveRef.current = false;
+              activeJobIdRef.current = null;
+              setJobProgress(null);
+              setIsClassifying(false);
+
+              setUnclassifiedEmails([]);
+              setSearchTerm("");
+              setPage(1);
+
               const count = statusRes.classified ?? 0;
               const skipped = statusRes.skipped ?? 0;
 
@@ -163,10 +181,6 @@ function AutoClassifierPage() {
               await queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
 
               if (count > 0) {
-                setUnclassifiedEmails([]);
-                setSearchTerm("");
-                setPage(1);
-
                 toast.success(
                   `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
                   {
@@ -186,21 +200,53 @@ function AutoClassifierPage() {
                 toast.info("No emails were classified.");
               }
               resolve();
-            } else if (statusRes.status === "failed") {
-              clearInterval(pollInterval);
+              return;
+            }
+
+            if (statusRes.status === "failed") {
+              isJobActiveRef.current = false;
+              activeJobIdRef.current = null;
+              setJobProgress(null);
+              setIsClassifying(false);
               reject(new Error(statusRes.error || "Background classification job failed."));
+              return;
+            }
+
+            // Job still running: update progress safely
+            setJobProgress({
+              processed,
+              total,
+              status: statusRes.status,
+              current_subject: statusRes.current_subject,
+              startTime: startMs,
+              estRemainingSec,
+            });
+
+            // Schedule next poll ONLY after this request finished
+            if (isJobActiveRef.current && activeJobIdRef.current === currentJobId) {
+              setTimeout(pollStep, 1000);
             }
           } catch (pollErr) {
-            clearInterval(pollInterval);
+            if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
+              resolve();
+              return;
+            }
+            isJobActiveRef.current = false;
+            activeJobIdRef.current = null;
             reject(pollErr);
           }
-        }, 1000);
+        };
+
+        // Start first poll after 1s
+        setTimeout(pollStep, 1000);
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to classify emails.";
       setFetchError(msg);
       toast.error(msg);
     } finally {
+      isJobActiveRef.current = false;
+      activeJobIdRef.current = null;
       setIsClassifying(false);
       setJobProgress(null);
     }
@@ -232,23 +278,31 @@ function AutoClassifierPage() {
 
   /* ─── on mount: check Gmail status, then fetch unclassified queue ─── */
   useEffect(() => {
+    let isMounted = true;
     if (hasFetchedOnce.current) return;
     hasFetchedOnce.current = true;
 
     (async () => {
       try {
         const status = await googleAuthApi.getStatus();
+        if (!isMounted) return;
         if (!status.connected) {
           setPageState("gmail-not-connected");
           return;
         }
         setPageState("loading");
         await triggerFetch();
-        setPageState("ready");
+        if (isMounted) setPageState("ready");
       } catch {
-        setPageState("error");
+        if (isMounted) setPageState("error");
       }
     })();
+
+    return () => {
+      isMounted = false;
+      isJobActiveRef.current = false;
+      activeJobIdRef.current = null;
+    };
   }, [triggerFetch]);
 
   /* ─── render states ─── */
