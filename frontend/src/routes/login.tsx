@@ -70,7 +70,6 @@ function LoginPage() {
     try {
       const res = await login(values.email, values.password);
       if (res.success) {
-        toast.success(res.message);
         const target = redirect && redirect.startsWith("/") ? redirect : "/dashboard";
         navigate({ to: target, replace: true });
       } else {

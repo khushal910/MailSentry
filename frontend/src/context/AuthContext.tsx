@@ -24,7 +24,7 @@ interface AuthContextValue {
     password: string,
   ) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
-  refresh: () => Promise<AuthUser | null>;
+  refresh: (showLoading?: boolean) => Promise<AuthUser | null>;
   setUser: (user: AuthUser | null) => void;
   triggerSessionExpired: (redirectUrl?: string) => void;
 }
@@ -63,8 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [triggerSessionExpired]);
 
-  const refresh = useCallback(async (): Promise<AuthUser | null> => {
-    setLoading(true);
+  const refresh = useCallback(async (showLoading = false): Promise<AuthUser | null> => {
+    if (showLoading) setLoading(true);
     try {
       const me = await authApi.me();
       setUser(me);
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       return null;
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
     void (async () => {
       if (isMounted) {
-        await refresh();
+        await refresh(true);
       }
     })();
     return () => {
