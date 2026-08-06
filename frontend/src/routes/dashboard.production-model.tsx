@@ -124,37 +124,30 @@ function ProductionModelPage() {
   return (
     <PageTransition>
       <div className="space-y-6 text-foreground max-w-[1600px] mx-auto pb-12 transition-all duration-150">
-        {/* STICKY HEADER TOOLBAR */}
-        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border/80 pb-4 pt-2 -mx-4 px-4 sm:-mx-6 sm:px-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* HEADER TOOLBAR */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-                Production Model
-              </h1>
-              <Badge
-                variant="outline"
-                className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold text-sm px-3 py-1 rounded-full flex items-center gap-2 shadow-xs"
-              >
-                <span className="relative flex h-2.5 w-2.5">
+            <h1 className="text-2xl font-semibold tracking-tight">Production Model</h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span>Monitor and manage the model currently serving production traffic in MailSentry.</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-3 py-1 text-xs font-semibold shadow-xs">
+                <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_6px_#10b981]" />
                 </span>
                 Serving Traffic
-              </Badge>
+              </span>
             </div>
-            <p className="mt-1.5 text-sm sm:text-base text-muted-foreground font-semibold">
-              Monitor and manage the model currently serving production traffic in MailSentry.
-            </p>
           </div>
 
-          {/* Sticky Actions Toolbar (Right side) */}
+          {/* Actions Toolbar (Right side) */}
           <div className="flex flex-wrap items-center gap-2.5">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  id="sticky-download-artifacts-btn"
+                  id="download-artifacts-btn"
                   size="sm"
-                  className="bg-brand text-brand-foreground hover:bg-brand/90 font-extrabold text-xs sm:text-sm h-9 px-4 rounded-lg shadow-xs"
+                  className="bg-brand text-brand-foreground hover:bg-brand/90 font-semibold text-xs sm:text-sm h-9 px-4 rounded-lg shadow-xs"
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Download Artifacts (.pkl)
@@ -203,12 +196,12 @@ function ProductionModelPage() {
             </DropdownMenu>
 
             <Button
-              id="sticky-refresh-btn"
+              id="refresh-btn"
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={isModelLoading || isModelFetching || isManualRefreshing}
-              className="border-border/80 text-foreground font-extrabold text-xs sm:text-sm h-9 px-4 rounded-lg"
+              className="border-border/80 text-foreground font-semibold text-xs sm:text-sm h-9 px-4 rounded-lg"
             >
               <RefreshCw
                 className={`mr-2 h-4 w-4 ${
