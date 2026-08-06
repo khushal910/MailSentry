@@ -178,7 +178,7 @@ class SklearnPredictor(BasePredictor):
                 predicted_score = 0.95
 
         return {
-            "subject": subject_str[:255],
+            "subject": subject_str,
             "predicted_label": predicted_label,
             "predicted_score": predicted_score,
             "classified_at": datetime.now(timezone.utc).isoformat(),
@@ -247,7 +247,7 @@ class TransformerPredictor(BasePredictor):
                 predicted_score = 0.95
 
         return {
-            "subject": subject_str[:255],
+            "subject": subject_str,
             "predicted_label": predicted_label,
             "predicted_score": predicted_score,
             "classified_at": datetime.now(timezone.utc).isoformat(),
@@ -412,7 +412,7 @@ class PredictionEngine:
         ]
         is_spam = any(kw in combined for kw in spam_keywords)
         return {
-            "subject": subject_str[:255],
+            "subject": subject_str,
             "predicted_label": "spam" if is_spam else "inbox",
             "predicted_score": 0.95 if is_spam else 0.50,
             "classified_at": datetime.now(timezone.utc).isoformat(),

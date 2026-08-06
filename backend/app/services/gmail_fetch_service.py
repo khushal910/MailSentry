@@ -13,7 +13,9 @@ Pipeline steps (in order):
 """
 
 import asyncio
+import base64
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -27,6 +29,53 @@ from app.services.gmail_token_manager import GmailTokenManager
 from app.services.ml_model_service import MLModelService
 
 logger = logging.getLogger("mailsentry.gmail_fetch")
+
+
+def _extract_full_body(payload: dict[str, Any]) -> str:
+    """
+    Recursively extracts full body text (plain text or html fallback) from Gmail API payload.
+    """
+    if not payload:
+        return ""
+
+    def _decode_data(data_str: str) -> str:
+        if not data_str:
+            return ""
+        try:
+            padded = data_str + "=" * (-len(data_str) % 4)
+            return base64.urlsafe_b64decode(padded).decode("utf-8", errors="replace")
+        except Exception:
+            return ""
+
+    body_obj = payload.get("body", {})
+    mime_type = payload.get("mimeType", "")
+
+    if body_obj.get("data") and mime_type == "text/plain":
+        return _decode_data(body_obj.get("data"))
+
+    parts = payload.get("parts", [])
+    for part in parts:
+        part_mime = part.get("mimeType", "")
+        if part_mime == "text/plain" and part.get("body", {}).get("data"):
+            text = _decode_data(part["body"]["data"])
+            if text.strip():
+                return text
+        elif part.get("parts"):
+            res = _extract_full_body(part)
+            if res.strip():
+                return res
+
+    if body_obj.get("data") and "text/html" in mime_type:
+        raw_html = _decode_data(body_obj.get("data"))
+        return re.sub(r"<.*?>", " ", raw_html)
+
+    for part in parts:
+        part_mime = part.get("mimeType", "")
+        if "text/html" in part_mime and part.get("body", {}).get("data"):
+            raw_html = _decode_data(part["body"]["data"])
+            return re.sub(r"<.*?>", " ", raw_html)
+
+    return ""
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Process-level state (single-worker safe)
@@ -419,11 +468,11 @@ class GmailFetchService:
     def _classify_one(self, raw_email: dict[str, Any]) -> dict[str, Any]:
         """
         Classifies a single raw email dict using the ML model service.
-        Raises on any model error so the caller can count it as skipped.
+        Prioritizes full email body text over short snippet.
         """
         subject = raw_email.get("subject", "")
-        snippet = raw_email.get("snippet", "") or raw_email.get("body", "")
-        return self.model_service.classify_text(subject=subject, body=snippet)
+        body = raw_email.get("body") or raw_email.get("snippet", "")
+        return self.model_service.classify_text(subject=subject, body=body)
 
     async def _fetch_from_gmail(
         self, user_id: str, google_email: str, access_token: str
@@ -508,6 +557,7 @@ class GmailFetchService:
                                 sent_at = date_header
 
                             snippet = msg_data.get("snippet", "")
+                            full_body = _extract_full_body(payload) or snippet
                             thread_id = msg_data.get("threadId")
 
                             return {
@@ -515,6 +565,7 @@ class GmailFetchService:
                                 "thread_id": thread_id,
                                 "subject": subject,
                                 "snippet": snippet,
+                                "body": full_body,
                                 "received_at": sent_at,
                                 "sent_at": sent_at,
                             }

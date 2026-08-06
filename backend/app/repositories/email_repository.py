@@ -184,8 +184,6 @@ class EmailRepository:
             raise ValueError("message_id is required")
 
         subject = self._strip_html(data.get("subject") or "")
-        if len(subject) > 255:
-            subject = subject[:255]
 
         now = datetime.now(timezone.utc)
 
@@ -211,8 +209,6 @@ class EmailRepository:
         classified_at = _parse_utc_dt(data.get("classified_at"), now)
 
         snippet = self._strip_html(data.get("snippet") or "") or None
-        if snippet and len(snippet) > 1000:
-            snippet = snippet[:1000]
 
         predicted_score = data.get("predicted_score")
         if predicted_score is not None:
