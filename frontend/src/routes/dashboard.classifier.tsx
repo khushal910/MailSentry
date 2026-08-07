@@ -32,9 +32,17 @@ function ClassifierPage() {
   const {
     register,
     handleSubmit,
+    watch,
     reset: resetForm,
     formState: { errors },
-  } = useForm<FormValues>();
+  } = useForm<FormValues>({
+    defaultValues: { subject: "", message: "" },
+  });
+
+  const messageText = watch("message") || "";
+  const messageCharCount = messageText.length;
+  const messageOverLimit = messageCharCount > 5000;
+  const messageExcessChars = messageCharCount - 5000;
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -76,18 +84,44 @@ function ClassifierPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="message">Message</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="message">Message</Label>
+                <span
+                  className={`text-xs transition-colors ${
+                    messageOverLimit
+                      ? "font-semibold text-destructive"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {messageCharCount.toLocaleString()} / 5,000 chars
+                </span>
+              </div>
               <Textarea
                 id="message"
                 rows={10}
                 placeholder="Paste the email body here…"
                 {...register("message", {
                   required: "Message is required",
-                  maxLength: { value: 5000, message: "Max 5000 characters" },
+                  maxLength: {
+                    value: 5000,
+                    message: "Max 5000 characters limit exceeded",
+                  },
                 })}
+                className={messageOverLimit ? "border-destructive focus-visible:ring-destructive" : ""}
               />
-              {errors.message && (
+              {messageOverLimit ? (
+                <div className="rounded-lg bg-destructive/10 p-2.5 text-xs text-destructive flex items-center justify-between font-medium">
+                  <span>
+                    ⚠️ Over character limit by {messageExcessChars.toLocaleString()} character{messageExcessChars > 1 ? "s" : ""}
+                  </span>
+                  <span>Please remove {messageExcessChars.toLocaleString()} char{messageExcessChars > 1 ? "s" : ""}</span>
+                </div>
+              ) : errors.message ? (
                 <p className="text-xs text-destructive">{errors.message.message}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {5000 - messageCharCount} characters remaining
+                </p>
               )}
             </div>
             <div className="flex flex-wrap gap-2">
