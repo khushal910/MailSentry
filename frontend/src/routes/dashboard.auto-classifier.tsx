@@ -174,19 +174,39 @@ function AutoClassifierPage() {
               setJobProgress(null);
               setIsClassifying(false);
 
-              setUnclassifiedEmails([]);
-              setSearchTerm("");
-              setPage(1);
-
               const count = statusRes.classified ?? 0;
               const skipped = statusRes.skipped ?? 0;
+              const classifiedList = statusRes.result?.classified_emails || [];
+
+              if (classifiedList.length > 0) {
+                const classifiedIds = new Set(
+                  classifiedList
+                    .map((item) => item.message_id || item.gmail_message_id)
+                    .filter(Boolean)
+                );
+                setUnclassifiedEmails((prev) =>
+                  prev.filter((email) => {
+                    const id = email.message_id || email.gmail_message_id;
+                    return !classifiedIds.has(id);
+                  })
+                );
+              } else if (count > 0) {
+                // Fallback if count > 0 but classified_emails wasn't returned
+                if (count >= unclassifiedEmails.length) {
+                  setUnclassifiedEmails([]);
+                }
+              }
+              // NOTE: If count === 0 or classification failed, emails remain in unclassifiedEmails list!
+
+              setSearchTerm("");
+              setPage(1);
 
               // Force refetch and invalidate history query cache immediately!
               await queryClient.resetQueries({ queryKey: ["history"] });
               await queryClient.invalidateQueries({ queryKey: ["history"] });
               await queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
 
-              if (count > 0) {
+              if (count > 0 && skipped === 0) {
                 toast.success(
                   `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
                   {
@@ -197,9 +217,20 @@ function AutoClassifierPage() {
                     },
                   },
                 );
-              } else if (skipped > 0) {
+              } else if (count > 0 && skipped > 0) {
+                toast.warning(
+                  `Classified ${count} email(s), but ${skipped} email(s) failed to classify and remain in queue.`,
+                  {
+                    duration: 5000,
+                    action: {
+                      label: "View History",
+                      onClick: () => navigate({ to: "/dashboard/history" }),
+                    },
+                  },
+                );
+              } else if (skipped > 0 || count === 0) {
                 toast.error(
-                  `Classification completed, but ${skipped} email(s) failed to save. Please try again.`,
+                  `Classification unsuccessful for ${skipped || unclassifiedEmails.length} email(s). All emails remain in queue.`,
                   { duration: 5000 },
                 );
               } else {
