@@ -75,9 +75,6 @@ jobs:
 
       - name: 3. Setup Astral uv Package Manager
         uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-suffix: "backend-uv"
 
       - name: 4. Install Dependencies
         run: |
@@ -139,9 +136,6 @@ jobs:
 
       - name: 3. Setup Astral uv Package Manager
         uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-suffix: "ml-service-uv"
 
       - name: 4. Install ML Microservice Dependencies
         run: |
@@ -190,9 +184,6 @@ jobs:
 
       - name: 3. Setup Astral uv Package Manager
         uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-suffix: "integration-uv"
 
       - name: 4. Install Integration Test Dependencies
         run: |
