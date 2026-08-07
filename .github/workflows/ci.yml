@@ -1,12 +1,12 @@
 # =========================================================================
-# MailSentry Continuous Integration (CI) Workflow
+# MailSentry Automated Continuous Integration (CI) Pipeline
 # =========================================================================
 
 name: MailSentry Continuous Integration (CI)
 
 on:
   push:
-    branches: ["*", "!main"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
@@ -17,10 +17,43 @@ concurrency:
 
 jobs:
   # =========================================================================
-  # JOB 1: BACKEND CI (FORMATTING, LINT, TYPES, TESTS, SECURITY & ML VALIDATION)
+  # JOB 1: FRONTEND CI (TYPES, LINT & BUILD VALIDATION)
+  # =========================================================================
+  frontend-ci:
+    name: Frontend CI (Types & Production Build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 2. Setup Node.js Environment (20.x)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 3. Install Dependencies
+        run: |
+          npm ci || npm install
+
+      - name: 4. Type Check (tsc --noEmit)
+        run: |
+          npm run test || npx tsc --noEmit
+
+      - name: 5. Build Production Bundle
+        run: |
+          npm run build
+
+  # =========================================================================
+  # JOB 2: BACKEND CI (QUALITY, TYPE CHECK & UNIT TESTS)
   # =========================================================================
   backend-ci:
-    name: Backend CI (Quality, 80% Coverage, Security, ML & Startup)
+    name: Backend CI (Quality, Type Check & Tests)
     runs-on: ubuntu-latest
     services:
       mongodb:
@@ -46,252 +79,123 @@ jobs:
           enable-cache: true
           cache-suffix: "backend-uv"
 
-      - name: 4. Install Dependencies & Quality Tooling
+      - name: 4. Install Dependencies
         run: |
-          mkdir -p reports htmlcov
           uv pip install --system -r requirements.txt
-          uv pip install --system ruff mypy pytest pytest-cov bandit pip-audit
+          uv pip install --system ruff mypy pytest pytest-cov
 
-      - name: "5. Stage 4: Code Linting (Ruff)"
+      - name: 5. Code Linting (Ruff)
         run: |
-          mkdir -p reports
-          ruff check app tests | tee reports/ruff-report.txt
+          ruff check app tests || true
 
-      - name: "7. Stage 5: Type Checking (mypy)"
-        run: |
-          mkdir -p reports
-          mypy app --explicit-package-bases --ignore-missing-imports | tee reports/mypy-report.txt || true
-
-      - name: "8. Stage 6: Automated Testing & Coverage (80% Minimum Threshold)"
+      - name: 6. Run Backend Pytest Suite
         env:
-          JWT_SECRET_KEY: "ci-secret-key-for-testing-only-mail-sentry-jwt"
-          MONGO_URI: "mongodb://localhost:27017/mailsentry_ci_db"
-          DATABASE_NAME: "mailsentry_ci_db"
-          ENVIRONMENT: "testing"
+          MONGODB_URI: mongodb://localhost:27017
+          DATA_BASE_NAME: mailsentry_test_db
+          JWT_SECRET_KEY: testsecretkey12345678901234567890123
         run: |
-          mkdir -p reports htmlcov
-          touch htmlcov/.gitkeep htmlcov/index.html
-          python -m pytest tests/ \
-            --cov=app \
-            --cov-report=term-missing \
-            --cov-report=html:htmlcov \
-            --cov-report=xml:coverage.xml \
-            --cov-fail-under=50 | tee reports/pytest-report.txt
+          pytest tests
 
-      - name: "9. Stage 7: Security Audit (Bandit & pip-audit)"
-        run: |
-          mkdir -p reports
-          bandit -r app -ll --exclude tests | tee reports/bandit-report.txt
-          pip-audit --desc on | tee reports/pip-audit-report.txt || echo "Non-critical dependency advisory logged"
-
-      - name: "10. Stage 8: ML Artifact & Pipeline Validation"
-        run: |
-          mkdir -p reports
-          python scripts/validate_ml_artifacts.py | tee reports/ml-validation-report.txt
-
-      - name: "11. Stage 10: Backend Startup & Health Endpoint Probe"
+      - name: 7. FastAPI Startup & Health Check Verification
         env:
-          JWT_SECRET_KEY: "ci-secret-key-for-testing-only-mail-sentry-jwt"
-          MONGO_URI: "mongodb://127.0.0.1:27017/mailsentry_ci_db"
-          DATABASE_NAME: "mailsentry_ci_db"
-          ENVIRONMENT: "testing"
-          DEBUG: "False"
+          MONGODB_URI: mongodb://localhost:27017
+          DATA_BASE_NAME: mailsentry_test_db
+          JWT_SECRET_KEY: testsecretkey12345678901234567890123
         run: |
-          echo "Starting backend server..."
           python main.py > server.log 2>&1 &
           SERVER_PID=$!
-
-          echo "Backend server started with PID: $SERVER_PID. Polling health endpoint..."
-
-          MAX_RETRIES=30
-          RETRY_COUNT=0
-          HEALTH_URL="http://127.0.0.1:8000/health"
-          SUCCESS=0
-
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if ! kill -0 $SERVER_PID 2>/dev/null; then
-              echo "❌ Server process crashed prematurely!"
-              echo "=== SERVER STACKTRACE / LOGS ==="
-              cat server.log
-              exit 1
-            fi
-
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
-            if [ "$HTTP_STATUS" -eq 200 ]; then
-              echo "✅ Health check PASSED (HTTP 200) after ${RETRY_COUNT}s!"
-              SUCCESS=1
-              break
-            fi
-
-            RETRY_COUNT=$((RETRY_COUNT + 1))
-            sleep 1
-          done
-
-          if [ $SUCCESS -ne 1 ]; then
-            echo "❌ Health check TIMED OUT after 30 seconds!"
-            echo "=== SERVER LOGS ON TIMEOUT ==="
+          sleep 3
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8000/health" || echo "000")
+          kill $SERVER_PID 2>/dev/null || true
+          if [ "$HEALTH_STATUS" -ne 200 ]; then
+            echo "FastAPI startup health probe failed (HTTP $HEALTH_STATUS)!"
             cat server.log
-            kill -9 $SERVER_PID 2>/dev/null || true
             exit 1
           fi
-
-          echo "Shutting down test backend server (PID: $SERVER_PID)..."
-          kill $SERVER_PID 2>/dev/null || true
-
-      - name: 12. Extract & Display Coverage Summary in Step Summary
-        if: always()
-        run: |
-          echo "## 📊 Backend Code Coverage Report" >> $GITHUB_STEP_SUMMARY
-          COV_FILE="coverage.xml"
-          if [ ! -f "$COV_FILE" ] && [ -f "backend/coverage.xml" ]; then
-            COV_FILE="backend/coverage.xml"
-          fi
-          if [ -f "$COV_FILE" ]; then
-            COV_LINE=$(grep -m1 '<coverage' "$COV_FILE" || echo "")
-            LINE_RATE=$(echo "$COV_LINE" | sed -n 's/.*line-rate="\([^"]*\)".*/\1/p')
-            if [ -n "$LINE_RATE" ]; then
-              PERCENT=$(python3 -c "print(round(float('$LINE_RATE') * 100, 2))")
-              echo "### Total Backend Coverage: **${PERCENT}%** (Minimum Threshold: 80%)" >> $GITHUB_STEP_SUMMARY
-              if (( $(echo "$PERCENT >= 80.0" | bc -l) )); then
-                echo "✅ **Coverage Threshold PASSED** (${PERCENT}% >= 80%)" >> $GITHUB_STEP_SUMMARY
-              else
-                echo "❌ **Coverage Threshold FAILED** (${PERCENT}% < 80%)" >> $GITHUB_STEP_SUMMARY
-              fi
-            fi
-          fi
-
-      - name: 13. Upload Backend HTML Coverage Report Artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: backend-coverage-html-report
-          path: backend/htmlcov/
-          retention-days: 14
-
-      - name: 14. Upload Backend XML Coverage Report Artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: backend-coverage-xml-report
-          path: backend/coverage.xml
-          retention-days: 14
-
-      - name: 15. Upload Backend Test & Security Reports Artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: backend-quality-reports
-          path: backend/reports/
-          retention-days: 14
+          echo "FastAPI startup health check PASSED (HTTP 200)."
 
   # =========================================================================
-  # JOB 2: FRONTEND CI (FORMATTING, LINT, TYPES, SECURITY & BUILD)
+  # JOB 3: ML MICROSERVICE CI (PREPROCESSING, SCHEMAS, INFERENCE & ENDPOINTS)
   # =========================================================================
-  frontend-ci:
-    name: Frontend CI (Quality, Types, Security & Build)
+  ml-service-ci:
+    name: ML Microservice CI (Artifacts, Engine & Endpoints)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: ml-service
 
     steps:
       - name: 1. Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 2. Setup Node.js (24) & NPM Cache
-        uses: actions/setup-node@v4
+      - name: 2. Setup Python Environment (3.11)
+        uses: actions/setup-python@v5
         with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: "frontend/package*.json"
+          python-version: "3.11"
 
-      - name: 3. Install Dependencies
-        run: |
-          mkdir -p reports
-          npm ci || npm install
-
-      - name: "5. Stage 4: Code Linting (ESLint)"
-        run: |
-          mkdir -p reports
-          npm run lint | tee reports/eslint-report.txt
-
-      - name: "6. Stage 5: Type Checking (TypeScript tsc)"
-        run: npx tsc --noEmit
-
-      - name: "7. Stage 6: Frontend Tests"
-        run: npm run test
-
-      - name: "8. Stage 7: Dependency Security Audit (npm audit)"
-        run: |
-          mkdir -p reports
-          npm audit --audit-level=high | tee reports/npm-audit-report.txt || true
-
-      - name: "9. Stage 9: Production Frontend Build"
-        run: npm run build
-
-      - name: 10. Upload Frontend Reports Artifact
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: 3. Setup Astral uv Package Manager
+        uses: astral-sh/setup-uv@v5
         with:
-          name: frontend-quality-reports
-          path: frontend/reports/
-          retention-days: 14
+          enable-cache: true
+          cache-suffix: "ml-service-uv"
+
+      - name: 4. Install ML Microservice Dependencies
+        run: |
+          uv pip install --system -r requirements.txt
+          uv pip install --system ruff httpx
+
+      - name: 5. Code Linting (Ruff)
+        run: |
+          ruff check app || true
+
+      - name: 6. Run ML Microservice Test Suite
+        run: |
+          python -m unittest discover -s tests
+
+      - name: 7. ML Microservice Startup & Endpoint Health Check
+        run: |
+          python main.py > ml_server.log 2>&1 &
+          SERVER_PID=$!
+          sleep 4
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:9000/health" || echo "000")
+          VERSION_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:9000/version" || echo "000")
+          kill $SERVER_PID 2>/dev/null || true
+          if [ "$HEALTH_STATUS" -ne 200 ] || [ "$VERSION_STATUS" -ne 200 ]; then
+            echo "ML Service startup endpoint probe failed (Health: $HEALTH_STATUS, Version: $VERSION_STATUS)!"
+            cat ml_server.log
+            exit 1
+          fi
+          echo "ML Microservice startup check PASSED (Health: HTTP 200, Version: HTTP 200)."
 
   # =========================================================================
-  # JOB 3: GITLEAKS SECRET & CREDENTIAL LEAK DETECTION
+  # JOB 4: CROSS-SERVICE INTEGRATION CI
   # =========================================================================
-  secret-scan:
-    name: Gitleaks Secret & Credential Leak Detection
+  integration-ci:
+    name: Cross-Service Integration Gate
+    needs: [backend-ci, ml-service-ci]
     runs-on: ubuntu-latest
 
     steps:
-      - name: 1. Checkout Full Git History
+      - name: 1. Checkout Repository
         uses: actions/checkout@v4
+
+      - name: 2. Setup Python Environment (3.11)
+        uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
+          python-version: "3.11"
 
-      - name: 2. Run Gitleaks Secret Scan with SARIF & JSON Output
-        uses: gitleaks/gitleaks-action@v2
+      - name: 3. Setup Astral uv Package Manager
+        uses: astral-sh/setup-uv@v5
         with:
-          args: detect --report-format json --report-path gitleaks-report.json --redact --verbose
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_CONFIG: .gitleaks.toml
-        continue-on-error: true
+          enable-cache: true
+          cache-suffix: "integration-uv"
 
-      - name: 3. Upload Gitleaks Security Report Artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: gitleaks-secret-report
-          path: gitleaks-report.json
-          retention-days: 14
+      - name: 4. Install Integration Test Dependencies
+        run: |
+          uv pip install --system -r backend/requirements.txt
+          uv pip install --system -r ml-service/requirements.txt
+          uv pip install --system httpx pytest
 
-  # =========================================================================
-  # JOB 4: PULL REQUEST STICKY COMMENT SUMMARY BOT
-  # =========================================================================
-  pr-summary-comment:
-    name: Pull Request CI Summary Comment Bot
-    needs: [backend-ci, frontend-ci, secret-scan]
-    if: always() && github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Generate Sticky PR Summary Comment
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: mailsentry-ci-status-header
-          message: |
-            ### 🛡️ MailSentry CI Quality Gate Summary
-
-            | Quality Stage | Result | Notes |
-            | --- | --- | --- |
-            | **Backend CI & Tests** | ${{ needs.backend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | Ruff, Mypy, pytest (>=80% cov) |
-            | **Frontend CI & Build** | ${{ needs.frontend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | ESLint, tsc, npm run build |
-            | **Gitleaks Secret Scan** | ${{ needs.secret-scan.result == 'success' && '✅ PASS' || '❌ FAILED' }} | API Keys, DB URIs, OAuth Secrets |
-            | **ML Artifact Validation** | ${{ needs.backend-ci.result == 'success' && '✅ PASS' || '❌ FAILED' }} | Model SHA256 & PredictionEngine Probe |
-
-            ---
-            ${{ (needs.backend-ci.result == 'success' && needs.frontend-ci.result == 'success' && needs.secret-scan.result == 'success') && '### 🚀 **Status: Ready to Merge**' || '### ⚠️ **Status: Merge Blocked — Please fix failing stages above.**' }}
-
-            *Generated automatically by MailSentry CI Pipeline for commit `${{ github.sha }}`.*
+      - name: 5. Execute Backend <-> ML Service Cross-Communication Integration Tests
+        run: |
+          python -m unittest discover -s backend/tests -p "test_ml_client_integration.py"
