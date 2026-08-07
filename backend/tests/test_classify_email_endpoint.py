@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-
+from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
 from app.dependencies.auth import get_current_user
@@ -54,14 +54,16 @@ class TestClassifyEmailEndpoint(unittest.TestCase):
         self.assertEqual(data.get("predicted_label"), "spam")
         self.assertEqual(data.get("predicted_score"), 0.96)
 
-    @patch("app.services.ml_model_service.MLModelService.load_latest_model")
-    def test_classify_email_model_missing_returns_500(self, mock_load_model):
-        """Should return 500 Internal Server Error if ML classification model is missing or corrupted."""
+    @patch("app.services.ml_model_service.MLModelService.get_model_or_raise")
+    def test_classify_email_model_missing_returns_500(self, mock_get_model):
+        """Should return 500 Internal Server Error if ML classification service raises 500."""
         mock_user = {"_id": self.user_id, "username": "testuser"}
         app.dependency_overrides[get_current_user] = lambda: mock_user
 
-        # Simulate missing/corrupted model returning None
-        mock_load_model.return_value = None
+        mock_get_model.side_effect = HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="ML classification model is not available",
+        )
 
         response = self.client.post(
             "/api/classify-email",

@@ -71,8 +71,18 @@ class Settings:
 
         REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 
-        MONGO_URI = os.getenv("MONGO_URI")
-        DATABASE_NAME = os.getenv("DATABASE_NAME")
+        MONGO_URI = (
+            os.getenv("MONGO_URI")
+            or os.getenv("MONGODB_URI")
+            or os.getenv("DATABASE_URL")
+            or "mongodb://localhost:27017"
+        )
+        DATABASE_NAME = (
+            os.getenv("DATABASE_NAME")
+            or os.getenv("DATA_BASE_NAME")
+            or os.getenv("DB_NAME")
+            or "mail_sentry_db"
+        )
         USER_COLLECTION_NAME = os.getenv("USER_COLLECTION_NAME", "users")
         EMAIL_COLLECTION_NAME = os.getenv("EMAIL_COLLECTION_NAME", "emails")
         MODEL_COLLECTION_NAME = os.getenv("MODEL_COLLECTION_NAME", "models")
