@@ -24,8 +24,10 @@ try:
 except ImportError:
     np = None
     pd = None
-    BaseEstimator = object
-    TransformerMixin = object
+    class BaseEstimator:
+        pass
+    class TransformerMixin:
+        pass
 
 logger = logging.getLogger(__name__)
 
