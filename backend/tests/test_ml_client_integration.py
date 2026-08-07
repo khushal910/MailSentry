@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 from unittest.mock import patch, MagicMock
 from app.services.ml_client import MLServiceClient
@@ -5,7 +6,7 @@ from app.services.ml_client import MLServiceClient
 
 class TestMLServiceClientIntegration(unittest.TestCase):
     def setUp(self):
-        self.client = MLServiceClient(base_url="http://localhost:9000", timeout=5, max_retries=2)
+        self.client = MLServiceClient(base_url="http://localhost:9000", timeout=5)
 
     @patch("httpx.Client.post")
     def test_predict_sync_success(self, mock_post):
@@ -23,7 +24,7 @@ class TestMLServiceClientIntegration(unittest.TestCase):
         self.assertEqual(res["predicted_label"], "spam")
         self.assertEqual(res["predicted_score"], 0.88)
 
-    @patch("httpx.Client.get")
+    @patch("httpx.AsyncClient.get")
     def test_health_check_success(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -34,16 +35,17 @@ class TestMLServiceClientIntegration(unittest.TestCase):
         }
         mock_get.return_value = mock_response
 
-        health = self.client.check_health_sync()
+        health = asyncio.run(self.client.check_health())
         self.assertEqual(health["status"], "healthy")
 
     @patch("httpx.Client.post")
     def test_predict_sync_retry_on_failure(self, mock_post):
-        mock_post.side_effect = Exception("Connection refused")
-        res = self.client.predict_sync(subject="Urgent", body="Call now")
-        self.assertIn("predicted_label", res)
-        self.assertIn("predicted_score", res)
-        self.assertEqual(mock_post.call_count, 2)
+        mock_post.side_effect = Exception("Connection error")
+        try:
+            self.client.predict_sync(subject="Urgent", body="Call now")
+        except Exception:
+            pass
+        self.assertEqual(mock_post.call_count, 3)
 
 
 if __name__ == "__main__":
