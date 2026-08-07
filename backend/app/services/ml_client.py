@@ -33,7 +33,7 @@ class MLServiceClient:
             headers["X-Internal-Token"] = self.api_key
         return headers
 
-    async def check_health() -> Dict[str, Any]:
+    async def check_health(self) -> Dict[str, Any]:
         """
         Probes the ml-service /health endpoint.
         Returns health status dict or raises Exception if unreachable.
