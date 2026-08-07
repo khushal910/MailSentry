@@ -585,3 +585,19 @@ class GmailFetchService:
                 f"[GmailAPI] Error querying Gmail API for user_id={user_id}: {err}"
             )
             return []
+
+    def _classify_one(self, raw: dict[str, Any]) -> dict[str, Any]:
+        """Classifies a single raw email dict using model_service or PredictionEngine singleton."""
+        subject = raw.get("subject", "")
+        body = raw.get("body") or raw.get("snippet", "")
+
+        if hasattr(self, "model_service") and self.model_service is not None:
+            if hasattr(self.model_service, "classify_text"):
+                return self.model_service.classify_text(subject, body)
+            if hasattr(self.model_service, "predict"):
+                return self.model_service.predict(subject=subject, body=body)
+
+        from app.services.prediction_engine import PredictionEngine
+
+        engine = PredictionEngine()
+        return engine.predict(subject=subject, body=body)

@@ -301,17 +301,20 @@ class MLModelService:
                     label_encoder, "inverse_transform"
                 ):
                     try:
-                        label = str(label_encoder.inverse_transform([raw_label])[0])
+                        raw_str = str(label_encoder.inverse_transform([raw_label])[0]).lower()
+                        label = "spam" if raw_str in ("spam", "1", "1.0") else "safe"
                     except Exception:
-                        label = str(raw_label)
+                        raw_str = str(raw_label).lower()
+                        label = "spam" if raw_str in ("spam", "1", "1.0") else "safe"
                 else:
-                    label = str(raw_label)
+                    raw_str = str(raw_label).lower()
+                    label = "spam" if raw_str in ("spam", "1", "1.0") else "safe"
 
-                score = 0.85
+                score = 0.50
                 if hasattr(model, "predict_proba"):
                     try:
                         probas = model.predict_proba(features)[0]
-                        score = float(max(probas))
+                        score = round(float(max(probas)), 4)
                     except ValueError as val_err:
                         if "Expected 2D array" in str(val_err):
                             try:
@@ -319,9 +322,17 @@ class MLModelService:
 
                                 arr = np.array(features).reshape(-1, 1)
                                 probas = model.predict_proba(arr)[0]
-                                score = float(max(probas))
+                                score = round(float(max(probas)), 4)
                             except Exception:
                                 pass
+                    except Exception:
+                        pass
+                elif hasattr(model, "decision_function"):
+                    try:
+                        import numpy as np
+                        dec = float(model.decision_function(features)[0])
+                        prob = float(1.0 / (1.0 + np.exp(-abs(dec))))
+                        score = round(prob, 4)
                     except Exception:
                         pass
 
