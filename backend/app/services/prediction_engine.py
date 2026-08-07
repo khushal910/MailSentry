@@ -98,7 +98,6 @@ class SklearnPredictor(BasePredictor):
     def _load_artifact(champion_dir: str, filename: str) -> Any | None:
         """Load a pickle/joblib artifact from champion_dir or champion_dir/preprocessor/."""
         import builtins
-        import joblib
         import pickle
         import sys
         import types
@@ -120,17 +119,14 @@ class SklearnPredictor(BasePredictor):
         path = next((p for p in possible_paths if os.path.exists(p)), None)
         if path:
             try:
-                try:
-                    obj = joblib.load(path)
-                except (AttributeError, ModuleNotFoundError, ImportError):
-                    with open(path, "rb") as f:
-                        class CustomUnpickler(pickle.Unpickler):
-                            def find_class(self, module, name):
-                                if name == "URLFeatureExtractor":
-                                    return ml_prep.URLFeatureExtractor
-                                return super().find_class(module, name)
+                with open(path, "rb") as f:
+                    class CustomUnpickler(pickle.Unpickler):
+                        def find_class(self, module, name):
+                            if name == "URLFeatureExtractor":
+                                return ml_prep.URLFeatureExtractor
+                            return super().find_class(module, name)
 
-                        obj = CustomUnpickler(f).load()
+                    obj = CustomUnpickler(f).load()
                 logger.info("Loaded %s from %s", filename, path)
                 return obj
             except Exception as exc:
