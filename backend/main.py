@@ -17,13 +17,20 @@ async def lifespan(app: FastAPI):
         from app.repositories.model_repository import ModelRepository
         from app.repositories.dashboard_repository import DashboardRepository
         from app.repositories.google_account_repository import GoogleAccountRepository
-        from app.services.ml_model_service import MLModelService
 
         EmailRepository().ensure_indexes()
         ModelRepository().ensure_indexes()
         DashboardRepository().ensure_indexes()
         GoogleAccountRepository().ensure_indexes()
-        MLModelService().load_latest_model()
+
+        from app.services.ml_client import MLServiceClient
+
+        try:
+            client = MLServiceClient()
+            await client.check_health()
+            print("Successfully connected to independent ML Service microservice.")
+        except Exception as ml_err:
+            print(f"ML Service health check probe warning at startup: {ml_err}")
     except Exception as e:
         print(f"Startup initialization warning: {e}")
     yield

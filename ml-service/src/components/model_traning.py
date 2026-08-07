@@ -1,6 +1,6 @@
 """
 Model training pipeline for classification models.
-Steps: 
+Steps:
   1. loads transformed datasets
   2. trains multiple classifiers (skips any that fail)
   3. evaluates them using standard metrics (skips any that fail)
@@ -36,7 +36,7 @@ from src.components.benchmark import Benchmark
 from src.components.checkpoint_manager import CheckpointManager
 from src.components.training_state_manager import TrainingStateManager
 from src.config.hyperparameter_config import PARAM_SEARCH_SPACES
-from src.exception import MyException 
+from src.exception import MyException
 from src.logger import logger
 from src.services.storage_service import LocalStorageService
 from src.utils.main_utils import (
@@ -47,7 +47,6 @@ from src.utils.main_utils import (
 from src.utils.mlflow_utils import log_model_to_mlflow
 from src.configuration.mlflow_connection import setup_mlflow
 from src.entity.config_entity import _ModelBundle, _ModelEvaluation
-
 
 
 class ModelTrainer:
@@ -63,15 +62,17 @@ class ModelTrainer:
         try:
             self.transform_config = DataTransformationConfig()
             self.train_model_config = TrainModelConfig()
-                        
-            self.transformed_train_file_path = self.transform_config.transform_train_file
+
+            self.transformed_train_file_path = (
+                self.transform_config.transform_train_file
+            )
             self.transformed_test_file_path = self.transform_config.transform_test_file
             self.target_column_name = TARGET_COLUMN
             self.get_model_list = ModelList().get_models()
             self.model_evaluate_metric = self.train_model_config.model_evaluate_metric
-        
+
         except Exception as exc:
-            raise MyException(exc, sys) 
+            raise MyException(exc, sys)
 
     def load_data(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -96,16 +97,20 @@ class ModelTrainer:
             )
             return train_df, test_df
         except Exception as exc:
-            raise MyException(exc, sys) 
+            raise MyException(exc, sys)
 
-    def _split_features_target(self, data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
+    def _split_features_target(
+        self, data: pd.DataFrame
+    ) -> Tuple[pd.DataFrame, pd.Series]:
         """
         Split a dataframe into features and target.
         """
         try:
             target_column = self.target_column_name
             if target_column not in data.columns:
-                raise ValueError(f"Target column '{target_column}' not found in dataset.")
+                raise ValueError(
+                    f"Target column '{target_column}' not found in dataset."
+                )
 
             x = data.drop(columns=[target_column])
             y = data[target_column]
@@ -136,7 +141,6 @@ class ModelTrainer:
             n_jobs=1,
         )
 
-
         for model_name, bundle in models.items():
             logger.info("Processing model: %s", model_name)
             try:
@@ -146,10 +150,14 @@ class ModelTrainer:
                 )
 
                 if is_tabpfn:
-                    logger.info("Fitting TabPFN directly without RandomizedSearchCV: %s", model_name)
+                    logger.info(
+                        "Fitting TabPFN directly without RandomizedSearchCV: %s",
+                        model_name,
+                    )
                     bundle.model.fit(x_train.to_numpy(), y_train.to_numpy())
                     model_params = (
-                        getattr(bundle.model, "get_params", lambda: {})() or bundle.params
+                        getattr(bundle.model, "get_params", lambda: {})()
+                        or bundle.params
                     )
                     trained_bundle = _ModelBundle(
                         name=bundle.name,
@@ -178,15 +186,17 @@ class ModelTrainer:
 
         return trained_models, training_errors
 
-
-
     def _get_model_scores(self, model: Any, x_test: pd.DataFrame) -> Any:
         """
         Compute score outputs required for ROC-AUC.
         """
         if hasattr(model, "predict_proba"):
             probabilities = model.predict_proba(x_test)
-            if hasattr(probabilities, "ndim") and probabilities.ndim == 2 and probabilities.shape[1] > 1:
+            if (
+                hasattr(probabilities, "ndim")
+                and probabilities.ndim == 2
+                and probabilities.shape[1] > 1
+            ):
                 return probabilities[:, 1]
             return probabilities
 
@@ -253,7 +263,9 @@ class ModelTrainer:
         Raises an exception if no model succeeded.
         """
         if not evaluated_models:
-            raise ValueError("No models were successfully evaluated. Cannot select a best model.")
+            raise ValueError(
+                "No models were successfully evaluated. Cannot select a best model."
+            )
 
         best_model_name = max(
             evaluated_models,
@@ -281,16 +293,23 @@ class ModelTrainer:
             registry = ModelRegistry(self.train_model_config.model_registry_dir)
 
             if not registry.has_champion():
-                logger.info("No production champion found in ModelRegistry. New model will be saved.")
+                logger.info(
+                    "No production champion found in ModelRegistry. New model will be saved."
+                )
                 return candidate_model, True
 
-            logger.info("Loading existing champion model from ModelRegistry: %s", registry.champion_path)
+            logger.info(
+                "Loading existing champion model from ModelRegistry: %s",
+                registry.champion_path,
+            )
             meta = registry.load_champion_metadata()
             loader = ModelLoaderFactory.create(meta)
             production_model = loader.load(registry.champion_path, meta)
 
             production_pred = production_model.predict(x_test.to_numpy())
-            production_score = self._get_model_scores(production_model, x_test.to_numpy())
+            production_score = self._get_model_scores(
+                production_model, x_test.to_numpy()
+            )
 
             production_metrics = evaluate_classification_model(
                 y_true=y_test,
@@ -301,26 +320,64 @@ class ModelTrainer:
             candidate_score = candidate_model.metrics[self.model_evaluate_metric]
             production_score_val = production_metrics[self.model_evaluate_metric]
 
-            logger.info("==================================================================")
+            logger.info(
+                "=================================================================="
+            )
             logger.info("  PRODUCTION MODEL EVALUATION & COMPARISON LOG")
-            logger.info("  Best Newly Trained Model in Current Run: %s (%s: %.6f)", candidate_model.name, self.model_evaluate_metric, candidate_score)
-            logger.info("  Active Production Champion Model:       %s (%s: %.6f)", meta.model_name, self.model_evaluate_metric, production_score_val)
+            logger.info(
+                "  Best Newly Trained Model in Current Run: %s (%s: %.6f)",
+                candidate_model.name,
+                self.model_evaluate_metric,
+                candidate_score,
+            )
+            logger.info(
+                "  Active Production Champion Model:       %s (%s: %.6f)",
+                meta.model_name,
+                self.model_evaluate_metric,
+                production_score_val,
+            )
 
             if candidate_score > production_score_val:
-                logger.info("  RESULT: Candidate '%s' OUTPERFORMS current production '%s' (%.6f > %.6f)!", candidate_model.name, meta.model_name, candidate_score, production_score_val)
-                logger.info("  ACTION: Promoting '%s' as the NEW Production Model!", candidate_model.name)
-                logger.info("==================================================================")
+                logger.info(
+                    "  RESULT: Candidate '%s' OUTPERFORMS current production '%s' (%.6f > %.6f)!",
+                    candidate_model.name,
+                    meta.model_name,
+                    candidate_score,
+                    production_score_val,
+                )
+                logger.info(
+                    "  ACTION: Promoting '%s' as the NEW Production Model!",
+                    candidate_model.name,
+                )
+                logger.info(
+                    "=================================================================="
+                )
                 return candidate_model, True
 
-            logger.info("  RESULT: Existing production model '%s' (%.6f) is STILL BETTER than candidate '%s' (%.6f).", meta.model_name, production_score_val, candidate_model.name, candidate_score)
-            logger.info("  ACTION: Production model '%s' retained. Newly trained '%s' will NOT replace production.", meta.model_name, candidate_model.name)
-            logger.info("==================================================================")
-            return _ModelEvaluation(
-                name=meta.model_name,
-                model=production_model,
-                params={},
-                metrics=production_metrics,
-            ), False
+            logger.info(
+                "  RESULT: Existing production model '%s' (%.6f) is STILL BETTER than candidate '%s' (%.6f).",
+                meta.model_name,
+                production_score_val,
+                candidate_model.name,
+                candidate_score,
+            )
+            logger.info(
+                "  ACTION: Production model '%s' retained. Newly trained '%s' will NOT replace production.",
+                meta.model_name,
+                candidate_model.name,
+            )
+            logger.info(
+                "=================================================================="
+            )
+            return (
+                _ModelEvaluation(
+                    name=meta.model_name,
+                    model=production_model,
+                    params={},
+                    metrics=production_metrics,
+                ),
+                False,
+            )
         except Exception as exc:
             logger.warning(
                 "Production model comparison failed. Falling back to new candidate model. Reason: %s",
@@ -329,10 +386,7 @@ class ModelTrainer:
             return candidate_model, True
 
     def save_best_model(
-        self,
-        winner: _ModelEvaluation,
-        should_save: bool,
-        x_test: pd.DataFrame
+        self, winner: _ModelEvaluation, should_save: bool, x_test: pd.DataFrame
     ) -> None:
         """
         Save the best model using ModelSaverFactory, Benchmark, and ModelRegistry.
@@ -340,29 +394,41 @@ class ModelTrainer:
         """
         try:
             # Always save the finalized winning model object to artifact/model_trainer/model.pkl
-            os.makedirs(os.path.dirname(self.train_model_config.trained_model_file_path), exist_ok=True)
+            os.makedirs(
+                os.path.dirname(self.train_model_config.trained_model_file_path),
+                exist_ok=True,
+            )
             import joblib
+
             joblib.dump(winner.model, self.train_model_config.trained_model_file_path)
-            logger.info("Saved finalized champion model '%s' to pipeline artifact: %s", winner.name, self.train_model_config.trained_model_file_path)
+            logger.info(
+                "Saved finalized champion model '%s' to pipeline artifact: %s",
+                winner.name,
+                self.train_model_config.trained_model_file_path,
+            )
 
             if should_save:
-                logger.info("Promoting & saving new best model '%s' to ModelRegistry & Backend Storage.", winner.name)
-
-                is_transformer = (
-                    winner.name.lower().startswith("distilbert")
-                    or hasattr(winner.model, "save_pretrained")
+                logger.info(
+                    "Promoting & saving new best model '%s' to ModelRegistry & Backend Storage.",
+                    winner.name,
                 )
+
+                is_transformer = winner.name.lower().startswith(
+                    "distilbert"
+                ) or hasattr(winner.model, "save_pretrained")
 
                 framework = "transformers" if is_transformer else "sklearn"
                 serialization = "huggingface" if is_transformer else "joblib"
                 input_type = "raw_text" if is_transformer else "tfidf"
-                preprocessor_name = "distilbert-tokenizer" if is_transformer else "tfidf"
+                preprocessor_name = (
+                    "distilbert-tokenizer" if is_transformer else "tfidf"
+                )
 
                 # 1. Run Benchmark Stage
                 benchmark_results = Benchmark().run(
                     model=winner.model,
                     x_test=x_test.to_numpy(),
-                    serialization=serialization
+                    serialization=serialization,
                 )
 
                 # 2. Build Rich Metadata
@@ -386,7 +452,9 @@ class ModelTrainer:
 
                 # 3. Create staging directory for SaverFactory
                 registry = ModelRegistry(self.train_model_config.model_registry_dir)
-                staging_dir = os.path.join(self.train_model_config.model_registry_dir, "_staging_tmp")
+                staging_dir = os.path.join(
+                    self.train_model_config.model_registry_dir, "_staging_tmp"
+                )
                 os.makedirs(staging_dir, exist_ok=True)
 
                 try:
@@ -396,28 +464,38 @@ class ModelTrainer:
                     if os.path.exists(self.transform_config.preprocessor_file):
                         shutil.copy2(
                             self.transform_config.preprocessor_file,
-                            os.path.join(staging_prep_dir, "preprocessing.pkl")
+                            os.path.join(staging_prep_dir, "preprocessing.pkl"),
                         )
                     if os.path.exists(self.transform_config.label_encoder_file_path):
                         shutil.copy2(
                             self.transform_config.label_encoder_file_path,
-                            os.path.join(staging_prep_dir, "label_encoder.pkl")
+                            os.path.join(staging_prep_dir, "label_encoder.pkl"),
                         )
 
                     # Save model using SaverFactory strategy
                     saver = ModelSaverFactory.create(metadata)
-                    saver.save(model=winner.model, target_dir=staging_dir, metadata=metadata)
+                    saver.save(
+                        model=winner.model, target_dir=staging_dir, metadata=metadata
+                    )
 
                     # 4. Promote to Champion in ModelRegistry
-                    registry.promote_champion(staging_dir=staging_dir, metadata=metadata)
+                    registry.promote_champion(
+                        staging_dir=staging_dir, metadata=metadata
+                    )
 
                 finally:
                     if os.path.exists(staging_dir):
                         shutil.rmtree(staging_dir)
 
-                    logger.info("Successfully persisted winning model '%s' to ModelRegistry.", winner.name)
+                    logger.info(
+                        "Successfully persisted winning model '%s' to ModelRegistry.",
+                        winner.name,
+                    )
             else:
-                logger.info("Keeping existing production model '%s' in backend storage unchanged.", winner.name)
+                logger.info(
+                    "Keeping existing production model '%s' in backend storage unchanged.",
+                    winner.name,
+                )
         except Exception as exc:
             raise MyException(exc, sys) from exc
 
@@ -441,10 +519,9 @@ class ModelTrainer:
             )
             os.makedirs(checkpoint_dir, exist_ok=True)
 
-            is_transformer = (
-                model_eval.name.lower().startswith("distilbert")
-                or hasattr(model_eval.model, "save_pretrained")
-            )
+            is_transformer = model_eval.name.lower().startswith(
+                "distilbert"
+            ) or hasattr(model_eval.model, "save_pretrained")
 
             framework = "transformers" if is_transformer else "sklearn"
             serialization = "huggingface" if is_transformer else "joblib"
@@ -466,7 +543,9 @@ class ModelTrainer:
             )
 
             saver = ModelSaverFactory.create(metadata)
-            saver.save(model=model_eval.model, target_dir=checkpoint_dir, metadata=metadata)
+            saver.save(
+                model=model_eval.model, target_dir=checkpoint_dir, metadata=metadata
+            )
 
             write_yaml_file(
                 os.path.join(checkpoint_dir, "metrics.yaml"), model_eval.metrics
@@ -578,7 +657,9 @@ class ModelTrainer:
                 tmp_chk_dir = checkpoint_mgr.save_temporary_checkpoint(
                     distilbert_eval, config_hash=config_hash
                 )
-                if checkpoint_mgr.verify_checkpoint(tmp_chk_dir, expected_config_hash=config_hash):
+                if checkpoint_mgr.verify_checkpoint(
+                    tmp_chk_dir, expected_config_hash=config_hash
+                ):
                     final_chk_dir = checkpoint_mgr.promote_checkpoint(distilbert_name)
                     state.mark_completed(
                         distilbert_name,
@@ -590,7 +671,9 @@ class ModelTrainer:
                         "DistilBERT evaluated successfully, verified, and promoted to candidate list."
                     )
                 else:
-                    err_msg = "DistilBERT temporary staging checkpoint verification failed."
+                    err_msg = (
+                        "DistilBERT temporary staging checkpoint verification failed."
+                    )
                     logger.error(err_msg)
                     checkpoint_mgr.cleanup_temporary_checkpoint(distilbert_name)
                     evaluation_errors[distilbert_name] = err_msg
@@ -683,8 +766,12 @@ class ModelTrainer:
                 )
 
                 if state.is_completed(model_name):
-                    if checkpoint_mgr.validate_checkpoint(model_name, current_config_hash):
-                        logger.info("Checkpoint validated for %s. Skipping...", model_name)
+                    if checkpoint_mgr.validate_checkpoint(
+                        model_name, current_config_hash
+                    ):
+                        logger.info(
+                            "Checkpoint validated for %s. Skipping...", model_name
+                        )
                         try:
                             loaded_eval = checkpoint_mgr.load_checkpoint(model_name)
                             evaluated_models[model_name] = loaded_eval
@@ -761,10 +848,14 @@ class ModelTrainer:
                     tmp_chk_dir = checkpoint_mgr.save_temporary_checkpoint(
                         eval_obj, config_hash=current_config_hash
                     )
-                    if checkpoint_mgr.verify_checkpoint(tmp_chk_dir, expected_config_hash=current_config_hash):
+                    if checkpoint_mgr.verify_checkpoint(
+                        tmp_chk_dir, expected_config_hash=current_config_hash
+                    ):
                         final_chk_dir = checkpoint_mgr.promote_checkpoint(model_name)
                         state.mark_completed(
-                            model_name, checkpoint=final_chk_dir, config_hash=current_config_hash
+                            model_name,
+                            checkpoint=final_chk_dir,
+                            config_hash=current_config_hash,
                         )
                         evaluated_models[model_name] = eval_obj
                     else:
@@ -809,19 +900,38 @@ class ModelTrainer:
             )
 
             if not self.train_model_config.enable_distilbert:
-                logger.info("DistilBERT fine-tuning disabled via ENABLE_DISTILBERT=false.")
-                if state.is_completed(distilbert_name) and checkpoint_mgr.validate_checkpoint(distilbert_name, distilbert_config_hash):
+                logger.info(
+                    "DistilBERT fine-tuning disabled via ENABLE_DISTILBERT=false."
+                )
+                if state.is_completed(
+                    distilbert_name
+                ) and checkpoint_mgr.validate_checkpoint(
+                    distilbert_name, distilbert_config_hash
+                ):
                     try:
-                        distilbert_eval = checkpoint_mgr.load_checkpoint(distilbert_name)
+                        distilbert_eval = checkpoint_mgr.load_checkpoint(
+                            distilbert_name
+                        )
                         evaluated_models[distilbert_name] = distilbert_eval
-                        logger.info("Loaded pre-existing validated checkpoint for disabled DistilBERT.")
+                        logger.info(
+                            "Loaded pre-existing validated checkpoint for disabled DistilBERT."
+                        )
                     except Exception as load_err:
-                        logger.warning("DistilBERT disabled and checkpoint unreadable: %s", load_err)
+                        logger.warning(
+                            "DistilBERT disabled and checkpoint unreadable: %s",
+                            load_err,
+                        )
             elif state.is_completed(distilbert_name):
-                if checkpoint_mgr.validate_checkpoint(distilbert_name, distilbert_config_hash):
-                    logger.info("Checkpoint validated for %s. Skipping...", distilbert_name)
+                if checkpoint_mgr.validate_checkpoint(
+                    distilbert_name, distilbert_config_hash
+                ):
+                    logger.info(
+                        "Checkpoint validated for %s. Skipping...", distilbert_name
+                    )
                     try:
-                        distilbert_eval = checkpoint_mgr.load_checkpoint(distilbert_name)
+                        distilbert_eval = checkpoint_mgr.load_checkpoint(
+                            distilbert_name
+                        )
                         evaluated_models[distilbert_name] = distilbert_eval
                     except Exception as load_err:
                         logger.warning(
@@ -831,17 +941,29 @@ class ModelTrainer:
                         )
                         state.mark_pending(distilbert_name)
                         self._train_and_checkpoint_distilbert(
-                            state, checkpoint_mgr, distilbert_config_hash, evaluated_models, evaluation_errors
+                            state,
+                            checkpoint_mgr,
+                            distilbert_config_hash,
+                            evaluated_models,
+                            evaluation_errors,
                         )
                 else:
                     state.mark_pending(distilbert_name)
                     self._train_and_checkpoint_distilbert(
-                        state, checkpoint_mgr, distilbert_config_hash, evaluated_models, evaluation_errors
+                        state,
+                        checkpoint_mgr,
+                        distilbert_config_hash,
+                        evaluated_models,
+                        evaluation_errors,
                     )
             else:
                 state.mark_pending(distilbert_name)
                 self._train_and_checkpoint_distilbert(
-                    state, checkpoint_mgr, distilbert_config_hash, evaluated_models, evaluation_errors
+                    state,
+                    checkpoint_mgr,
+                    distilbert_config_hash,
+                    evaluated_models,
+                    evaluation_errors,
                 )
 
             # 3. Select best candidate model
@@ -874,9 +996,15 @@ class ModelTrainer:
                 if name in evaluated_models:
                     model_status[name] = {"status": "completed"}
                 elif name in training_errors:
-                    model_status[name] = {"status": "failed", "reason": training_errors[name]}
+                    model_status[name] = {
+                        "status": "failed",
+                        "reason": training_errors[name],
+                    }
                 elif name in evaluation_errors:
-                    model_status[name] = {"status": "failed", "reason": evaluation_errors[name]}
+                    model_status[name] = {
+                        "status": "failed",
+                        "reason": evaluation_errors[name],
+                    }
                 else:
                     status_in_state = state.get_model_status(name)
                     if status_in_state:

@@ -1,0 +1,36 @@
+model_metadata:
+  name: "spam_classifier"
+  version: "v1.0.0"
+  description: "MailSentry Spam & Security Classifier Model"
+  framework: "scikit-learn"
+  algorithm: "LogisticRegression"
+  vectorizer: "TfidfVectorizer"
+
+input_schema:
+  fields:
+    - name: subject
+      type: string
+      required: false
+      description: "Email subject line"
+    - name: body
+      type: string
+      required: true
+      description: "Full email body or snippet text"
+  preprocessing:
+    - "combined_subject_and_body"
+    - "url_feature_extraction"
+    - "html_strip_and_lowercase"
+    - "punctuation_removal"
+    - "whitespace_collapse"
+
+output_schema:
+  fields:
+    - name: predicted_label
+      type: string
+      enum: ["spam", "safe"]
+    - name: predicted_score
+      type: float
+      range: [0.0, 1.0]
+    - name: classified_at
+      type: string
+      format: iso8601

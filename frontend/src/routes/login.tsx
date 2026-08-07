@@ -53,12 +53,12 @@ function LoginPage() {
   }, [oauthError]);
 
   useEffect(() => {
-    // If the user is already authenticated, send them to target page or dashboard
+    // If the user is already authenticated, send them to target page or dashboard smoothly
     if (!isLoading && isAuthenticated) {
       const target = redirect && redirect.startsWith("/") ? redirect : "/dashboard";
-      window.location.href = target;
+      navigate({ to: target, replace: true });
     }
-  }, [isLoading, isAuthenticated, redirect]);
+  }, [isLoading, isAuthenticated, redirect, navigate]);
 
   const {
     register,
@@ -70,9 +70,8 @@ function LoginPage() {
     try {
       const res = await login(values.email, values.password);
       if (res.success) {
-        toast.success(res.message);
         const target = redirect && redirect.startsWith("/") ? redirect : "/dashboard";
-        window.location.href = target;
+        navigate({ to: target, replace: true });
       } else {
         toast.error(res.message);
       }

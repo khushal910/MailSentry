@@ -21,10 +21,23 @@ storage = BackendModelStorage()
 async def get_production_model():
     """
     GET /api/v1/model/production (also accessible at /api/model/production)
-    Returns metadata of the current production model loaded from backend/models/production/metadata.json.
+    Returns metadata of the current production model, enriched with live ml-service status.
     """
     try:
         data = storage.get_production_metadata()
+        from app.services.ml_client import MLServiceClient
+        try:
+            client = MLServiceClient()
+            ml_health = await client.check_health()
+            data["serving_status"] = "Active Microservice"
+            data["ml_service_url"] = client.base_url
+            data["ml_service_healthy"] = ml_health.get("status") == "healthy"
+            if ml_health.get("version"):
+                data["version"] = ml_health.get("version")
+        except Exception:
+            data["serving_status"] = "Fallback Engine"
+            data["ml_service_healthy"] = False
+
         return return_response(
             status_code=status.HTTP_200_OK,
             message="Production model details retrieved successfully",

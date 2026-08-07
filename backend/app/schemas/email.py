@@ -13,7 +13,7 @@ class EmailBaseSchema(BaseModel):
     message_id: str = Field(..., min_length=1, description="Unique Gmail message ID")
     thread_id: str | None = Field(default=None, description="Optional Gmail thread ID")
     subject: str = Field(
-        default="", max_length=255, description="Email subject, max 255 chars"
+        default="", description="Email subject"
     )
     snippet: str | None = Field(
         default=None, description="Short snippet preview for UI display"
@@ -40,10 +40,7 @@ class EmailBaseSchema(BaseModel):
 
     @field_validator("subject")
     @classmethod
-    def validate_subject_length(cls, v: str) -> str:
-        if v and len(v) > 255:
-            # Truncate to 255 characters to guarantee max length constraint
-            return v[:255]
+    def validate_subject(cls, v: str) -> str:
         return v or ""
 
 
@@ -77,16 +74,14 @@ class ClassifyEmailRequestSchema(BaseModel):
     """
 
     subject: str = Field(
-        default="", max_length=255, description="Email subject, max 255 chars"
+        default="", description="Email subject"
     )
     body: str | None = Field(default="", description="Full or snippet of email body")
     message: str | None = Field(default=None, description="Alias for body")
 
     @field_validator("subject")
     @classmethod
-    def truncate_subject(cls, v: str) -> str:
-        if v and len(v) > 255:
-            return v[:255]
+    def validate_subject(cls, v: str) -> str:
         return v or ""
 
     @property

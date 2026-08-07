@@ -24,7 +24,7 @@ interface AuthContextValue {
     password: string,
   ) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
-  refresh: () => Promise<void>;
+  refresh: (showLoading?: boolean) => Promise<AuthUser | null>;
   setUser: (user: AuthUser | null) => void;
   triggerSessionExpired: (redirectUrl?: string) => void;
 }
@@ -63,16 +63,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [triggerSessionExpired]);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(async (showLoading = false): Promise<AuthUser | null> => {
+    if (showLoading) setLoading(true);
     try {
       const me = await authApi.me();
       setUser(me);
       setIsSessionExpired(false);
+      return me;
     } catch {
       setUser(null);
+      return null;
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
@@ -80,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
     void (async () => {
       if (isMounted) {
-        await refresh();
+        await refresh(true);
       }
     })();
     return () => {
@@ -160,6 +162,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [user, isLoading, isSessionExpired, login, signup, logout, refresh, triggerSessionExpired],
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative h-12 w-12">
+            <div className="absolute inset-0 rounded-full border-4 border-muted" />
+            <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-brand" />
+          </div>
+          <p className="text-xs font-medium text-muted-foreground animate-pulse">
+            Verifying session…
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={value}>

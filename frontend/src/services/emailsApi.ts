@@ -2,6 +2,7 @@ import apiClient from "./apiClient";
 
 export interface ClassifiedEmail {
   message_id: string;
+  gmail_message_id?: string;
   thread_id?: string | null;
   subject: string;
   snippet?: string | null;

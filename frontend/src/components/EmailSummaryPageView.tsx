@@ -133,10 +133,33 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
     return s;
   };
 
+  const formatLLMModelEngine = (model?: string | null) => {
+    if (!model) return "AI Executive Summary Engine";
+    const m = model.toLowerCase();
+    if (m.includes("llama-3.3") || m.includes("llama3.3")) return "Groq (Llama 3.3 70B) Summary Engine";
+    if (m.includes("llama-3.1") || m.includes("llama3.1")) return "Groq (Llama 3.1 8B) Summary Engine";
+    if (m.includes("llama") || m.includes("groq")) return `Groq (${model}) Summary Engine`;
+    if (m.includes("gemini-2.5")) return "Google Gemini 2.5 Flash Summary Engine";
+    if (m.includes("gemini")) return `Google Gemini (${model}) Summary Engine`;
+    if (m.includes("gpt")) return `OpenAI (${model}) Summary Engine`;
+    if (m.includes("claude")) return `Anthropic (${model}) Summary Engine`;
+    return `${model} Summary Engine`;
+  };
+
+  const formatLLMBadge = (model?: string | null) => {
+    if (!model) return "Generated via LLM API";
+    const m = model.toLowerCase();
+    if (m.includes("llama") || m.includes("groq")) return `Generated via Groq API`;
+    if (m.includes("gemini")) return `Generated via Gemini API`;
+    return `Generated via ${model}`;
+  };
+
   const parsed = data ? parseSummarySections(data.summary) : null;
   const gmailUrl = data ? getGmailUrl(data.message_id, data.thread_id) : null;
   const displaySender = formatDisplayEmail(data?.sender, "Unknown Sender");
   const displayReceiver = formatDisplayEmail(data?.receiver, "Authenticated User");
+  const engineHeading = formatLLMModelEngine(data?.summary_model);
+  const generatedBadgeText = formatLLMBadge(data?.summary_model);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 pb-12 animate-in fade-in duration-300">
@@ -261,7 +284,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-foreground tracking-tight">AI Executive Summary</h2>
-                  <p className="text-xs text-muted-foreground font-medium">Google Gemini 2.5 Flash Summary Engine</p>
+                  <p className="text-xs text-muted-foreground font-medium">{engineHeading}</p>
                 </div>
               </div>
 
@@ -274,7 +297,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
                 ) : (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-3 py-1 text-xs font-semibold border border-emerald-500/30 shadow-sm">
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Generated via Gemini API
+                    {generatedBadgeText}
                   </span>
                 )}
               </div>

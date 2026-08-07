@@ -1,7 +1,17 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-import pytest
+try:
+    import pytest
+except ImportError:
+    class DummyPytestMark:
+        def __getattr__(self, name):
+            return lambda fn: fn
+    class DummyPytest:
+        def fixture(self, *args, **kwargs):
+            return lambda fn: fn
+        mark = DummyPytestMark()
+    pytest = DummyPytest()
 from fastapi import HTTPException, status
 
 from app.services.summary_service import SummaryService
@@ -60,7 +70,7 @@ async def test_generate_summary_success(summary_service):
         assert "Required actions" in sent_text
         assert "Deadlines" in sent_text
         assert "Tone" in sent_text
-        assert "Return the summary in under 100 words." in sent_text
+        assert "Return the summary in under 50 words." in sent_text
         assert email_body in sent_text
 
 

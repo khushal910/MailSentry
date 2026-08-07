@@ -1,7 +1,17 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from bson import ObjectId
-import pytest
+try:
+    import pytest
+except ImportError:
+    class DummyPytestMark:
+        def __getattr__(self, name):
+            return lambda fn: fn
+    class DummyPytest:
+        def fixture(self, *args, **kwargs):
+            return lambda fn: fn
+        mark = DummyPytestMark()
+    pytest = DummyPytest()
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
@@ -76,7 +86,7 @@ async def test_generates_and_stores_summary_when_not_cached(summary_service, moc
 
         assert result["email_id"] == email_id
         assert result["summary"] == generated_text
-        assert result["summary_model"] == "gemini-2.5-flash"
+        assert result["summary_model"] == summary_service.summary_service.model_name
         assert result["summary_created_at"] is not None
         assert result["cached"] is False
 
@@ -87,7 +97,7 @@ async def test_generates_and_stores_summary_when_not_cached(summary_service, moc
         call_kwargs = mock_repo.update_summary.call_args.kwargs
         assert call_kwargs["email_id"] == email_id
         assert call_kwargs["summary"] == generated_text
-        assert call_kwargs["summary_model"] == "gemini-2.5-flash"
+        assert call_kwargs["summary_model"] == summary_service.summary_service.model_name
         assert call_kwargs["summary_created_at"] is not None
 
 

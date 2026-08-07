@@ -71,14 +71,35 @@ class Settings:
 
         REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 
-        MONGO_URI = os.getenv("MONGO_URI")
-        DATABASE_NAME = os.getenv("DATABASE_NAME")
+        MONGO_URI = (
+            os.getenv("MONGO_URI")
+            or os.getenv("MONGODB_URI")
+            or os.getenv("DATABASE_URL")
+            or "mongodb://localhost:27017"
+        )
+        DATABASE_NAME = (
+            os.getenv("DATABASE_NAME")
+            or os.getenv("DATA_BASE_NAME")
+            or os.getenv("DB_NAME")
+            or "mail_sentry_db"
+        )
         USER_COLLECTION_NAME = os.getenv("USER_COLLECTION_NAME", "users")
         EMAIL_COLLECTION_NAME = os.getenv("EMAIL_COLLECTION_NAME", "emails")
         MODEL_COLLECTION_NAME = os.getenv("MODEL_COLLECTION_NAME", "models")
+        _ml_service_models = os.path.abspath(
+            os.path.join(
+                os.path.dirname(
+                    os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                ),
+                "ml-service",
+                "models",
+            )
+        )
         MODELS_DIR = os.getenv(
             "MODELS_DIR",
-            os.path.join(
+            _ml_service_models
+            if os.path.exists(_ml_service_models)
+            else os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models"
             ),
         )
@@ -131,6 +152,13 @@ class Settings:
         FETCH_LOCK_TTL_SECONDS = int(os.getenv("FETCH_LOCK_TTL_SECONDS", 60))
         # Max emails to fetch from Gmail API per fetch operation (default 50)
         FETCH_MAX_RESULTS = int(os.getenv("FETCH_MAX_RESULTS", 50))
+        # Classification decision threshold (default 0.50)
+        CLASSIFICATION_THRESHOLD = float(os.getenv("CLASSIFICATION_THRESHOLD", 0.50))
+
+        # ML Microservice Config
+        ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:9000")
+        ML_SERVICE_TIMEOUT = int(os.getenv("ML_SERVICE_TIMEOUT", 30))
+        ML_SERVICE_API_KEY = os.getenv("ML_SERVICE_API_KEY", "")
 
         # Google OAuth
         GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -142,6 +170,11 @@ class Settings:
             "GOOGLE_ACCOUNT_COLLECTION_NAME", "google_accounts"
         )
         FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8080")
+
+        # LLM Provider & API Configs (Groq default, Gemini secondary)
+        LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower().strip()
+        GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+        GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
         # Gemini API Config
         GEMINI_API_KEY = (

@@ -29,10 +29,15 @@ const LABEL_CONFIG: Record<
     label: "Social",
     className: "border-success/30 bg-success/10 text-success",
   },
+  safe: {
+    icon: ShieldCheck,
+    label: "Safe",
+    className: "border-success/30 bg-success/10 text-success",
+  },
   inbox: {
-    icon: Inbox,
-    label: "Inbox",
-    className: "border-brand/30 bg-brand/10 text-brand",
+    icon: ShieldCheck,
+    label: "Safe",
+    className: "border-success/30 bg-success/10 text-success",
   },
   ham: {
     icon: ShieldCheck,

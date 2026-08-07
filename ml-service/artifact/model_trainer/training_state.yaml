@@ -1,39 +1,42 @@
 training_started_at: '2026-08-03T17:10:19.415633+00:00'
-last_updated_at: '2026-08-03T18:20:06.290119+00:00'
+last_updated_at: '2026-08-06T19:26:53.692805+00:00'
 training_version: 1.0.0
 models:
   LightGBM:
     status: completed
-    completed_at: '2026-08-03T17:17:25.802206+00:00'
+    completed_at: '2026-08-06T19:26:53.692805+00:00'
     checkpoint: artifact\model_trainer\checkpoints\LightGBM
-    config_hash: 6dd114b0a639a5bd77925b2a953636078cad3afe77057813aea55e2a57201670
+    config_hash: f2e0e1fa3192414f0950a6a61564a0bb456b98a5f3bed4260632a29dec889f17
   LogisticRegression:
     status: completed
-    completed_at: '2026-08-03T17:24:05.969161+00:00'
+    completed_at: '2026-08-06T18:20:24.074363+00:00'
     checkpoint: artifact\model_trainer\checkpoints\LogisticRegression
-    config_hash: b2e61b4113c1ac8d86fe6ff7322f9c90ff5e743290269d01cd67731180fb24e0
+    config_hash: 50ca08f3d74ec67363054a1265ea0e99f33950af6fc8728eb82047b1ddfe7490
   RandomForest:
     status: completed
-    completed_at: '2026-08-03T17:45:06.120584+00:00'
+    completed_at: '2026-08-06T18:26:29.435471+00:00'
     checkpoint: artifact\model_trainer\checkpoints\RandomForest
-    config_hash: b0262d8e3b2c73fb52306e21d28c0713f4074f82746457c07717a5cd15346c47
+    config_hash: 0889d8c1978d1c6e2f6636175362e5dc3bde32f2f756e2a17944c86150cf0df7
   XGBClassifier:
     status: completed
-    completed_at: '2026-08-03T17:56:10.389675+00:00'
+    completed_at: '2026-08-06T18:40:43.118904+00:00'
     checkpoint: artifact\model_trainer\checkpoints\XGBClassifier
-    config_hash: bc542e14ae879c060767e8624d57f19302d6a88a9a99d7f3f7adff06fc1fc0d2
+    config_hash: 3918a9377741ff59285e4f3a1df7c618f796389c975f3a30a683583326f1686e
   CatBoostClassifier:
     status: completed
-    completed_at: '2026-08-03T18:10:07.735334+00:00'
+    completed_at: '2026-08-06T18:59:43.109098+00:00'
     checkpoint: artifact\model_trainer\checkpoints\CatBoostClassifier
-    config_hash: 85c82ae54fe7100c387098eff00e4d3be76d915d9bebc9b4888eca58a6d37dc6
+    config_hash: db3c3944c016024b5db250c27c26d917b4e0742be04ba8e88c9b41074d30b35b
   LinearSVC:
     status: completed
-    completed_at: '2026-08-03T18:10:52.047103+00:00'
+    completed_at: '2026-08-06T19:00:28.113666+00:00'
     checkpoint: artifact\model_trainer\checkpoints\LinearSVC
-    config_hash: 7e18a6041a768d7d0028c8af6aaa55fa9771a5d545e6e2222dbbb30ebef07115
+    config_hash: 6e749d11b454f3db27ec9ae0dc9df615c6c55ef7eb6b0e4f8d614cb7fc281e9f
   ExtraTrees:
     status: completed
-    completed_at: '2026-08-03T18:20:06.290119+00:00'
+    completed_at: '2026-08-06T19:18:13.740215+00:00'
     checkpoint: artifact\model_trainer\checkpoints\ExtraTrees
-    config_hash: 3fd552fdf85a90a83ee7836a3d7e8f83f6f456102edf7776a44eb7fac07a9f2e
+    config_hash: 12d595ee12654831fe92b7e4ef4be6917756df30eeab76ef6fef64b6dd16a72e
+  DistilBERT:
+    status: pending
+    updated_at: '2026-08-06T08:28:15.709099+00:00'

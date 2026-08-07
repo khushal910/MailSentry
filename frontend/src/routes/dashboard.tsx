@@ -22,7 +22,7 @@ function DashboardLayout() {
     // Only redirect after the auth check has fully resolved (isLoading = false).
     // This prevents a flash-redirect while /auth/me is still in-flight.
     if (!isLoading && !isAuthenticated) {
-      navigate({ to: "/login" });
+      navigate({ to: "/login", replace: true });
     }
   }, [isLoading, isAuthenticated, navigate]);
 

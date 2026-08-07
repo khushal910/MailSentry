@@ -67,25 +67,10 @@ function OAuthCallbackPage() {
         }
 
         // Step 2: Re-fetch the user so AuthContext is populated with the logged-in user.
-        // We call this before navigating so that the cookie is definitely set and
-        // /auth/me will return the user document.
         await refresh();
 
-        // Step 3: Navigate to dashboard using a FULL browser navigation (not TanStack's navigate).
-        //
-        // WHY window.location.replace() instead of navigate({ to: "/dashboard" }):
-        // TanStack Router's navigate() fires synchronously. At the point it runs,
-        // React has called refresh() and is processing the setUser() update — but
-        // it has NOT committed it yet. So when <DashboardLayout> mounts, it still
-        // reads isAuthenticated=false for one render, the guard fires, and the user
-        // is kicked back to /login.
-        //
-        // window.location.replace() forces a full page reload. The browser discards
-        // the current React tree entirely, re-mounts from scratch, and AuthProvider
-        // calls /auth/me on mount. By that point the HttpOnly cookie is already set,
-        // so /auth/me returns the user, isAuthenticated becomes true before any route
-        // guard runs, and the dashboard renders correctly.
-        window.location.replace("/dashboard");
+        // Step 3: Navigate to dashboard smoothly using SPA router replace
+        navigate({ to: "/dashboard", replace: true });
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : "Something went wrong during Google sign-in.";

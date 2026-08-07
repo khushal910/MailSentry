@@ -21,7 +21,14 @@ logger = logging.getLogger(__name__)
 BACKEND_DIR = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
-MODELS_DIR = os.path.join(BACKEND_DIR, "models")
+ML_SERVICE_MODELS_DIR = os.path.abspath(
+    os.path.join(BACKEND_DIR, "..", "ml-service", "models")
+)
+MODELS_DIR = (
+    ML_SERVICE_MODELS_DIR
+    if os.path.exists(ML_SERVICE_MODELS_DIR)
+    else os.path.join(BACKEND_DIR, "models")
+)
 PRODUCTION_DIR = os.path.join(MODELS_DIR, "production")
 VERSIONS_DIR = os.path.join(MODELS_DIR, "versions")
 

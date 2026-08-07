@@ -24,8 +24,8 @@ import joblib
 from src.logger import logger
 from src.exception import MyException
 from pandas import DataFrame
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import LabelEncoder
+from sklearn.pipeline import FeatureUnion, Pipeline
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from src.utils.main_utils import read_csv, read_yaml_file
 from src.entity.config_entity import (
     DataIngestionConfig,
@@ -34,10 +34,173 @@ from src.entity.config_entity import (
     TrainModelConfig,
 )
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.base import BaseEstimator, TransformerMixin
+import ipaddress
+import numpy as np
 import os
 import pandas as pd
 import re
 import string
+
+SUSPICIOUS_TLDS = {
+    "xyz", "top", "zip", "work", "click", "link", "info", "online",
+    "site", "icu", "buzz", "cc", "tk", "ml", "ga", "cf", "gq", "download",
+    "racing", "rest", "fit", "surf", "casa", "ren", "monster"
+}
+
+
+class URLFeatureExtractor(BaseEstimator, TransformerMixin):
+    """
+    Scikit-learn compatible transformer that extracts 15 structured numerical URL features
+    from text inputs. Returns a 2D numpy array compatible with ColumnTransformer & FeatureUnion.
+    """
+
+    def fit(self, X, y=None):
+        return self
+
+    @staticmethod
+    def extract_structured_url_features(text: str) -> dict:
+        """
+        Extracts 15 structured numerical features from URLs embedded in email text.
+        Returns zeros if no URLs exist or text is empty.
+        """
+        empty_features = {
+            "url_count": 0,
+            "total_url_length": 0,
+            "average_url_length": 0.0,
+            "max_url_length": 0,
+            "uses_https_count": 0,
+            "uses_http_count": 0,
+            "contains_ip_address": 0,
+            "query_count": 0,
+            "total_digit_count": 0,
+            "total_hyphen_count": 0,
+            "average_domain_length": 0.0,
+            "average_path_length": 0.0,
+            "average_query_length": 0.0,
+            "suspicious_tld_count": 0,
+            "unique_domain_count": 0,
+        }
+
+        if not text or not isinstance(text, str):
+            return empty_features
+
+        url_pattern = r"https?://[^\s]+"
+        urls = re.findall(url_pattern, text)
+
+        if not urls:
+            return empty_features
+
+        url_count = len(urls)
+        lengths = [len(u) for u in urls]
+        total_url_length = sum(lengths)
+        average_url_length = float(total_url_length / url_count)
+        max_url_length = max(lengths)
+
+        uses_https_count = 0
+        uses_http_count = 0
+        contains_ip_address = 0
+        query_count = 0
+        total_digit_count = 0
+        total_hyphen_count = 0
+        suspicious_tld_count = 0
+
+        domains = []
+        domain_lengths = []
+        path_lengths = []
+        query_lengths = []
+
+        for u in urls:
+            try:
+                parsed = urlparse(u)
+                scheme = (parsed.scheme or "").lower()
+                if scheme == "https":
+                    uses_https_count += 1
+                elif scheme == "http":
+                    uses_http_count += 1
+
+                netloc = parsed.netloc.lower()
+                hostname = netloc.split(":")[0] if ":" in netloc else netloc
+                hostname_clean = hostname.replace("www.", "")
+
+                # Detect IPv4 or IPv6 addresses
+                try:
+                    ipaddress.ip_address(hostname_clean)
+                    contains_ip_address = 1
+                except ValueError:
+                    pass
+
+                if hostname_clean:
+                    domains.append(hostname_clean)
+                    domain_lengths.append(len(hostname_clean))
+
+                    # Check TLD
+                    parts = hostname_clean.split(".")
+                    if len(parts) >= 2:
+                        tld = parts[-1]
+                        if tld in SUSPICIOUS_TLDS:
+                            suspicious_tld_count += 1
+
+                path = parsed.path or ""
+                path_lengths.append(len(path))
+
+                query = parsed.query or ""
+                if query:
+                    query_count += 1
+                    query_lengths.append(len(query))
+
+                total_digit_count += sum(c.isdigit() for c in u)
+                total_hyphen_count += u.count("-")
+
+            except Exception:
+                continue
+
+        avg_domain_len = (
+            float(sum(domain_lengths) / len(domain_lengths)) if domain_lengths else 0.0
+        )
+        avg_path_len = (
+            float(sum(path_lengths) / len(path_lengths)) if path_lengths else 0.0
+        )
+        avg_query_len = (
+            float(sum(query_lengths) / len(query_lengths)) if query_lengths else 0.0
+        )
+        unique_domain_count = len(set(domains))
+
+        return {
+            "url_count": url_count,
+            "total_url_length": total_url_length,
+            "average_url_length": average_url_length,
+            "max_url_length": max_url_length,
+            "uses_https_count": uses_https_count,
+            "uses_http_count": uses_http_count,
+            "contains_ip_address": contains_ip_address,
+            "query_count": query_count,
+            "total_digit_count": total_digit_count,
+            "total_hyphen_count": total_hyphen_count,
+            "average_domain_length": avg_domain_len,
+            "average_path_length": avg_path_len,
+            "average_query_length": avg_query_len,
+            "suspicious_tld_count": suspicious_tld_count,
+            "unique_domain_count": unique_domain_count,
+        }
+
+    def transform(self, X):
+        if isinstance(X, pd.Series):
+            texts = X.tolist()
+        elif isinstance(X, pd.DataFrame):
+            texts = X.iloc[:, 0].tolist()
+        elif isinstance(X, (list, tuple, np.ndarray)):
+            texts = [str(x) for x in X]
+        else:
+            texts = [str(X)]
+
+        feature_dicts = [
+            self.extract_structured_url_features(t) for t in texts
+        ]
+        matrix = np.array(
+            [[d[k] for k in d] for d in feature_dicts], dtype=np.float64
+        )
+        return matrix
 from urllib.parse import urlparse
 
 
@@ -167,37 +330,54 @@ class DataTransformation:
             y_test = test_df[target_column]
 
             # ----------------------------------------------
-            # TF-IDF Pipeline
+            # Combined Word TF-IDF + Char TF-IDF + Engineered URL Features Pipeline
             # ----------------------------------------------
             logger.info(
-                "Initializing TF-IDF vectorizer with parameters: "
-                "max_features=7000, stop_words=english, ngram_range=(1,2), "
-                "min_df=2, max_df=0.95, sublinear_tf=True"
+                "Initializing Word TF-IDF, Character TF-IDF, and Engineered URL Features FeatureUnion"
             )
-            preprocessor = Pipeline(
+            word_vectorizer = TfidfVectorizer(
+                analyzer="word",
+                max_features=7000,
+                stop_words="english",
+                ngram_range=(1, 2),
+                min_df=2,
+                max_df=0.95,
+                sublinear_tf=True,
+            )
+
+            char_vectorizer = TfidfVectorizer(
+                analyzer="char",
+                max_features=5000,
+                ngram_range=(2, 5),
+                min_df=2,
+                sublinear_tf=True,
+            )
+
+            url_numerical_pipeline = Pipeline(
                 [
-                    (
-                        "tfidf",
-                        TfidfVectorizer(
-                            max_features=7000,
-                            stop_words="english",
-                            ngram_range=(1, 2),
-                            min_df=2,
-                            max_df=0.95,
-                            sublinear_tf=True,
-                        ),
-                    )
+                    ("url_extractor", URLFeatureExtractor()),
+                    ("scaler", StandardScaler(with_mean=False)),
                 ]
             )
 
-            logger.info("Fitting TF-IDF on training data")
-            X_train = preprocessor.fit_transform(X_train)
-            logger.info(
-                f"TF-IDF fitted. Training matrix shape: {X_train.shape}, "
-                f"vocabulary size: {len(preprocessor.named_steps['tfidf'].vocabulary_)}"
+            combined_features = FeatureUnion(
+                [
+                    ("word_tfidf", word_vectorizer),
+                    ("char_tfidf", char_vectorizer),
+                    ("url_numerical_features", url_numerical_pipeline),
+                ]
             )
 
-            logger.info("Transforming test data with TF-IDF")
+            preprocessor = Pipeline([("features", combined_features)])
+
+            logger.info("Fitting combined Word + Char TF-IDF + URL Features FeatureUnion on training data")
+            X_train = preprocessor.fit_transform(X_train)
+            logger.info(
+                f"FeatureUnion fitted. Training matrix shape: {X_train.shape} "
+                f"(Sparse matrix with {X_train.shape[1]} total features)"
+            )
+
+            logger.info("Transforming test data with FeatureUnion")
             X_test = preprocessor.transform(X_test)
             logger.info(f"Test matrix shape: {X_test.shape}")
 
@@ -339,29 +519,29 @@ class DataTransformation:
                 self.data_transformation_config.transform_test_tfidf_file, index=False
             )
 
-            # Save Raw Text CSV files only if DistilBERT training is enabled
-            if getattr(self.train_model_config, "enable_distilbert", False):
-                logger.info(
-                    f"DistilBERT enabled. Saving raw text train data to {self.data_transformation_config.transform_train_raw_file}"
+            # Validate and Save Raw Text CSV files for transformer models
+            if train_raw_df.empty or train_raw_df.shape[0] == 0:
+                raise ValueError(
+                    f"train_raw_df is empty before saving to {self.data_transformation_config.transform_train_raw_file}. Shape={train_raw_df.shape}"
                 )
-                train_raw_df.to_csv(
-                    self.data_transformation_config.transform_train_raw_file, index=False
+            if test_raw_df.empty or test_raw_df.shape[0] == 0:
+                raise ValueError(
+                    f"test_raw_df is empty before saving to {self.data_transformation_config.transform_test_raw_file}. Shape={test_raw_df.shape}"
                 )
 
-                logger.info(
-                    f"Saving raw text test data to {self.data_transformation_config.transform_test_raw_file}"
-                )
-                test_raw_df.to_csv(
-                    self.data_transformation_config.transform_test_raw_file, index=False
-                )
-            else:
-                logger.info("DistilBERT disabled (ENABLE_DISTILBERT=false). Creating lightweight placeholder raw text CSVs for DVC contract compliance.")
-                pd.DataFrame(columns=["email_text", "target"]).to_csv(
-                    self.data_transformation_config.transform_train_raw_file, index=False
-                )
-                pd.DataFrame(columns=["email_text", "target"]).to_csv(
-                    self.data_transformation_config.transform_test_raw_file, index=False
-                )
+            logger.info(
+                f"Saving raw text train data (Shape={train_raw_df.shape}) to {self.data_transformation_config.transform_train_raw_file}"
+            )
+            train_raw_df.to_csv(
+                self.data_transformation_config.transform_train_raw_file, index=False
+            )
+
+            logger.info(
+                f"Saving raw text test data (Shape={test_raw_df.shape}) to {self.data_transformation_config.transform_test_raw_file}"
+            )
+            test_raw_df.to_csv(
+                self.data_transformation_config.transform_test_raw_file, index=False
+            )
 
             # Save preprocessor and label encoder locally to ml-service artifact directory
             logger.info(

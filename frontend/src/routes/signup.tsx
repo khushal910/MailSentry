@@ -74,7 +74,7 @@ function SignupPage() {
       const res = await signup(values.name, values.email, values.password);
       if (res.success) {
         toast.success(res.message);
-        window.location.href = "/dashboard";
+        navigate({ to: "/dashboard", replace: true });
       } else {
         toast.error(res.message);
       }

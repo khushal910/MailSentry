@@ -200,9 +200,9 @@ class EmailSummaryService:
                     detail="Email body is empty; cannot generate summary.",
                 )
 
-            # Step 5: Call Gemini API asynchronously using SummaryService
+            # Step 5: Call configured LLM API asynchronously using SummaryService
             generated_summary = await self._call_gemini_api(body_text)
-            summary_model = getattr(self.summary_service, "model_name", "gemini-2.5-flash")
+            summary_model = getattr(self.summary_service, "model_name", "llama-3.3-70b-versatile")
             summary_created_at = datetime.now(timezone.utc)
 
             # Step 6: Store generated summary, summary_created_at, and summary_model in MongoDB
@@ -219,7 +219,7 @@ class EmailSummaryService:
                 )
 
             logger.info(
-                f"Successfully generated and stored new summary for email_id='{clean_id}' via Gemini API."
+                f"Successfully generated and stored new summary for email_id='{clean_id}' via LLM provider '{self.summary_service.provider_name}'."
             )
 
             return self._format_summary_response(
@@ -232,7 +232,10 @@ class EmailSummaryService:
 
     async def _call_gemini_api(self, body_text: str) -> str:
         """
-        Delegates Gemini API call to the reusable SummaryService.
+        Delegates LLM API call to the reusable SummaryService.
         """
         return await self.summary_service.generate_summary(body_text)
+
+    # Alias for modern LLM provider naming
+    _call_llm_api = _call_gemini_api
 

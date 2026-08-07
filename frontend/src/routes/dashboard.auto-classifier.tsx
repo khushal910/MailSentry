@@ -78,7 +78,8 @@ function AutoClassifierPage() {
   // Auto Classifier strictly represents the queue of UNCLASSIFIED emails (max 50 new)
   const [unclassifiedEmails, setUnclassifiedEmails] = useState<UnclassifiedEmail[]>([]);
 
-  const hasFetchedOnce = useRef(false);
+  const isJobActiveRef = useRef(false);
+  const activeJobIdRef = useRef<string | null>(null);
 
   /* ─── Fetch unclassified emails from Gmail ─── */
   const triggerFetch = useCallback(async () => {
@@ -99,7 +100,14 @@ function AutoClassifierPage() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to fetch unclassified emails.";
-      if (msg.toLowerCase().includes("wait")) {
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes("not connected") ||
+        lower.includes("connect google") ||
+        lower.includes("unauthorized")
+      ) {
+        setPageState("gmail-not-connected");
+      } else if (lower.includes("wait")) {
         toast.warning(msg, { duration: 5000 });
       } else {
         setFetchError(msg);
@@ -111,7 +119,7 @@ function AutoClassifierPage() {
 
   /* ─── Classify displayed unclassified emails ─── */
   const handleClassify = async () => {
-    if (unclassifiedEmails.length === 0) return;
+    if (unclassifiedEmails.length === 0 || isClassifying) return;
     setIsClassifying(true);
     setFetchError(null);
     const startMs = Date.now();
@@ -119,6 +127,11 @@ function AutoClassifierPage() {
     try {
       // Step 1: Start background job (returns in <100ms)
       const job = await emailsApi.startClassifyJob(unclassifiedEmails);
+      const currentJobId = job.job_id;
+
+      isJobActiveRef.current = true;
+      activeJobIdRef.current = currentJobId;
+
       setJobProgress({
         processed: job.processed,
         total: job.total || unclassifiedEmails.length,
@@ -128,11 +141,23 @@ function AutoClassifierPage() {
         estRemainingSec: 0,
       });
 
-      // Step 2: Poll status every 1.0s until complete or failed
+      // Step 2: Poll status sequentially every 1.0s until complete or failed
       await new Promise<void>((resolve, reject) => {
-        const pollInterval = setInterval(async () => {
+        const pollStep = async () => {
+          if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
+            resolve();
+            return;
+          }
+
           try {
-            const statusRes = await emailsApi.getJobStatus(job.job_id);
+            const statusRes = await emailsApi.getJobStatus(currentJobId);
+
+            // Ignore response if job was completed/cancelled while HTTP request was in flight
+            if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
+              resolve();
+              return;
+            }
+
             const nowMs = Date.now();
             const total = statusRes.total || unclassifiedEmails.length;
             const processed = statusRes.processed;
@@ -143,30 +168,45 @@ function AutoClassifierPage() {
                 ? Math.max(1, Math.ceil((total - processed) * avgItemSec))
                 : 0;
 
-            setJobProgress({
-              processed,
-              total,
-              status: statusRes.status,
-              current_subject: statusRes.current_subject,
-              startTime: startMs,
-              estRemainingSec,
-            });
-
             if (statusRes.status === "completed") {
-              clearInterval(pollInterval);
+              isJobActiveRef.current = false;
+              activeJobIdRef.current = null;
+              setJobProgress(null);
+              setIsClassifying(false);
+
               const count = statusRes.classified ?? 0;
               const skipped = statusRes.skipped ?? 0;
+              const classifiedList = statusRes.result?.classified_emails || [];
+
+              if (classifiedList.length > 0) {
+                const classifiedIds = new Set(
+                  classifiedList
+                    .map((item) => item.message_id || item.gmail_message_id)
+                    .filter(Boolean)
+                );
+                setUnclassifiedEmails((prev) =>
+                  prev.filter((email) => {
+                    const id = email.message_id || email.gmail_message_id;
+                    return !classifiedIds.has(id);
+                  })
+                );
+              } else if (count > 0) {
+                // Fallback if count > 0 but classified_emails wasn't returned
+                if (count >= unclassifiedEmails.length) {
+                  setUnclassifiedEmails([]);
+                }
+              }
+              // NOTE: If count === 0 or classification failed, emails remain in unclassifiedEmails list!
+
+              setSearchTerm("");
+              setPage(1);
 
               // Force refetch and invalidate history query cache immediately!
               await queryClient.resetQueries({ queryKey: ["history"] });
               await queryClient.invalidateQueries({ queryKey: ["history"] });
               await queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
 
-              if (count > 0) {
-                setUnclassifiedEmails([]);
-                setSearchTerm("");
-                setPage(1);
-
+              if (count > 0 && skipped === 0) {
                 toast.success(
                   `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
                   {
@@ -177,30 +217,73 @@ function AutoClassifierPage() {
                     },
                   },
                 );
-              } else if (skipped > 0) {
+              } else if (count > 0 && skipped > 0) {
+                toast.warning(
+                  `Classified ${count} email(s), but ${skipped} email(s) failed to classify and remain in queue.`,
+                  {
+                    duration: 5000,
+                    action: {
+                      label: "View History",
+                      onClick: () => navigate({ to: "/dashboard/history" }),
+                    },
+                  },
+                );
+              } else if (skipped > 0 || count === 0) {
                 toast.error(
-                  `Classification completed, but ${skipped} email(s) failed to save. Please try again.`,
+                  `Classification unsuccessful for ${skipped || unclassifiedEmails.length} email(s). All emails remain in queue.`,
                   { duration: 5000 },
                 );
               } else {
                 toast.info("No emails were classified.");
               }
               resolve();
-            } else if (statusRes.status === "failed") {
-              clearInterval(pollInterval);
+              return;
+            }
+
+            if (statusRes.status === "failed") {
+              isJobActiveRef.current = false;
+              activeJobIdRef.current = null;
+              setJobProgress(null);
+              setIsClassifying(false);
               reject(new Error(statusRes.error || "Background classification job failed."));
+              return;
+            }
+
+            // Job still running: update progress safely
+            setJobProgress({
+              processed,
+              total,
+              status: statusRes.status,
+              current_subject: statusRes.current_subject,
+              startTime: startMs,
+              estRemainingSec,
+            });
+
+            // Schedule next poll ONLY after this request finished
+            if (isJobActiveRef.current && activeJobIdRef.current === currentJobId) {
+              setTimeout(pollStep, 1000);
             }
           } catch (pollErr) {
-            clearInterval(pollInterval);
+            if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
+              resolve();
+              return;
+            }
+            isJobActiveRef.current = false;
+            activeJobIdRef.current = null;
             reject(pollErr);
           }
-        }, 1000);
+        };
+
+        // Start first poll after 1s
+        setTimeout(pollStep, 1000);
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to classify emails.";
       setFetchError(msg);
       toast.error(msg);
     } finally {
+      isJobActiveRef.current = false;
+      activeJobIdRef.current = null;
       setIsClassifying(false);
       setJobProgress(null);
     }
@@ -232,23 +315,39 @@ function AutoClassifierPage() {
 
   /* ─── on mount: check Gmail status, then fetch unclassified queue ─── */
   useEffect(() => {
-    if (hasFetchedOnce.current) return;
-    hasFetchedOnce.current = true;
+    let isMounted = true;
 
     (async () => {
       try {
+        setPageState("loading");
         const status = await googleAuthApi.getStatus();
+        if (!isMounted) return;
         if (!status.connected) {
           setPageState("gmail-not-connected");
           return;
         }
-        setPageState("loading");
+
         await triggerFetch();
-        setPageState("ready");
-      } catch {
-        setPageState("error");
+        if (isMounted) {
+          setPageState((prev) => (prev === "gmail-not-connected" ? prev : "ready"));
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        const msg = err instanceof Error ? err.message : "";
+        const lower = msg.toLowerCase();
+        if (lower.includes("not connected") || lower.includes("connect google")) {
+          setPageState("gmail-not-connected");
+        } else {
+          setPageState("error");
+        }
       }
     })();
+
+    return () => {
+      isMounted = false;
+      isJobActiveRef.current = false;
+      activeJobIdRef.current = null;
+    };
   }, [triggerFetch]);
 
   /* ─── render states ─── */
@@ -276,7 +375,7 @@ function AutoClassifierPage() {
           message="Something went wrong loading the page."
           onRetry={() => {
             setPageState("loading");
-            hasFetchedOnce.current = false;
+            void triggerFetch().then(() => setPageState("ready"));
           }}
         />
       </PageTransition>
