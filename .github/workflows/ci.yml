@@ -90,7 +90,9 @@ jobs:
 
       - name: 6. Run Backend Pytest Suite
         env:
+          MONGO_URI: mongodb://localhost:27017
           MONGODB_URI: mongodb://localhost:27017
+          DATABASE_NAME: mailsentry_test_db
           DATA_BASE_NAME: mailsentry_test_db
           JWT_SECRET_KEY: testsecretkey12345678901234567890123
         run: |
@@ -98,7 +100,9 @@ jobs:
 
       - name: 7. FastAPI Startup & Health Check Verification
         env:
+          MONGO_URI: mongodb://localhost:27017
           MONGODB_URI: mongodb://localhost:27017
+          DATABASE_NAME: mailsentry_test_db
           DATA_BASE_NAME: mailsentry_test_db
           JWT_SECRET_KEY: testsecretkey12345678901234567890123
         run: |

@@ -16,14 +16,26 @@ class MongoDB:
 
         @classmethod
         def connect(cls):
+            mongo_uri = (
+                getattr(settings, "MONGO_URI", None)
+                or os.getenv("MONGO_URI")
+                or os.getenv("MONGODB_URI")
+                or "mongodb://localhost:27017"
+            )
+            db_name = (
+                getattr(settings, "DATABASE_NAME", None)
+                or os.getenv("DATABASE_NAME")
+                or os.getenv("DATA_BASE_NAME")
+                or "mail_sentry_db"
+            )
             server_timeout = int(os.getenv("MONGO_SERVER_SELECTION_TIMEOUT_MS", "3000"))
             cls.client = MongoClient(
-                settings.MONGO_URI,
+                mongo_uri,
                 serverSelectionTimeoutMS=server_timeout,
             )
-            cls.database = cls.client[settings.DATABASE_NAME]
+            cls.database = cls.client[str(db_name)]
 
-            print("MongoDB Connected")
+            print(f"MongoDB Connected to database '{db_name}'.")
 
         @classmethod
         def disconnect(cls):
