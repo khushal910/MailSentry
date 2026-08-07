@@ -192,5 +192,7 @@ jobs:
           uv pip install --system httpx pytest
 
       - name: 5. Execute Backend <-> ML Service Cross-Communication Integration Tests
+        env:
+          PYTHONPATH: backend
         run: |
           python -m unittest discover -s backend/tests -p "test_ml_client_integration.py"
