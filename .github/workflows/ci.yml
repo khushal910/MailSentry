@@ -75,9 +75,6 @@ jobs:
 
       - name: 3. Setup Astral uv Package Manager
         uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-suffix: "backend-uv"
 
       - name: 4. Install Dependencies
         run: |
@@ -90,7 +87,9 @@ jobs:
 
       - name: 6. Run Backend Pytest Suite
         env:
+          MONGO_URI: mongodb://localhost:27017
           MONGODB_URI: mongodb://localhost:27017
+          DATABASE_NAME: mailsentry_test_db
           DATA_BASE_NAME: mailsentry_test_db
           JWT_SECRET_KEY: testsecretkey12345678901234567890123
         run: |
@@ -98,7 +97,9 @@ jobs:
 
       - name: 7. FastAPI Startup & Health Check Verification
         env:
+          MONGO_URI: mongodb://localhost:27017
           MONGODB_URI: mongodb://localhost:27017
+          DATABASE_NAME: mailsentry_test_db
           DATA_BASE_NAME: mailsentry_test_db
           JWT_SECRET_KEY: testsecretkey12345678901234567890123
         run: |
@@ -135,9 +136,6 @@ jobs:
 
       - name: 3. Setup Astral uv Package Manager
         uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-suffix: "ml-service-uv"
 
       - name: 4. Install ML Microservice Dependencies
         run: |
@@ -186,9 +184,6 @@ jobs:
 
       - name: 3. Setup Astral uv Package Manager
         uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-suffix: "integration-uv"
 
       - name: 4. Install Integration Test Dependencies
         run: |
@@ -197,5 +192,7 @@ jobs:
           uv pip install --system httpx pytest
 
       - name: 5. Execute Backend <-> ML Service Cross-Communication Integration Tests
+        env:
+          PYTHONPATH: backend
         run: |
           python -m unittest discover -s backend/tests -p "test_ml_client_integration.py"

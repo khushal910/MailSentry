@@ -24,8 +24,10 @@ try:
 except ImportError:
     np = None
     pd = None
-    BaseEstimator = object
-    TransformerMixin = object
+    class BaseEstimator:
+        pass
+    class TransformerMixin:
+        pass
 
 logger = logging.getLogger(__name__)
 
@@ -171,12 +173,12 @@ class URLFeatureExtractor(BaseEstimator, TransformerMixin):
             "unique_domain_count": unique_domain_count,
         }
 
-    def transform(self, X: Any) -> np.ndarray:
-        if isinstance(X, pd.Series):
+    def transform(self, X: Any) -> Any:
+        if pd is not None and isinstance(X, pd.Series):
             texts = X.tolist()
-        elif isinstance(X, pd.DataFrame):
+        elif pd is not None and isinstance(X, pd.DataFrame):
             texts = X.iloc[:, 0].tolist()
-        elif isinstance(X, (list, tuple, np.ndarray)):
+        elif isinstance(X, (list, tuple)) or (np is not None and isinstance(X, np.ndarray)):
             texts = [str(x) for x in X]
         else:
             texts = [str(X)]
@@ -184,10 +186,12 @@ class URLFeatureExtractor(BaseEstimator, TransformerMixin):
         feature_dicts = [
             self.extract_structured_url_features(t) for t in texts
         ]
-        matrix = np.array(
-            [[d[k] for k in d] for d in feature_dicts], dtype=np.float64
-        )
-        return matrix
+        if np is not None:
+            matrix = np.array(
+                [[d[k] for k in d] for d in feature_dicts], dtype=np.float64
+            )
+            return matrix
+        return feature_dicts
 
 
 class MLPreprocessing:

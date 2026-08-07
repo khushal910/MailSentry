@@ -1,7 +1,17 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from bson import ObjectId
-import pytest
+try:
+    import pytest
+except ImportError:
+    class DummyPytestMark:
+        def __getattr__(self, name):
+            return lambda fn: fn
+    class DummyPytest:
+        def fixture(self, *args, **kwargs):
+            return lambda fn: fn
+        mark = DummyPytestMark()
+    pytest = DummyPytest()
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 

@@ -1,7 +1,17 @@
 import os
 import sys
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    class DummyPytestMark:
+        def __getattr__(self, name):
+            return lambda fn: fn
+    class DummyPytest:
+        def fixture(self, *args, **kwargs):
+            return lambda fn: fn
+        mark = DummyPytestMark()
+    pytest = DummyPytest()
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

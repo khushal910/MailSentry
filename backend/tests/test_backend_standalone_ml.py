@@ -1,7 +1,7 @@
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import patch, MagicMock
 
 # Ensure backend root directory is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -13,7 +13,7 @@ from app.services.ml_preprocessing import MLPreprocessing
 class TestBackendStandaloneML(unittest.TestCase):
     """
     Tests backend standalone ML preprocessing & classification pipeline.
-    Ensures backend does not depend on ml-service package/imports at runtime.
+    Ensures backend delegates prediction to MLServiceClient over HTTP microservice API.
     """
 
     def test_clean_text(self):
@@ -39,49 +39,26 @@ class TestBackendStandaloneML(unittest.TestCase):
         self.assertIn("special offer", result)
         self.assertIn("discount", result)
 
-    def test_classify_text_with_mock_pipeline_model(self):
+    @patch("app.services.ml_client.MLServiceClient.predict_sync")
+    def test_classify_text_delegates_to_ml_client(self, mock_predict):
+        mock_predict.return_value = {
+            "subject": "Claim free prize",
+            "predicted_label": "spam",
+            "predicted_score": 0.98,
+            "classified_at": "2026-08-07T00:00:00Z",
+        }
         service = MLModelService()
-        mock_model = MagicMock()
-        mock_model.predict.return_value = ["spam"]
-        mock_model.predict_proba.return_value = [[0.02, 0.98]]
-
-        service.load_latest_model = MagicMock(return_value=mock_model)
-
         res = service.classify_text(
             subject="Claim free prize",
             body="Congratulations you won a gift card at http://prize.com/win?id=99",
         )
 
+        mock_predict.assert_called_once_with(
+            subject="Claim free prize",
+            body="Congratulations you won a gift card at http://prize.com/win?id=99",
+        )
         self.assertEqual(res["predicted_label"], "spam")
         self.assertEqual(res["predicted_score"], 0.98)
-        self.assertIn("classified_at", res)
-
-    def test_classify_text_with_mock_preprocessor_and_model(self):
-        service = MLModelService()
-
-        mock_preprocessor = MagicMock()
-        mock_preprocessor.transform.return_value = [[0.1, 0.5, 0.9]]
-
-        mock_label_encoder = MagicMock()
-        mock_label_encoder.inverse_transform.return_value = ["spam"]
-
-        mock_model = MagicMock()
-        mock_model.predict.return_value = [1]
-        mock_model.predict_proba.return_value = [[0.05, 0.95]]
-
-        service.load_latest_model = MagicMock(return_value=mock_model)
-        service.load_preprocessor = MagicMock(return_value=mock_preprocessor)
-        service.load_label_encoder = MagicMock(return_value=mock_label_encoder)
-
-        res = service.classify_text(
-            subject="Account update",
-            body="Please update credentials at http://phish.net/login",
-        )
-
-        mock_preprocessor.transform.assert_called_once()
-        mock_model.predict.assert_called_once_with([[0.1, 0.5, 0.9]])
-        self.assertEqual(res["predicted_label"], "spam")
-        self.assertEqual(res["predicted_score"], 0.95)
 
 
 if __name__ == "__main__":
