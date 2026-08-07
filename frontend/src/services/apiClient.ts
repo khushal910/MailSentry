@@ -10,17 +10,22 @@ import axios, { AxiosError, type AxiosInstance } from "axios";
  * the same host as the one that issued the cookie. The VITE_API_URL env var (set in
  * .env) is the authoritative source; localhost:8000 is only the local dev fallback.
  */
-const rawBase =
-  (typeof import.meta !== "undefined" &&
-    (import.meta as unknown as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL) ||
-  "http://localhost:8000";
+const envMeta =
+  typeof import.meta !== "undefined"
+    ? (import.meta as unknown as { env?: { VITE_API_URL?: string; VITE_API_TIMEOUT?: string; VITE_AXIOS_TIMEOUT?: string } }).env
+    : undefined;
+
+const rawBase = envMeta?.VITE_API_URL || "http://localhost:8000";
 
 // Normalise: replace 127.0.0.1 with localhost so cookies are never split across origins
 const baseURL = rawBase.replace("127.0.0.1", "localhost");
 
+const parsedTimeout = Number(envMeta?.VITE_API_TIMEOUT || envMeta?.VITE_AXIOS_TIMEOUT);
+const timeout = !isNaN(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : 60_000;
+
 const apiClient: AxiosInstance = axios.create({
   baseURL,
-  timeout: 20_000,
+  timeout,
   headers: { "Content-Type": "application/json" },
   withCredentials: true,
 });
