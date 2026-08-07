@@ -55,6 +55,7 @@ email-validator==2.3.0
 # ==========================
 # Utilities
 # ==========================
+numpy==2.4.6
 python-dateutil==2.8.2
 PyYAML==6.0.3
 

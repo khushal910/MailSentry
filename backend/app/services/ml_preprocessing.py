@@ -17,9 +17,15 @@ import string
 from typing import Any, Dict, List
 from urllib.parse import urlparse
 
-import numpy as np
-import pandas as pd
-from sklearn.base import BaseEstimator, TransformerMixin
+try:
+    import numpy as np
+    import pandas as pd
+    from sklearn.base import BaseEstimator, TransformerMixin
+except ImportError:
+    np = None
+    pd = None
+    BaseEstimator = object
+    TransformerMixin = object
 
 logger = logging.getLogger(__name__)
 

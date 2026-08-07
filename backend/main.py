@@ -17,7 +17,6 @@ async def lifespan(app: FastAPI):
         from app.repositories.model_repository import ModelRepository
         from app.repositories.dashboard_repository import DashboardRepository
         from app.repositories.google_account_repository import GoogleAccountRepository
-        from app.services.ml_model_service import MLModelService
 
         EmailRepository().ensure_indexes()
         ModelRepository().ensure_indexes()
