@@ -49,20 +49,48 @@ jobs:
             echo "Triggering Render backend zero-downtime deployment..."
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$RENDER_HOOK")
             HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
-            echo "Render Deploy Hook HTTP Status: $HTTP_STATUS"
+            echo "Render Backend Deploy Hook HTTP Status: $HTTP_STATUS"
             if [ "$HTTP_STATUS" -ne 200 ] && [ "$HTTP_STATUS" -ne 201 ] && [ "$HTTP_STATUS" -ne 202 ]; then
-              echo "Error triggering Render deploy hook!"
+              echo "Error triggering Render backend deploy hook!"
               exit 1
             fi
-            echo "Render deployment trigger submitted successfully."
+            echo "Render backend deployment trigger submitted successfully."
           fi
 
   # =========================================================================
-  # JOB 3: POST-DEPLOYMENT HEALTH & INFERENCE VERIFICATION
+  # JOB 3: AUTOMATED ML MICROSERVICE DEPLOYMENT TO RENDER
+  # =========================================================================
+  deploy-ml-service:
+    name: Deploy ML Microservice (Render)
+    needs: [pre-deploy-ci]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render ML Microservice Deployment Hook
+        env:
+          RENDER_ML_HOOK: ${{ secrets.RENDER_ML_SERVICE_DEPLOY_HOOK_URL || secrets.RENDER_ML_SERVICE_HOOK }}
+        run: |
+          if [ -z "$RENDER_ML_HOOK" ]; then
+            echo "WARNING: RENDER_ML_SERVICE_DEPLOY_HOOK_URL secret is not set in GitHub repository secrets."
+            echo "Please add RENDER_ML_SERVICE_DEPLOY_HOOK_URL in GitHub repo -> Settings -> Secrets and variables -> Actions."
+          else
+            echo "Triggering Render ML Microservice zero-downtime deployment..."
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$RENDER_ML_HOOK")
+            HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
+            echo "Render ML Service Deploy Hook HTTP Status: $HTTP_STATUS"
+            if [ "$HTTP_STATUS" -ne 200 ] && [ "$HTTP_STATUS" -ne 201 ] && [ "$HTTP_STATUS" -ne 202 ]; then
+              echo "Error triggering Render ML Service deploy hook!"
+              exit 1
+            fi
+            echo "Render ML Service deployment trigger submitted successfully."
+          fi
+
+  # =========================================================================
+  # JOB 4: POST-DEPLOYMENT HEALTH & INFERENCE VERIFICATION
   # =========================================================================
   post-deploy-verification:
     name: Post-Deployment Verification & Health Probe
-    needs: [deploy-backend]
+    needs: [deploy-backend, deploy-ml-service]
     runs-on: ubuntu-latest
 
     steps:
@@ -72,8 +100,8 @@ jobs:
 
       - name: 1. Wait for Cloud Deployments to Stabilize
         run: |
-          echo "Waiting 25 seconds for cloud serverless containers & Render instances to stabilize..."
-          sleep 25
+          echo "Waiting 30 seconds for Render containers to build and stabilize..."
+          sleep 30
 
       - name: 2. Probe Production Backend Health Endpoint
         env:
@@ -81,7 +109,7 @@ jobs:
         run: |
           TARGET_URL="${BACKEND_URL:-https://mailsentry-backend.onrender.com}"
           HEALTH_URL="${TARGET_URL}/health"
-          echo "Pinging production health endpoint: ${HEALTH_URL}"
+          echo "Pinging production backend health endpoint: ${HEALTH_URL}"
 
           MAX_RETRIES=6
           RETRY_COUNT=0
@@ -90,7 +118,7 @@ jobs:
           until [ $RETRY_COUNT -ge $MAX_RETRIES ]
           do
             STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_URL}" || echo "000")
-            echo "Attempt $((RETRY_COUNT+1)): HTTP status ${STATUS_CODE}"
+            echo "Backend Attempt $((RETRY_COUNT+1)): HTTP status ${STATUS_CODE}"
             if [ "$STATUS_CODE" -eq 200 ]; then
               SUCCESS=1
               break
@@ -102,19 +130,49 @@ jobs:
           if [ $SUCCESS -eq 1 ]; then
             echo "Production backend health check PASSED (HTTP 200)!"
           else
-            echo "WARNING: Production health check reached retry limit."
+            echo "WARNING: Production backend health check reached retry limit."
           fi
 
-      - name: 3. Generate Deployment Step Summary
+      - name: 3. Probe Production ML Microservice Health Endpoint
+        env:
+          ML_SERVICE_URL: ${{ secrets.PRODUCTION_ML_SERVICE_URL }}
+        run: |
+          TARGET_URL="${ML_SERVICE_URL:-https://mailsentry-ml-service.onrender.com}"
+          HEALTH_URL="${TARGET_URL}/health"
+          echo "Pinging production ML service health endpoint: ${HEALTH_URL}"
+
+          MAX_RETRIES=6
+          RETRY_COUNT=0
+          SUCCESS=0
+
+          until [ $RETRY_COUNT -ge $MAX_RETRIES ]
+          do
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_URL}" || echo "000")
+            echo "ML Service Attempt $((RETRY_COUNT+1)): HTTP status ${STATUS_CODE}"
+            if [ "$STATUS_CODE" -eq 200 ]; then
+              SUCCESS=1
+              break
+            fi
+            RETRY_COUNT=$((RETRY_COUNT+1))
+            sleep 10
+          done
+
+          if [ $SUCCESS -eq 1 ]; then
+            echo "Production ML Microservice health check PASSED (HTTP 200)!"
+          else
+            echo "WARNING: Production ML Microservice health check reached retry limit."
+          fi
+
+      - name: 4. Generate Deployment Step Summary
         if: always()
         run: |
           echo "## 🚀 MailSentry Production Deployment Status Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Status | Environment | Target |" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status | Deployment Method | Target |" >> $GITHUB_STEP_SUMMARY
           echo "| --- | --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Backend API** | ✅ Deployed | Production | Render Cloud |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Frontend Web App** | ✅ Deployed | Production | Vercel Git Integration |" >> $GITHUB_STEP_SUMMARY
-          echo "| **ML Model Engine** | ✅ Validated | Production | In-Memory Cached |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Backend API** | ✅ Deployed | Render Deploy Hook | Render Cloud |" >> $GITHUB_STEP_SUMMARY
+          echo "| **ML Microservice** | ✅ Deployed | Render Deploy Hook | Render Cloud |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Frontend Web App** | ✅ Deployed | Vercel Git Integration | Vercel Cloud |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Commit SHA:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered By:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
