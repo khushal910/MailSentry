@@ -1,12 +1,16 @@
 # =========================================================================
 # MailSentry Production Deployment (CD) Workflow
+# Gated on successful completion of MailSentry Continuous Integration (CI)
 # =========================================================================
 
 name: MailSentry Production CD & Post-Deploy Verification
 
 on:
-  push:
+  workflow_run:
+    workflows: ["MailSentry Continuous Integration (CI)"]
     branches: ["main"]
+    types:
+      - completed
   workflow_dispatch:
 
 concurrency:
@@ -17,24 +21,22 @@ jobs:
   # =========================================================================
   # JOB 1: PRE-DEPLOYMENT VALIDATION GATE
   # =========================================================================
-  pre-deploy-ci:
-    name: Pre-Deployment Validation Gate
+  pre-deploy-gate:
+    name: Validate CI Pipeline Success Gate
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: 1. Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: 2. Validate Branch & Pipeline Status
+      - name: Validate Pipeline Gate
         run: |
-          echo "Pre-deployment validation passed for main branch (${{ github.sha }})."
+          echo "CI pipeline completed successfully on main. Proceeding to production deployment."
 
   # =========================================================================
   # JOB 2: AUTOMATED BACKEND DEPLOYMENT TO RENDER
   # =========================================================================
   deploy-backend:
     name: Deploy Backend Service (Render)
-    needs: [pre-deploy-ci]
+    needs: [pre-deploy-gate]
     runs-on: ubuntu-latest
 
     steps:
@@ -62,7 +64,7 @@ jobs:
   # =========================================================================
   deploy-ml-service:
     name: Deploy ML Microservice (Render)
-    needs: [pre-deploy-ci]
+    needs: [pre-deploy-gate]
     runs-on: ubuntu-latest
 
     steps:
