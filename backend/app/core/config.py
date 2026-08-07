@@ -76,9 +76,20 @@ class Settings:
         USER_COLLECTION_NAME = os.getenv("USER_COLLECTION_NAME", "users")
         EMAIL_COLLECTION_NAME = os.getenv("EMAIL_COLLECTION_NAME", "emails")
         MODEL_COLLECTION_NAME = os.getenv("MODEL_COLLECTION_NAME", "models")
+        _ml_service_models = os.path.abspath(
+            os.path.join(
+                os.path.dirname(
+                    os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                ),
+                "ml-service",
+                "models",
+            )
+        )
         MODELS_DIR = os.getenv(
             "MODELS_DIR",
-            os.path.join(
+            _ml_service_models
+            if os.path.exists(_ml_service_models)
+            else os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models"
             ),
         )
@@ -133,6 +144,11 @@ class Settings:
         FETCH_MAX_RESULTS = int(os.getenv("FETCH_MAX_RESULTS", 50))
         # Classification decision threshold (default 0.50)
         CLASSIFICATION_THRESHOLD = float(os.getenv("CLASSIFICATION_THRESHOLD", 0.50))
+
+        # ML Microservice Config
+        ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:9000")
+        ML_SERVICE_TIMEOUT = int(os.getenv("ML_SERVICE_TIMEOUT", 30))
+        ML_SERVICE_API_KEY = os.getenv("ML_SERVICE_API_KEY", "")
 
         # Google OAuth
         GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")

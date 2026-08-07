@@ -33,7 +33,14 @@ def compute_file_sha256(filepath: str) -> str:
 
 def main():
     logger.info("Starting MailSentry Production ML Artifact Validation...")
-    models_dir = os.path.join(BACKEND_ROOT, "models")
+    ml_service_models_dir = os.path.abspath(
+        os.path.join(BACKEND_ROOT, "..", "ml-service", "models")
+    )
+    models_dir = (
+        ml_service_models_dir
+        if os.path.exists(ml_service_models_dir)
+        else os.path.join(BACKEND_ROOT, "models")
+    )
     prod_dir = os.path.join(models_dir, "production")
 
     if not os.path.exists(prod_dir):

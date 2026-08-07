@@ -267,85 +267,17 @@ class MLModelService:
 
     def classify_text(self, subject: str, body: str) -> dict[str, Any]:
         """
-        Classifies email content using active ML model or PredictionEngine singleton.
-        Returns predicted_label, predicted_score, subject, and classified_at timestamp.
+        Classifies email content using independent ml-service microservice.
+        Delegates HTTP request via MLServiceClient.
         """
-        model = self.load_latest_model()
-        if model is not None and not isinstance(model, PredictionEngine):
-            try:
-                clean_text = MLPreprocessing.preprocess_email_text(subject, body)
-                preprocessor = self.load_preprocessor()
-                label_encoder = self.load_label_encoder()
+        from app.services.ml_client import MLServiceClient
 
-                if preprocessor is not None and hasattr(preprocessor, "transform"):
-                    features = preprocessor.transform([clean_text])
-                else:
-                    features = [clean_text]
-
-                try:
-                    preds = model.predict(features)
-                except ValueError as val_err:
-                    if "Expected 2D array" in str(val_err):
-                        import numpy as np
-
-                        arr = np.array(features).reshape(-1, 1)
-                        preds = model.predict(arr)
-                    else:
-                        raise val_err
-
-                raw_label = (
-                    preds[0] if (preds is not None and len(preds) > 0) else "ham"
-                )
-
-                if label_encoder is not None and hasattr(
-                    label_encoder, "inverse_transform"
-                ):
-                    try:
-                        raw_str = str(label_encoder.inverse_transform([raw_label])[0]).lower()
-                        label = "spam" if raw_str in ("spam", "1", "1.0") else "safe"
-                    except Exception:
-                        raw_str = str(raw_label).lower()
-                        label = "spam" if raw_str in ("spam", "1", "1.0") else "safe"
-                else:
-                    raw_str = str(raw_label).lower()
-                    label = "spam" if raw_str in ("spam", "1", "1.0") else "safe"
-
-                score = 0.50
-                if hasattr(model, "predict_proba"):
-                    try:
-                        probas = model.predict_proba(features)[0]
-                        score = round(float(max(probas)), 4)
-                    except ValueError as val_err:
-                        if "Expected 2D array" in str(val_err):
-                            try:
-                                import numpy as np
-
-                                arr = np.array(features).reshape(-1, 1)
-                                probas = model.predict_proba(arr)[0]
-                                score = round(float(max(probas)), 4)
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
-                elif hasattr(model, "decision_function"):
-                    try:
-                        import numpy as np
-                        dec = float(model.decision_function(features)[0])
-                        prob = float(1.0 / (1.0 + np.exp(-abs(dec))))
-                        score = round(prob, 4)
-                    except Exception:
-                        pass
-
-                return {
-                    "subject": (subject or "")[:255],
-                    "predicted_label": label,
-                    "predicted_score": score,
-                    "classified_at": datetime.now(timezone.utc).isoformat(),
-                }
-            except Exception as exc:
-                logger.warning(
-                    f"ML classification failed on text ({exc}), delegating to PredictionEngine fallback."
-                )
-
-        engine = PredictionEngine(self.models_dir)
-        return engine.predict(subject=subject, body=body)
+        client = MLServiceClient()
+        try:
+            return client.predict_sync(subject=subject, body=body)
+        except Exception as exc:
+            logger.warning(
+                f"MLServiceClient prediction failed ({exc}), falling back to PredictionEngine."
+            )
+            engine = PredictionEngine(self.models_dir)
+            return engine.predict(subject=subject, body=body)

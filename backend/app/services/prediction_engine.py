@@ -444,10 +444,20 @@ class PredictionEngine:
 
     def predict(self, subject: str, body: str) -> dict[str, Any]:
         """
-        Classify an email.  Delegates to the cached predictor strategy.
-
-        Falls back to a keyword heuristic if no model is loaded.
+        Classify an email. Delegates to MLServiceClient microservice.
+        Falls back to predictor strategy or keyword heuristic if unreachable.
         """
+        try:
+            from app.services.ml_client import MLServiceClient
+
+            client = MLServiceClient()
+            return client.predict_sync(subject=subject, body=body)
+        except Exception as err:
+            logger.warning(
+                "MLServiceClient failed (%s) — checking predictor strategy or keyword fallback.",
+                err,
+            )
+
         if self.predictor is not None:
             return self.predictor.predict(subject, body)
 
@@ -468,7 +478,7 @@ class PredictionEngine:
         is_spam = any(kw in combined for kw in spam_keywords)
         return {
             "subject": subject_str,
-            "predicted_label": "spam" if is_spam else "inbox",
+            "predicted_label": "spam" if is_spam else "safe",
             "predicted_score": 0.95 if is_spam else 0.50,
             "classified_at": datetime.now(timezone.utc).isoformat(),
         }
