@@ -80,6 +80,9 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+from app.middleware.maintenance import MaintenanceMiddleware
+app.add_middleware(MaintenanceMiddleware)
+
 
 from app.api.google_auth import google_auth_router
 from app.api.google_status import google_status_router
@@ -89,7 +92,9 @@ from app.api.emails import emails_router
 from app.api.profile_routes import profile_router
 from app.api.dashboard_routes import dashboard_router
 from app.api.model_routes import model_router
+from app.api.maintenance_routes import maintenance_router
 
+app.include_router(maintenance_router, prefix="/api", tags=["Maintenance"])
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(google_auth_router, prefix="/auth/google", tags=["Google OAuth"])
 app.include_router(google_status_router, prefix="/api/google", tags=["Google Status"])
@@ -102,6 +107,7 @@ app.include_router(profile_router, prefix="/api/v1", tags=["Profile V1"])
 app.include_router(dashboard_router, prefix="/api", tags=["Dashboard"])
 app.include_router(model_router, prefix="/api/v1", tags=["Production Model"])
 app.include_router(model_router, prefix="/api", tags=["Production Model Base"])
+
 
 
 

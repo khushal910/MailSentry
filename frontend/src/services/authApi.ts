@@ -6,8 +6,10 @@ export interface AuthUser {
   name: string;
   email: string;
   role: string;
+  is_admin?: boolean;
   avatarUrl?: string;
 }
+
 
 export interface BackendResponse {
   success: boolean;

@@ -129,19 +129,26 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+import { MaintenanceProvider } from "../context/MaintenanceContext";
+import { MaintenanceBanner } from "../components/MaintenanceBanner";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <PredictionProvider>
-            <Outlet />
-            <Toaster position="top-right" richColors closeButton />
-          </PredictionProvider>
-        </AuthProvider>
+        <MaintenanceProvider>
+          <AuthProvider>
+            <PredictionProvider>
+              <MaintenanceBanner />
+              <Outlet />
+              <Toaster position="top-right" richColors closeButton />
+            </PredictionProvider>
+          </AuthProvider>
+        </MaintenanceProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
 }
+

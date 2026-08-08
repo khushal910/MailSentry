@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { DashboardTopbar } from "@/components/DashboardTopbar";
 import { useAuth } from "@/context/AuthContext";
+import { useMaintenance } from "@/context/MaintenanceContext";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -16,15 +17,26 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardLayout() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { isMaintenance, adminBypass } = useMaintenance();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Only redirect after the auth check has fully resolved (isLoading = false).
-    // This prevents a flash-redirect while /auth/me is still in-flight.
+    if (isMaintenance && (!adminBypass || !isAuthenticated)) {
+      if (!isLoading) {
+        navigate({ to: "/maintenance", replace: true });
+      }
+      return;
+    }
+
     if (!isLoading && !isAuthenticated) {
       navigate({ to: "/login", replace: true });
     }
-  }, [isLoading, isAuthenticated, navigate]);
+  }, [isMaintenance, adminBypass, isLoading, isAuthenticated, navigate]);
+
+  if (isMaintenance && (!adminBypass || !isAuthenticated)) {
+    return null;
+  }
+
 
   // Show a full-screen loading spinner while the auth check is running
   if (isLoading) {
@@ -40,6 +52,7 @@ function DashboardLayout() {
 
   // While unauthenticated (redirect pending), render nothing
   if (!isAuthenticated) return null;
+
 
   return (
     <div className="flex min-h-screen w-full bg-background">

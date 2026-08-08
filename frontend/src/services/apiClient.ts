@@ -47,9 +47,25 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+import { triggerMaintenanceMode } from "../context/MaintenanceContext";
+
 apiClient.interceptors.response.use(
   (r) => r,
-  (error: AxiosError<{ message?: string; detail?: string | Array<{ msg?: string }> }>) => {
+  (
+    error: AxiosError<{
+      message?: string;
+      maintenance?: boolean;
+      maintenance_end?: string;
+      detail?: string | Array<{ msg?: string }>;
+    }>
+  ) => {
+    if (error.response?.status === 503 && error.response?.data?.maintenance) {
+      triggerMaintenanceMode({
+        maintenance_end: error.response.data.maintenance_end,
+        message: error.response.data.message,
+      });
+    }
+
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url || "";
       const isAuthCheck = requestUrl.includes("/auth/me") || requestUrl.includes("/auth/login");
@@ -80,3 +96,4 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+
