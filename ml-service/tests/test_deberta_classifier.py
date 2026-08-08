@@ -1,5 +1,7 @@
 import importlib.util
+import os
 import unittest
+from app.core.config import settings
 from app.core.model_registry import (
     MODEL_REGISTRY,
     get_model_config,
@@ -7,6 +9,7 @@ from app.core.model_registry import (
     normalize_model_key,
 )
 from app.services.classifier_factory import create_classifier
+
 
 HAS_DEBERTA_DEPS = (
     importlib.util.find_spec("torch") is not None

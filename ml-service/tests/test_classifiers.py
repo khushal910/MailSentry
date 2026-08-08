@@ -1,8 +1,10 @@
 import importlib.util
+import os
 import unittest
 from app.services.classifier_factory import create_classifier
 from app.services.ml_engine import MLEngine
 from app.core.config import settings
+
 
 HAS_TORCH_PEFT = (
     importlib.util.find_spec("torch") is not None
