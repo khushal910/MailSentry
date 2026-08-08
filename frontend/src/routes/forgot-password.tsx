@@ -11,6 +11,9 @@ import { Loader } from "@/components/Loader";
 import { authApi } from "@/services/authApi";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
+import { useMaintenance } from "@/context/MaintenanceContext";
+import { useEffect } from "react";
+
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
     meta: [
@@ -25,8 +28,16 @@ type Step = "email" | "otp" | "reset";
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
+  const { isMaintenance } = useMaintenance();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+
+  useEffect(() => {
+    if (isMaintenance) {
+      navigate({ to: "/maintenance", replace: true });
+    }
+  }, [isMaintenance, navigate]);
+
   const [otp, setOtp] = useState("");
   const [resetToken, setResetToken] = useState("");
   const [loading, setLoading] = useState(false);

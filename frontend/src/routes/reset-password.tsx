@@ -8,6 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Loader } from "@/components/Loader";
 import { authApi } from "@/services/authApi";
 
+import { useMaintenance } from "@/context/MaintenanceContext";
+import { useEffect } from "react";
+
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
@@ -25,6 +28,14 @@ interface FormValues {
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { isMaintenance } = useMaintenance();
+
+  useEffect(() => {
+    if (isMaintenance) {
+      navigate({ to: "/maintenance", replace: true });
+    }
+  }, [isMaintenance, navigate]);
+
   const {
     register,
     handleSubmit,

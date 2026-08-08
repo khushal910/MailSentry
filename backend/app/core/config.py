@@ -185,8 +185,25 @@ class Settings:
         )
         GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
+        # Global Maintenance Mode Config
+        MAINTENANCE_MODE = str(os.getenv("MAINTENANCE_MODE", "false")).lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+        MAINTENANCE_END = os.getenv("MAINTENANCE_END", "").strip() or None
+        MAINTENANCE_ADMIN_BYPASS = str(
+            os.getenv("MAINTENANCE_ADMIN_BYPASS", "false")
+        ).lower() in ("true", "1", "t", "yes")
+        raw_admin_emails = os.getenv("MAINTENANCE_ADMIN_EMAILS", "")
+        MAINTENANCE_ADMIN_EMAILS = [
+            e.strip().lower() for e in raw_admin_emails.split(",") if e.strip()
+        ]
+
     except Exception as e:
         print(f"Error loading environment variables: {e!s}")
 
 
 settings = Settings()
+

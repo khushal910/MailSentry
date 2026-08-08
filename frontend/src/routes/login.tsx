@@ -37,20 +37,26 @@ interface FormValues {
   remember: boolean;
 }
 
+import { useMaintenance } from "@/context/MaintenanceContext";
+
 function LoginPage() {
   const { login, isAuthenticated, isLoading } = useAuth();
+  const { isMaintenance, adminBypass } = useMaintenance();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const { oauth_error: oauthError, redirect } = Route.useSearch();
 
   useEffect(() => {
-    // Show OAuth error toast if redirected back from a failed Google OAuth attempt
+    if (isMaintenance && !adminBypass) {
+      navigate({ to: "/maintenance", replace: true });
+      return;
+    }
+
     if (oauthError) {
       toast.error(`Google sign-in failed: ${oauthError.replace(/_/g, " ")}`);
-      // Clean the URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [oauthError]);
+  }, [isMaintenance, adminBypass, oauthError, navigate]);
 
   useEffect(() => {
     // If the user is already authenticated, send them to target page or dashboard smoothly
@@ -59,6 +65,7 @@ function LoginPage() {
       navigate({ to: target, replace: true });
     }
   }, [isLoading, isAuthenticated, redirect, navigate]);
+
 
   const {
     register,

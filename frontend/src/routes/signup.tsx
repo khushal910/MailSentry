@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader } from "@/components/Loader";
 import { useAuth } from "@/context/AuthContext";
+import { useMaintenance } from "@/context/MaintenanceContext";
 
 type SignupSearch = {
   oauth_error?: string;
@@ -39,10 +40,18 @@ interface FormValues {
 
 function SignupPage() {
   const { signup, isAuthenticated, isLoading } = useAuth();
+  const { isMaintenance } = useMaintenance();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    if (isMaintenance) {
+      navigate({ to: "/maintenance", replace: true });
+    }
+  }, [isMaintenance, navigate]);
+
   const { oauth_error: oauthError } = Route.useSearch();
 
   useEffect(() => {
