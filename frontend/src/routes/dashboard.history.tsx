@@ -21,7 +21,8 @@ import { usePredictiveHistory } from "@/hooks/usePredictiveHistory";
 import { HighlightText } from "@/components/HighlightText";
 import { GmailOpenButton } from "@/components/GmailOpenButton";
 import { getGmailUrl } from "@/utils/gmail";
-import { GmailSpamIndicator, GmailMSymbol } from "@/components/GmailSpamIndicator";
+import { GmailSpamIndicator } from "@/components/GmailSpamIndicator";
+
 import { EmailSummaryModal, type HistoryEmailItem } from "@/components/EmailSummaryModal";
 
 

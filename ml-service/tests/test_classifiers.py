@@ -1,8 +1,14 @@
+import importlib.util
 import unittest
-import pytest
 from app.services.classifier_factory import create_classifier
 from app.services.ml_engine import MLEngine
 from app.core.config import settings
+
+HAS_TORCH_PEFT = (
+    importlib.util.find_spec("torch") is not None
+    and importlib.util.find_spec("peft") is not None
+    and importlib.util.find_spec("transformers") is not None
+)
 
 
 class TestClassifierProviders(unittest.TestCase):
@@ -25,15 +31,13 @@ class TestClassifierProviders(unittest.TestCase):
         self.assertIn("probabilities", result)
         self.assertEqual(result["model"], "mlops")
 
-    @pytest.mark.skipif(
-        not pytest.importorskip("torch", reason="torch not installed"),
-        reason="Requires PyTorch, transformers, and peft"
-    )
+    @unittest.skipUnless(HAS_TORCH_PEFT, "Requires PyTorch, transformers, and peft")
     def test_roberta_classifier_provider(self):
         try:
             classifier = create_classifier("roberta")
         except Exception as e:
             self.skipTest(f"Skipping RoBERTa download test if network or model download unavailable: {e}")
+
 
         self.assertEqual(classifier.provider_name, "roberta")
         self.assertTrue(classifier.is_loaded)
