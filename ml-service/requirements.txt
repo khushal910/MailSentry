@@ -173,4 +173,6 @@ peft
 safetensors
 sentencepiece
 accelerate
+tiktoken
+
 
