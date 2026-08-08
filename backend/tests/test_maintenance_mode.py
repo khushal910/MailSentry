@@ -1,4 +1,5 @@
-import pytest
+import unittest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from main import app
 from app.core.config import settings
@@ -6,71 +7,78 @@ from app.core.config import settings
 client = TestClient(app)
 
 
-def test_maintenance_mode_disabled(monkeypatch):
-    """When MAINTENANCE_MODE is False, endpoints behave normally."""
-    monkeypatch.setattr(settings, "MAINTENANCE_MODE", False)
+class TestMaintenanceMode(unittest.TestCase):
+    def test_maintenance_mode_disabled(self):
+        """When MAINTENANCE_MODE is False, endpoints behave normally."""
+        with patch.object(settings, "MAINTENANCE_MODE", False):
+            response = client.get("/health")
+            self.assertEqual(response.status_code, 200)
 
-    # Health check endpoint
-    response = client.get("/health")
-    assert response.status_code == 200
+            response = client.get("/api/maintenance/status")
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertTrue(data["success"])
+            self.assertFalse(data["maintenance"])
 
-    # Maintenance status endpoint
-    response = client.get("/api/maintenance/status")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert data["maintenance"] is False
+    def test_maintenance_mode_enabled_public_endpoints(self):
+        """When MAINTENANCE_MODE is True, public whitelisted endpoints remain accessible."""
+        with patch.object(settings, "MAINTENANCE_MODE", True), patch.object(
+            settings, "MAINTENANCE_END", "2026-08-09T18:00:00Z"
+        ):
+            response = client.get("/health")
+            self.assertEqual(response.status_code, 200)
+
+            response = client.get("/api/maintenance/status")
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertTrue(data["success"])
+            self.assertTrue(data["maintenance"])
+            self.assertEqual(data["maintenance_end"], "2026-08-09T18:00:00Z")
+
+    def test_maintenance_mode_enabled_protected_endpoints(self):
+        """When MAINTENANCE_MODE is True, protected endpoints return HTTP 503 with maintenance payload."""
+        with patch.object(settings, "MAINTENANCE_MODE", True), patch.object(
+            settings, "MAINTENANCE_ADMIN_BYPASS", False
+        ), patch.object(settings, "MAINTENANCE_END", "2026-08-09T18:00:00Z"):
+            response = client.get("/api/emails")
+            self.assertEqual(response.status_code, 503)
+            data = response.json()
+            self.assertFalse(data["success"])
+            self.assertTrue(data["maintenance"])
+            self.assertTrue(
+                "maintenance" in data["message"].lower()
+                or "scheduled" in data["message"].lower()
+            )
+            self.assertEqual(data["maintenance_end"], "2026-08-09T18:00:00Z")
+
+            response = client.post(
+                "/auth/login",
+                json={"email": "user@example.com", "password": "password123"},
+            )
+            self.assertEqual(response.status_code, 503)
+            data = response.json()
+            self.assertTrue(data["maintenance"])
+
+    def test_maintenance_admin_bypass(self):
+        """When MAINTENANCE_ADMIN_BYPASS is True, admin emails bypass maintenance on login/requests."""
+        with patch.object(settings, "MAINTENANCE_MODE", True), patch.object(
+            settings, "MAINTENANCE_ADMIN_BYPASS", True
+        ), patch.object(
+            settings, "MAINTENANCE_ADMIN_EMAILS", ["admin@mailsentry.com"]
+        ):
+            response = client.post(
+                "/auth/login",
+                json={"email": "admin@mailsentry.com", "password": "wrongpassword"},
+            )
+            self.assertNotEqual(response.status_code, 503)
+
+            response = client.post(
+                "/auth/login",
+                json={"email": "regular@example.com", "password": "password123"},
+            )
+            self.assertEqual(response.status_code, 503)
 
 
-def test_maintenance_mode_enabled_public_endpoints(monkeypatch):
-    """When MAINTENANCE_MODE is True, public whitelisted endpoints remain accessible."""
-    monkeypatch.setattr(settings, "MAINTENANCE_MODE", True)
-    monkeypatch.setattr(settings, "MAINTENANCE_END", "2026-08-09T18:00:00Z")
+if __name__ == "__main__":
+    unittest.main()
 
-    response = client.get("/health")
-    assert response.status_code == 200
-
-    response = client.get("/api/maintenance/status")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert data["maintenance"] is True
-    assert data["maintenance_end"] == "2026-08-09T18:00:00Z"
-
-
-def test_maintenance_mode_enabled_protected_endpoints(monkeypatch):
-    """When MAINTENANCE_MODE is True, protected endpoints return HTTP 503 with maintenance payload."""
-    monkeypatch.setattr(settings, "MAINTENANCE_MODE", True)
-    monkeypatch.setattr(settings, "MAINTENANCE_ADMIN_BYPASS", False)
-    monkeypatch.setattr(settings, "MAINTENANCE_END", "2026-08-09T18:00:00Z")
-
-    # Protected endpoint attempt
-    response = client.get("/api/emails")
-    assert response.status_code == 503
-    data = response.json()
-    assert data["success"] is False
-    assert data["maintenance"] is True
-    assert "maintenance" in data["message"].lower() or "scheduled" in data["message"].lower()
-    assert data["maintenance_end"] == "2026-08-09T18:00:00Z"
-
-    # Login endpoint attempt during maintenance
-    response = client.post("/auth/login", json={"email": "user@example.com", "password": "password123"})
-    assert response.status_code == 503
-    data = response.json()
-    assert data["maintenance"] is True
-
-
-def test_maintenance_admin_bypass(monkeypatch):
-    """When MAINTENANCE_ADMIN_BYPASS is True, admin emails bypass maintenance on login/requests."""
-    monkeypatch.setattr(settings, "MAINTENANCE_MODE", True)
-    monkeypatch.setattr(settings, "MAINTENANCE_ADMIN_BYPASS", True)
-    monkeypatch.setattr(settings, "MAINTENANCE_ADMIN_EMAILS", ["admin@mailsentry.com"])
-
-    # Admin email attempt on login endpoint
-    response = client.post("/auth/login", json={"email": "admin@mailsentry.com", "password": "wrongpassword"})
-    # Should proceed past maintenance middleware to controller (returning 401 for invalid credentials rather than 503 maintenance)
-    assert response.status_code != 503
-
-    # Regular user email attempt on login endpoint
-    response = client.post("/auth/login", json={"email": "regular@example.com", "password": "password123"})
-    assert response.status_code == 503

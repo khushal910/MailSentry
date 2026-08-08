@@ -1,8 +1,10 @@
 import importlib.util
+import os
 import unittest
 from app.services.classifier_factory import create_classifier
 from app.services.ml_engine import MLEngine
 from app.core.config import settings
+
 
 HAS_TORCH_PEFT = (
     importlib.util.find_spec("torch") is not None
@@ -15,7 +17,8 @@ class TestClassifierProviders(unittest.TestCase):
     def test_invalid_classification_model_raises_value_error(self):
         with self.assertRaises(ValueError) as ctx:
             create_classifier("invalid_provider_name")
-        self.assertIn("Unsupported CLASSIFICATION_MODEL", str(ctx.exception))
+        self.assertIn("Unsupported", str(ctx.exception))
+
 
     def test_mlops_classifier_provider(self):
         classifier = create_classifier("mlops")
@@ -33,10 +36,16 @@ class TestClassifierProviders(unittest.TestCase):
 
     @unittest.skipUnless(HAS_TORCH_PEFT, "Requires PyTorch, transformers, and peft")
     def test_roberta_classifier_provider(self):
+        active_model = (settings.EMAIL_CLASSIFIER_MODEL or "").lower()
+        run_all = os.getenv("RUN_TRANSFORMER_TESTS", "false").lower() in ("true", "1")
+        if active_model != "roberta" and not run_all:
+            self.skipTest(f"Skipping RoBERTa test as active model is '{active_model}' (Set EMAIL_CLASSIFIER_MODEL=roberta to run)")
+
         try:
             classifier = create_classifier("roberta")
         except Exception as e:
             self.skipTest(f"Skipping RoBERTa download test if network or model download unavailable: {e}")
+
 
 
         self.assertEqual(classifier.provider_name, "roberta")

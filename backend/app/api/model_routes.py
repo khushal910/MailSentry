@@ -43,7 +43,26 @@ async def get_production_model():
             data["provider"] = provider
             data["device"] = details.get("device", "cpu")
 
-            if provider == "roberta":
+            if provider in ("deberta-v3-base", "deberta"):
+                data["model_name"] = "DeBERTa-v3-base Spam Classifier"
+                data["algorithm"] = "DeBERTa-v3 (microsoft/deberta-v3-base) + LoRA r=8"
+                data["algorithm_type"] = "Transformer / Disentangled Attention / PEFT"
+                data["framework"] = "PyTorch / HuggingFace"
+                data["serialization"] = "safetensors / PEFT"
+                data["base_model"] = c_details.get("base_model", "microsoft/deberta-v3-base")
+                data["adapter"] = c_details.get("adapter", "ssheroz/spam-email-classifier-deberta-v3-base-r8")
+                data["description"] = (
+                    "DeBERTa-v3 transformer with disentangled attention fine-tuned with LoRA r=8 adapter "
+                    "for enterprise binary email spam classification."
+                )
+                data["accuracy"] = 99.35
+                data["precision"] = 99.10
+                data["recall"] = 99.60
+                data["f1_score"] = 99.35
+                data["roc_auc"] = 99.98
+                data["model_size_mb"] = 512.00
+                data["inference_time_ms"] = 14.20
+            elif provider == "roberta":
                 data["model_name"] = "RoBERTa-LoRA Spam Classifier"
                 data["algorithm"] = "RoBERTa (FacebookAI/roberta-base) + LoRA r=8"
                 data["algorithm_type"] = "Transformer / PEFT"
@@ -64,6 +83,7 @@ async def get_production_model():
                 data["inference_time_ms"] = 12.45
             else:
                 data["provider"] = "mlops"
+
         except Exception:
             data["serving_status"] = "Fallback Engine"
             data["ml_service_healthy"] = False

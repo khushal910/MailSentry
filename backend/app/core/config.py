@@ -157,8 +157,9 @@ class Settings:
 
         # ML Microservice Config
         ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:9000")
-        ML_SERVICE_TIMEOUT = int(os.getenv("ML_SERVICE_TIMEOUT", 30))
+        ML_SERVICE_TIMEOUT = int(os.getenv("ML_SERVICE_TIMEOUT", 120))
         ML_SERVICE_API_KEY = os.getenv("ML_SERVICE_API_KEY", "")
+
 
         # Google OAuth
         GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")

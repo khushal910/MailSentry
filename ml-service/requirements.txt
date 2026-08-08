@@ -170,4 +170,9 @@ tomlkit==0.15.1
 torch
 transformers
 peft
-safetensors
+safetensors
+sentencepiece
+accelerate
+tiktoken
+
+
