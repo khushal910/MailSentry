@@ -312,6 +312,14 @@ function ProductionModelPage() {
                       value={model.deployment_status || "Active Serving Traffic"}
                       isStatus
                     />
+                    <MetaRow label="Model Provider" value={model.provider ? model.provider.toUpperCase() : "MLOPS"} isMono />
+                    <MetaRow label="Serving Device" value={model.device || "CPU"} isMono />
+                    {model.base_model && (
+                      <MetaRow label="Base Transformer Model" value={model.base_model} isMono />
+                    )}
+                    {model.adapter && (
+                      <MetaRow label="LoRA Adapter Checkpoint" value={model.adapter} isMono isCopyable />
+                    )}
                     <MetaRow
                       label="Deployment Date"
                       value={formattedDate(model.deployment_date || model.trained_at)}
@@ -346,9 +354,8 @@ function ProductionModelPage() {
                       }
                       isMono
                     />
-                    <MetaRow label="Training Pipeline Ver" value="v1.2.0" isMono />
-                    <MetaRow label="Feature Store Ver" value="v1.0" isMono />
                   </div>
+
                 </div>
               </div>
 

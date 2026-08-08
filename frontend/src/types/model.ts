@@ -39,7 +39,12 @@ export interface ProductionModelInfo {
   mlflow_run?: string;
   deployed_by?: string;
   experiment_name?: string;
+  provider?: string;
+  device?: string;
+  base_model?: string;
+  adapter?: string;
 }
+
 
 export interface MetricDiffItem {
   label: string;
