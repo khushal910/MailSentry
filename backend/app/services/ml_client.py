@@ -65,7 +65,7 @@ class MLServiceClient:
         subject: str,
         body: str,
         threshold: Optional[float] = None,
-        max_retries: int = 2,
+        max_retries: int = 3,
     ) -> Dict[str, Any]:
         """
         Sends an asynchronous prediction request to ml-service with automatic retries.
@@ -112,8 +112,9 @@ class MLServiceClient:
         subject: str,
         body: str,
         threshold: Optional[float] = None,
-        max_retries: int = 2,
+        max_retries: int = 3,
     ) -> Dict[str, Any]:
+
         """
         Synchronous prediction helper for worker threads or synchronous routes.
         Uses persistent HTTP connection pooling to prevent socket exhaustion during bulk email classification.
