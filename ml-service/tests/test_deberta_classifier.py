@@ -41,10 +41,16 @@ class TestDebertaClassifierIntegration(unittest.TestCase):
 
     @unittest.skipUnless(HAS_DEBERTA_DEPS, "Requires PyTorch, Transformers, and SentencePiece")
     def test_deberta_classifier_prediction(self):
+        active_model = (settings.EMAIL_CLASSIFIER_MODEL or "").lower()
+        run_all = os.getenv("RUN_TRANSFORMER_TESTS", "false").lower() in ("true", "1")
+        if active_model not in ("deberta", "deberta-v3-base") and not run_all:
+            self.skipTest(f"Skipping DeBERTa prediction test as active model is '{active_model}' (Set EMAIL_CLASSIFIER_MODEL=deberta-v3-base to run)")
+
         try:
             classifier = create_classifier("deberta-v3-base")
         except Exception as e:
             self.skipTest(f"Skipping DeBERTa network/download test: {e}")
+
 
         self.assertEqual(classifier.provider_name, "deberta-v3-base")
         self.assertTrue(classifier.is_loaded)

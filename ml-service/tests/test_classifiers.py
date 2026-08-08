@@ -34,10 +34,16 @@ class TestClassifierProviders(unittest.TestCase):
 
     @unittest.skipUnless(HAS_TORCH_PEFT, "Requires PyTorch, transformers, and peft")
     def test_roberta_classifier_provider(self):
+        active_model = (settings.EMAIL_CLASSIFIER_MODEL or "").lower()
+        run_all = os.getenv("RUN_TRANSFORMER_TESTS", "false").lower() in ("true", "1")
+        if active_model != "roberta" and not run_all:
+            self.skipTest(f"Skipping RoBERTa test as active model is '{active_model}' (Set EMAIL_CLASSIFIER_MODEL=roberta to run)")
+
         try:
             classifier = create_classifier("roberta")
         except Exception as e:
             self.skipTest(f"Skipping RoBERTa download test if network or model download unavailable: {e}")
+
 
 
         self.assertEqual(classifier.provider_name, "roberta")
