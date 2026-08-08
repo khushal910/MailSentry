@@ -60,6 +60,7 @@ class Settings:
     MODELS_DIR: str = os.getenv("MODELS_DIR", os.path.join(BASE_DIR, "models"))
     
     # ML Parameters
+    CLASSIFICATION_MODEL: str = os.getenv("CLASSIFICATION_MODEL", "mlops").lower().strip()
     CLASSIFICATION_THRESHOLD: float = float(os.getenv("CLASSIFICATION_THRESHOLD", 0.50))
     
     # Internal Security Token (optional for production service-to-service auth)

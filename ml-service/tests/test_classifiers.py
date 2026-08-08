@@ -1,0 +1,68 @@
+import unittest
+import pytest
+from app.services.classifier_factory import create_classifier
+from app.services.ml_engine import MLEngine
+from app.core.config import settings
+
+
+class TestClassifierProviders(unittest.TestCase):
+    def test_invalid_classification_model_raises_value_error(self):
+        with self.assertRaises(ValueError) as ctx:
+            create_classifier("invalid_provider_name")
+        self.assertIn("Unsupported CLASSIFICATION_MODEL", str(ctx.exception))
+
+    def test_mlops_classifier_provider(self):
+        classifier = create_classifier("mlops")
+        self.assertEqual(classifier.provider_name, "mlops")
+        self.assertTrue(classifier.is_loaded)
+
+        result = classifier.predict(
+            subject="Congratulations! You won $1,000,000!",
+            body="Click here to claim your prize."
+        )
+        self.assertIn("predicted_label", result)
+        self.assertIn("predicted_score", result)
+        self.assertIn("probabilities", result)
+        self.assertEqual(result["model"], "mlops")
+
+    @pytest.mark.skipif(
+        not pytest.importorskip("torch", reason="torch not installed"),
+        reason="Requires PyTorch, transformers, and peft"
+    )
+    def test_roberta_classifier_provider(self):
+        try:
+            classifier = create_classifier("roberta")
+        except Exception as e:
+            self.skipTest(f"Skipping RoBERTa download test if network or model download unavailable: {e}")
+
+        self.assertEqual(classifier.provider_name, "roberta")
+        self.assertTrue(classifier.is_loaded)
+        self.assertIn(classifier.device_name, ["cpu", "cuda"])
+
+        # Test spam sample
+        spam_result = classifier.predict(
+            subject="Congratulations! You won $1,000,000!",
+            body="Click here to claim your prize."
+        )
+        self.assertIn("predicted_label", spam_result)
+        self.assertIn("predicted_score", spam_result)
+        self.assertIn("probabilities", spam_result)
+        self.assertEqual(spam_result["model"], "roberta")
+
+        # Test safe/ham sample
+        safe_result = classifier.predict(
+            subject="Meeting tomorrow at 10 AM",
+            body="Please join the project meeting tomorrow at 10 AM."
+        )
+        self.assertIn("predicted_label", safe_result)
+        self.assertIn("predicted_score", safe_result)
+        self.assertEqual(safe_result["model"], "roberta")
+
+    def test_ml_engine_switching(self):
+        engine_mlops = MLEngine.get_instance(model_type="mlops", force_reload=True)
+        res_mlops = engine_mlops.predict(subject="Test Email", body="Hello team")
+        self.assertEqual(res_mlops["model"], "mlops")
+
+
+if __name__ == "__main__":
+    unittest.main()
