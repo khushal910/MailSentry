@@ -283,6 +283,14 @@ class GmailFetchService:
         for raw in raw_emails:
             try:
                 classified = self._classify_one(raw)
+                gmail_cls = raw.get("gmail_classification")
+                if not gmail_cls and "label_ids" in raw:
+                    is_g_spam = "SPAM" in raw.get("label_ids", [])
+                    gmail_cls = {
+                        "is_spam": is_g_spam,
+                        "status": "spam" if is_g_spam else "not_spam",
+                    }
+
                 email_doc = {
                     "user_id": user_id,
                     "message_id": raw["message_id"],
@@ -291,6 +299,7 @@ class GmailFetchService:
                     "snippet": raw.get("snippet", ""),
                     "predicted_label": classified["predicted_label"],
                     "predicted_score": classified["predicted_score"],
+                    "gmail_classification": gmail_cls,
                     "fetch_time": datetime.now(timezone.utc),
                     "classified_at": datetime.fromisoformat(
                         classified["classified_at"]
@@ -309,12 +318,14 @@ class GmailFetchService:
                     "snippet": raw.get("snippet", ""),
                     "predicted_label": classified["predicted_label"],
                     "predicted_score": classified["predicted_score"],
+                    "gmail_classification": gmail_cls,
                     "fetch_time": email_doc["fetch_time"].isoformat(),
                     "classified_at": classified["classified_at"],
                     "received_at": raw.get("received_at") or raw.get("sent_at"),
                     "sent_at": raw.get("sent_at") or raw.get("received_at"),
                 }
                 result.new_emails.append(ui_doc)
+
 
             except Exception as err:
                 result.skipped += 1
@@ -384,6 +395,14 @@ class GmailFetchService:
                     else:
                         classified_dt = now
 
+                    gmail_cls = raw.get("gmail_classification")
+                    if not gmail_cls and "label_ids" in raw:
+                        is_g_spam = "SPAM" in raw.get("label_ids", [])
+                        gmail_cls = {
+                            "is_spam": is_g_spam,
+                            "status": "spam" if is_g_spam else "not_spam",
+                        }
+
                     email_doc = {
                         "user_id": user_id,
                         "message_id": message_id,
@@ -398,6 +417,7 @@ class GmailFetchService:
                         "prediction": classified.get("predicted_label", "ham"),
                         "predicted_score": classified.get("predicted_score", 0.85),
                         "confidence": classified.get("predicted_score", 0.85),
+                        "gmail_classification": gmail_cls,
                         "fetch_time": now,
                         "classified_at": classified_dt,
                         "created_at": now,
@@ -418,11 +438,13 @@ class GmailFetchService:
                             "prediction": classified["predicted_label"],
                             "predicted_score": classified["predicted_score"],
                             "confidence": classified["predicted_score"],
+                            "gmail_classification": gmail_cls,
                             "classified_at": classified["classified_at"],
                             "created_at": now.isoformat(),
                             "sent_at": raw.get("sent_at") or raw.get("received_at"),
                         }
                     )
+
             except Exception as err:
                 skipped_count += 1
                 logger.error(
@@ -559,6 +581,13 @@ class GmailFetchService:
                             snippet = msg_data.get("snippet", "")
                             full_body = _extract_full_body(payload) or snippet
                             thread_id = msg_data.get("threadId")
+                            label_ids = msg_data.get("labelIds", [])
+                            is_gmail_spam = "SPAM" in label_ids if isinstance(label_ids, list) else False
+                            gmail_classification = {
+                                "is_spam": is_gmail_spam,
+                                "status": "spam" if is_gmail_spam else "not_spam",
+                                "label_ids": label_ids,
+                            }
 
                             return {
                                 "message_id": msg_id,
@@ -568,7 +597,10 @@ class GmailFetchService:
                                 "body": full_body,
                                 "received_at": sent_at,
                                 "sent_at": sent_at,
+                                "label_ids": label_ids,
+                                "gmail_classification": gmail_classification,
                             }
+
                         except Exception as fetch_err:
                             logger.warning(
                                 f"[GmailAPI] Error fetching msg_id={msg_id}: {fetch_err}"

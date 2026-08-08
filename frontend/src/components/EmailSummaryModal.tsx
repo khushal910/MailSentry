@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Sparkles, X, RefreshCw, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmailLabelBadge } from "@/components/EmailLabelBadge";
+import { GmailSpamIndicator } from "@/components/GmailSpamIndicator";
 import { emailSummaryService, type EmailSummaryData } from "@/services/emailSummaryService";
+
 
 export interface HistoryEmailItem {
   email_id?: string;
@@ -16,6 +18,7 @@ export interface HistoryEmailItem {
   prediction?: string | null;
   predicted_label?: string | null;
   predicted_score?: number | null;
+  gmail_classification?: any;
 }
 
 interface EmailSummaryModalProps {
@@ -23,6 +26,7 @@ interface EmailSummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
 
 export const EmailSummaryModal: React.FC<EmailSummaryModalProps> = ({
   email,
@@ -77,13 +81,17 @@ export const EmailSummaryModal: React.FC<EmailSummaryModalProps> = ({
         <div className="flex items-start justify-between gap-4 border-b border-border/40 pb-4">
           <div className="space-y-1 pr-6">
             <div className="flex items-center gap-2">
-              <EmailLabelBadge label={label} />
+              <GmailSpamIndicator
+                mailsentryLabel={label}
+                gmailClassification={email.gmail_classification}
+              />
               {email.predicted_score !== undefined && email.predicted_score !== null && (
                 <span className="text-xs text-muted-foreground font-medium">
                   {(email.predicted_score * 100).toFixed(1)}% confidence
                 </span>
               )}
             </div>
+
             <h2 className="text-lg font-semibold tracking-tight text-foreground line-clamp-2 mt-1">
               {email.subject || "(No Subject)"}
             </h2>
