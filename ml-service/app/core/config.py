@@ -60,10 +60,22 @@ class Settings:
     MODELS_DIR: str = os.getenv("MODELS_DIR", os.path.join(BASE_DIR, "models"))
     
     # ML Parameters
-    CLASSIFICATION_MODEL: str = os.getenv("CLASSIFICATION_MODEL", "mlops").lower().strip()
+    raw_model_choice: str = (
+        os.getenv("EMAIL_CLASSIFIER_MODEL")
+        or os.getenv("CLASSIFICATION_MODEL")
+        or "mlops"
+    ).lower().strip()
+    CLASSIFICATION_MODEL: str = raw_model_choice
+    EMAIL_CLASSIFIER_MODEL: str = raw_model_choice
     CLASSIFICATION_THRESHOLD: float = float(os.getenv("CLASSIFICATION_THRESHOLD", 0.50))
     
+    # Hugging Face & LoRA Settings
+    HF_HOME: str = os.getenv("HF_HOME", os.getenv("TRANSFORMERS_CACHE", ""))
+    LORA_ENABLED: bool = os.getenv("LORA_ENABLED", "True").lower() in ("true", "1", "t")
+    LORA_R: int = int(os.getenv("LORA_R", "8"))
+
     # Internal Security Token (optional for production service-to-service auth)
+
     API_KEY_SECRET: str = os.getenv("API_KEY_SECRET", "") or os.getenv("ML_SERVICE_API_KEY", "")
     
     # CORS Configuration (configurable via CORS_ORIGINS & CORS_ORIGIN_REGEX in .env)

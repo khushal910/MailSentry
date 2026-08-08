@@ -45,6 +45,31 @@ async def health_check():
     )
 
 
+@ml_router.get("/model/info", tags=["Metadata"])
+@ml_router.get("/api/v1/model/info", tags=["Metadata"])
+async def model_info_endpoint():
+    from app.core.model_registry import get_model_config
+
+    engine = MLEngine.get_instance()
+    is_ok = engine.is_loaded
+    details = engine.metadata.get("details", {})
+    provider = engine.model_type
+    config = get_model_config(provider) or {}
+
+    return {
+        "model_key": provider,
+        "model_name": config.get("name", f"{provider.upper()} Spam Classifier"),
+        "provider": config.get("provider", "Hugging Face"),
+        "base_model": details.get("base_model", config.get("base_model", provider)),
+        "adapter": details.get("adapter", config.get("adapter", "LoRA")),
+        "lora_rank": details.get("lora_rank", settings.LORA_R),
+        "status": "loaded" if is_ok else "failed",
+        "version": engine.version,
+        "device": engine.metadata.get("device", "cpu"),
+        "target_modules": details.get("target_modules", config.get("target_modules", [])),
+    }
+
+
 @ml_router.get("/version", response_model=VersionResponse, tags=["Metadata"])
 @ml_router.get("/api/v1/version", response_model=VersionResponse, tags=["Metadata"])
 async def version_info():
@@ -57,6 +82,7 @@ async def version_info():
         metrics=engine.metadata.get("metrics", {}),
         schema_info=engine.schema,
     )
+
 
 
 @ml_router.post(
