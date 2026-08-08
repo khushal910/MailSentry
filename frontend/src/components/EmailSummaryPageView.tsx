@@ -20,8 +20,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmailLabelBadge } from "@/components/EmailLabelBadge";
+import { GmailSpamIndicator } from "@/components/GmailSpamIndicator";
 import { emailSummaryService, type EmailSummaryData } from "@/services/emailSummaryService";
 import { formatConfidence, formatDate } from "@/utils/format";
+
 import { getGmailUrl, openGmailInNewTab } from "@/utils/gmail";
 
 interface EmailSummaryPageViewProps {
@@ -406,7 +408,10 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
                   <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Category / Prediction:
                 </span>
                 <div className="flex items-center gap-2 pt-0.5">
-                  <EmailLabelBadge label={data.predicted_label || "ham"} />
+                  <GmailSpamIndicator
+                    mailsentryLabel={data.predicted_label || "ham"}
+                    gmailClassification={(data as any).gmail_classification}
+                  />
                   {typeof data.predicted_score === "number" && (
                     <span className="text-[11px] font-semibold text-muted-foreground">
                       {(data.predicted_score * 100).toFixed(1)}% score
@@ -414,6 +419,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
                   )}
                 </div>
               </div>
+
             </div>
           </div>
 

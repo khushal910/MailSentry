@@ -1,5 +1,11 @@
 import apiClient from "./apiClient";
 
+export interface GmailClassification {
+  is_spam?: boolean | null;
+  status?: "spam" | "not_spam" | "unavailable" | string;
+  label_ids?: string[];
+}
+
 export interface ClassifiedEmail {
   message_id: string;
   gmail_message_id?: string;
@@ -9,11 +15,13 @@ export interface ClassifiedEmail {
   sender?: string | null;
   predicted_label: string;
   predicted_score?: number | null;
+  gmail_classification?: GmailClassification | null;
   fetch_time?: string;
   classified_at?: string;
   received_at?: string | null;
   sent_at?: string | null;
 }
+
 
 export interface GetEmailsResponse {
   emails: ClassifiedEmail[];

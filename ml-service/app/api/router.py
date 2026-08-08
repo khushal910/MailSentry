@@ -27,15 +27,20 @@ def verify_service_auth(x_internal_token: Optional[str] = Header(default=None)):
 async def health_check():
     engine = MLEngine.get_instance()
     is_ok = engine.is_loaded
+    details = engine.metadata.get("details", {})
     return HealthResponse(
         status="healthy" if is_ok else "degraded",
         service=settings.APP_NAME,
         version=engine.version,
         model_loaded=is_ok,
         details={
+            "provider": engine.model_type,
+            "loaded": is_ok,
+            "device": engine.metadata.get("device", "cpu"),
             "models_dir": settings.MODELS_DIR,
             "has_preprocessor": engine.preprocessor is not None,
             "has_label_encoder": engine.label_encoder is not None,
+            "classifier_details": details,
         },
     )
 
@@ -48,7 +53,7 @@ async def version_info():
         service=settings.APP_NAME,
         version="1.0.0",
         model_version=engine.version,
-        model_type=engine.metadata.get("model_type", "TFIDF + LogisticRegression"),
+        model_type=engine.metadata.get("model_type", f"{engine.model_type.upper()} Classifier"),
         metrics=engine.metadata.get("metrics", {}),
         schema_info=engine.schema,
     )
@@ -66,10 +71,10 @@ async def predict_endpoint(
 ):
     verify_service_auth(x_internal_token)
     engine = MLEngine.get_instance()
-    
+
     subject = request.subject or ""
     body = request.get_text_body()
-    
+
     result = engine.predict(
         subject=subject, body=body, threshold=request.threshold
     )
@@ -80,4 +85,7 @@ async def predict_endpoint(
         predicted_score=result["predicted_score"],
         classified_at=result["classified_at"],
         version=result.get("version", engine.version),
+        model=result.get("model", engine.model_type),
+        probabilities=result.get("probabilities"),
     )
+

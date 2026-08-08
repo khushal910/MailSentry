@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MailX, X, SearchX, RefreshCw, Sparkles } from "lucide-react";
+import { Search, MailX, X, SearchX, RefreshCw, Sparkles, ShieldAlert, ShieldCheck, AlertTriangle } from "lucide-react";
+
 import { PageTransition } from "@/components/PageTransition";
+
 import { EmailLabelBadge } from "@/components/EmailLabelBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +21,11 @@ import { usePredictiveHistory } from "@/hooks/usePredictiveHistory";
 import { HighlightText } from "@/components/HighlightText";
 import { GmailOpenButton } from "@/components/GmailOpenButton";
 import { getGmailUrl } from "@/utils/gmail";
+import { GmailSpamIndicator } from "@/components/GmailSpamIndicator";
+
 import { EmailSummaryModal, type HistoryEmailItem } from "@/components/EmailSummaryModal";
+
+
 
 export const Route = createFileRoute("/dashboard/history")({
   head: () => ({
@@ -77,14 +83,36 @@ function HistoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Prediction History</h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span>All classified emails stored in your MailSentry database.</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary/15 via-brand/20 to-sky-500/15 px-3 py-1 text-xs font-semibold text-primary border border-primary/30 shadow-sm animate-pulse">
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            All classified emails stored in your MailSentry database.
+          </p>
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+            {/* Category Legend */}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-3 py-1 font-medium text-foreground border border-border/70 shadow-xs">
+              <span className="text-muted-foreground font-semibold">Category:</span>
+              <span className="inline-flex items-center gap-1 text-destructive font-semibold">
+                <ShieldAlert className="h-3.5 w-3.5" /> Spam
+              </span>
+              <span className="mx-0.5 opacity-40">·</span>
+              <span className="inline-flex items-center gap-1 text-emerald-500 font-semibold">
+                <ShieldCheck className="h-3.5 w-3.5" /> Safe
+              </span>
+              <span className="mx-0.5 opacity-40">·</span>
+              <span className="inline-flex items-center gap-1 text-amber-500 font-bold">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500 animate-pulse" /> Disagreement with Gmail
+              </span>
+            </span>
+
+            {/* AI Summary Tip Badge */}
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary/15 via-brand/20 to-sky-500/15 px-3 py-1 font-semibold text-primary border border-primary/30 shadow-xs">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Click any email to view AI Summary
+              Click any row for AI Summary
             </span>
           </div>
         </div>
+
         {isFetching && !isLoading && (
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary shadow-sm">
             <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -92,6 +120,7 @@ function HistoryPage() {
           </div>
         )}
       </div>
+
 
       <div className="glass mt-6 rounded-2xl p-4 md:p-6">
         <div className="flex flex-wrap items-center gap-3">
@@ -209,6 +238,7 @@ function HistoryPage() {
                   <th className="pb-3 text-center font-medium w-[6%]">Open</th>
                 </tr>
               </thead>
+
               <tbody>
                 <AnimatePresence>
                   {emails.map((email, index) => {
@@ -224,38 +254,42 @@ function HistoryPage() {
                         onClick={(e) => handleRowClick(email, e)}
                         className="border-b border-border/40 last:border-0 transition-colors group hover:bg-muted/30 cursor-pointer"
                       >
-                        <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground">
+                        <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground align-middle">
                           {rowNumber}
                         </td>
-                        <td className="py-3 text-muted-foreground text-xs font-medium pr-2">
+                        <td className="py-3 text-muted-foreground text-xs font-medium pr-2 align-middle whitespace-nowrap">
                           {email.sent_at || email.received_at
                             ? formatDate(email.sent_at || email.received_at!)
                             : "—"}
                         </td>
-                        <td className="py-3 font-medium pr-2">
+                        <td className="py-3 font-medium pr-2 align-middle">
                           <HighlightText
                             text={truncate(email.subject || "(no subject)", 38)}
                             query={debouncedSearch}
                           />
                         </td>
-                        <td className="py-3 text-muted-foreground pr-2">
+                        <td className="py-3 text-muted-foreground pr-2 align-middle">
                           <HighlightText
                             text={truncate(email.snippet || "—", 42)}
                             query={debouncedSearch}
                           />
                         </td>
-                        <td className="py-3 pr-2">
-                          <EmailLabelBadge label={email.predicted_label} />
+                        <td className="py-3 pr-2 align-middle whitespace-nowrap">
+                          <GmailSpamIndicator
+                            mailsentryLabel={email.predicted_label}
+                            gmailClassification={email.gmail_classification}
+                          />
                         </td>
-                        <td className="py-3 font-medium text-xs">
+
+                        <td className="py-3 font-medium text-xs align-middle">
                           {typeof email.predicted_score === "number"
                             ? formatConfidence(email.predicted_score)
                             : "—"}
                         </td>
-                        <td className="py-3 text-left text-muted-foreground text-xs">
+                        <td className="py-3 text-left text-muted-foreground text-xs align-middle whitespace-nowrap">
                           {email.classified_at ? formatDate(email.classified_at) : "—"}
                         </td>
-                        <td className="py-3 text-center">
+                        <td className="py-3 text-center align-middle">
                           <GmailOpenButton
                             messageId={email.message_id}
                             threadId={email.thread_id}
@@ -267,6 +301,7 @@ function HistoryPage() {
                 </AnimatePresence>
               </tbody>
             </table>
+
           )}
         </div>
 

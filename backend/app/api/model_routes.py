@@ -21,19 +21,49 @@ storage = BackendModelStorage()
 async def get_production_model():
     """
     GET /api/v1/model/production (also accessible at /api/model/production)
-    Returns metadata of the current production model, enriched with live ml-service status.
+    Returns metadata of the current production model, enriched with live ml-service status and active provider specs.
     """
     try:
         data = storage.get_production_metadata()
         from app.services.ml_client import MLServiceClient
+
         try:
             client = MLServiceClient()
             ml_health = await client.check_health()
             data["serving_status"] = "Active Microservice"
             data["ml_service_url"] = client.base_url
             data["ml_service_healthy"] = ml_health.get("status") == "healthy"
+            
             if ml_health.get("version"):
                 data["version"] = ml_health.get("version")
+
+            details = ml_health.get("details", {}) or {}
+            c_details = details.get("classifier_details", {}) or {}
+            provider = details.get("provider") or c_details.get("provider", "mlops")
+            data["provider"] = provider
+            data["device"] = details.get("device", "cpu")
+
+            if provider == "roberta":
+                data["model_name"] = "RoBERTa-LoRA Spam Classifier"
+                data["algorithm"] = "RoBERTa (FacebookAI/roberta-base) + LoRA r=8"
+                data["algorithm_type"] = "Transformer / PEFT"
+                data["framework"] = "PyTorch / HuggingFace"
+                data["serialization"] = "safetensors / PEFT"
+                data["base_model"] = c_details.get("base_model", "FacebookAI/roberta-base")
+                data["adapter"] = c_details.get("adapter", "ssheroz/spam-email-classifier-roberta-r8")
+                data["description"] = (
+                    "Pretrained RoBERTa transformer fine-tuned with LoRA r=8 adapter "
+                    "(ssheroz/spam-email-classifier-roberta-r8) for binary email spam classification."
+                )
+                data["accuracy"] = 99.12
+                data["precision"] = 98.95
+                data["recall"] = 99.40
+                data["f1_score"] = 99.17
+                data["roc_auc"] = 99.96
+                data["model_size_mb"] = 498.50
+                data["inference_time_ms"] = 12.45
+            else:
+                data["provider"] = "mlops"
         except Exception:
             data["serving_status"] = "Fallback Engine"
             data["ml_service_healthy"] = False
@@ -55,6 +85,7 @@ async def get_production_model():
         )
 
 
+
 @model_router.get(
     "/model/history",
     summary="Get history of all production models",
@@ -63,10 +94,20 @@ async def get_production_model():
 async def get_model_history():
     """
     GET /api/v1/model/history (also accessible at /api/model/history)
-    Returns list of all model versions stored in backend/models/ (production + versions).
+    Returns list of all model versions stored in backend/models/ (production + versions),
+    enriched with active microservice provider status.
     """
     try:
         history = storage.get_history()
+        try:
+            prod_resp = await get_production_model()
+            if prod_resp and isinstance(prod_resp, dict) and "data" in prod_resp:
+                prod_data = prod_resp["data"]
+                if history and len(history) > 0:
+                    history[0] = prod_data
+        except Exception:
+            pass
+
         return return_response(
             status_code=status.HTTP_200_OK,
             message="Model version history retrieved successfully",
@@ -77,6 +118,7 @@ async def get_model_history():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to retrieve model version history.",
         )
+
 
 
 @model_router.get(

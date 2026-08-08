@@ -64,11 +64,12 @@ export function EmailLabelBadge({ label, className }: EmailLabelBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
+        "inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium shrink-0 whitespace-nowrap",
         config.className,
         className,
       )}
     >
+
       <Icon className="h-3.5 w-3.5" />
       {config.label}
     </span>

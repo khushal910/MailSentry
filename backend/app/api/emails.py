@@ -18,11 +18,13 @@ _SAFE_FIELDS = {
     "snippet",
     "predicted_label",
     "predicted_score",
+    "gmail_classification",
     "fetch_time",
     "classified_at",
     "received_at",
     "sent_at",
 }
+
 
 
 MAX_LIMIT = 100
@@ -52,7 +54,19 @@ def _sanitize_email(doc: dict) -> dict:
                     iso_str += "Z"
                 val = iso_str
             result[key] = val
+
+    # Guarantee gmail_classification is present even for legacy database records
+    if "gmail_classification" not in result or result["gmail_classification"] is None:
+        label_ids = doc.get("label_ids", [])
+        is_spam = "SPAM" in label_ids
+        result["gmail_classification"] = {
+            "is_spam": is_spam,
+            "status": "spam" if is_spam else "not_spam",
+            "label_ids": label_ids,
+        }
+
     return result
+
 
 
 @emails_router.get("/emails", summary="Get classified emails for authenticated user")

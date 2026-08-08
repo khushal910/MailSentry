@@ -24,6 +24,9 @@ class PredictResponse(BaseModel):
     predicted_score: float = Field(description="Prediction probability or confidence score")
     classified_at: str = Field(description="ISO 8601 timestamp when prediction was computed")
     version: Optional[str] = Field(default="v1.0.0", description="Active model version")
+    model: Optional[str] = Field(default="mlops", description="Active model provider ('mlops' or 'roberta')")
+    probabilities: Optional[dict[str, float]] = Field(default=None, description="Class probabilities dictionary")
+
 
 
 class HealthResponse(BaseModel):
