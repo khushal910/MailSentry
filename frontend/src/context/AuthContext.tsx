@@ -33,7 +33,12 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setLoading] = useState(true);
+  const [isLoading, setLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      return Boolean(localStorage.getItem("token"));
+    }
+    return false;
+  });
   const [isSessionExpired, setIsSessionExpired] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState<string>("");
   const queryClient = useQueryClient();
@@ -64,6 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [triggerSessionExpired]);
 
   const refresh = useCallback(async (showLoading = false): Promise<AuthUser | null> => {
+    const hasToken = typeof window !== "undefined" && Boolean(localStorage.getItem("token"));
+    if (!hasToken) {
+      setUser(null);
+      if (showLoading) setLoading(false);
+      return null;
+    }
+
     if (showLoading) setLoading(true);
     try {
       const me = await authApi.me();
