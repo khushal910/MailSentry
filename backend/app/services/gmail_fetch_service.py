@@ -507,7 +507,7 @@ class GmailFetchService:
         """
         headers = {"Authorization": f"Bearer {access_token}"}
         max_results = int(getattr(settings, "FETCH_MAX_RESULTS", 50))
-        url_list = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults={max_results}"
+        url_list = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults={max_results}&includeSpamTrash=true"
 
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
