@@ -229,6 +229,7 @@ class EmailRepository:
             "snippet": snippet,
             "predicted_label": str(data.get("predicted_label", "ham")),
             "predicted_score": predicted_score,
+            "gmail_classification": data.get("gmail_classification"),
             "fetch_time": fetch_time,
             "classified_at": classified_at,
             "received_at": received_at,

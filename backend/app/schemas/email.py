@@ -29,6 +29,10 @@ class EmailBaseSchema(BaseModel):
         le=1.0,
         description="Optional classification confidence or probability score",
     )
+    gmail_classification: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional original Gmail status and labels",
+    )
     fetch_time: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="Timestamp when email was fetched from Gmail",
