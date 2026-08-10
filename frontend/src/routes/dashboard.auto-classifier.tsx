@@ -1,3 +1,4 @@
+
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -169,6 +170,19 @@ function AutoClassifierPage() {
                 : 0;
 
             if (statusRes.status === "completed") {
+              // First display 100% completed state on UI so progress bar finishes animating
+              setJobProgress({
+                processed: total,
+                total,
+                status: "completed",
+                current_subject: statusRes.current_subject,
+                startTime: startMs,
+                estRemainingSec: 0,
+              });
+
+              // Allow 600ms for visual progress bar & counter to fill up smoothly
+              await new Promise((r) => setTimeout(r, 600));
+
               isJobActiveRef.current = false;
               activeJobIdRef.current = null;
               setJobProgress(null);
@@ -208,7 +222,7 @@ function AutoClassifierPage() {
 
               if (count > 0 && skipped === 0) {
                 toast.success(
-                  `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
+                  `Successfully classified ${count} email(s)! You can view them on the History page.`,
                   {
                     duration: 5000,
                     action: {
@@ -219,7 +233,7 @@ function AutoClassifierPage() {
                 );
               } else if (count > 0 && skipped > 0) {
                 toast.warning(
-                  `Classified ${count} email(s), but ${skipped} email(s) failed to classify and remain in queue.`,
+                  `Classified ${count} email(s). ${skipped} email(s) could not be classified and remain in queue.`,
                   {
                     duration: 5000,
                     action: {
@@ -230,7 +244,7 @@ function AutoClassifierPage() {
                 );
               } else if (skipped > 0 || count === 0) {
                 toast.error(
-                  `Classification unsuccessful for ${skipped || unclassifiedEmails.length} email(s). All emails remain in queue.`,
+                  `Could not classify ${skipped || unclassifiedEmails.length} email(s). All emails remain in queue.`,
                   { duration: 5000 },
                 );
               } else {
@@ -259,9 +273,9 @@ function AutoClassifierPage() {
               estRemainingSec,
             });
 
-            // Schedule next poll ONLY after this request finished
+            // Schedule next poll ONLY after this request finished (fast 350ms interval)
             if (isJobActiveRef.current && activeJobIdRef.current === currentJobId) {
-              setTimeout(pollStep, 1000);
+              setTimeout(pollStep, 350);
             }
           } catch (pollErr) {
             if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
@@ -274,8 +288,8 @@ function AutoClassifierPage() {
           }
         };
 
-        // Start first poll after 1s
-        setTimeout(pollStep, 1000);
+        // Start first poll after 350ms
+        setTimeout(pollStep, 350);
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to classify emails.";
@@ -577,9 +591,9 @@ function AutoClassifierPage() {
               <div>
                 <p className="text-sm font-semibold">Queue is empty!</p>
                 <p className="mt-1 text-xs text-muted-foreground max-w-md">
-                  All latest emails in your connected Gmail account have been classified and stored
-                  in MongoDB. Click <span className="font-semibold">Fetch Queue</span> to check for
-                  new incoming messages.
+                  All latest emails in your connected Gmail account have been classified. Click{" "}
+                  <span className="font-semibold">Fetch Queue</span> to check for new incoming
+                  messages.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3 mt-3">

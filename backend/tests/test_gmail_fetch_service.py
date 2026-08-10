@@ -294,5 +294,26 @@ class TestFetchResultToDict(unittest.TestCase):
         )
 
 
+class TestJobServiceSetTotal(unittest.TestCase):
+    """JobService set_total updates total dynamically and complete_job sets processed=total."""
+
+    def test_set_total_and_complete_job(self):
+        from app.services.job_service import JobService
+
+        js = JobService()
+        job = js.create_job(user_id="user_test", total=50)
+        self.assertEqual(job.total, 50)
+
+        js.set_total(job.job_id, 5)
+        self.assertEqual(job.total, 5)
+
+        js.update_progress(job.job_id, processed_increment=2)
+        self.assertEqual(job.processed, 2)
+
+        js.complete_job(job.job_id, {"status": "ok"})
+        self.assertEqual(job.status, "completed")
+        self.assertEqual(job.processed, 5)
+
+
 if __name__ == "__main__":
     unittest.main()

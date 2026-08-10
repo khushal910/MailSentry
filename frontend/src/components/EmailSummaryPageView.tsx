@@ -209,7 +209,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
                   <Zap className="h-3.5 w-3.5" /> Future Feature
                 </p>
                 <p className="mt-1 text-muted-foreground">
-                  Summaries are cached in MongoDB to eliminate redundant API costs. Force re-summarize will be enabled in v2.0.
+                  Summaries are securely saved to eliminate redundant processing. Force re-summarize will be enabled in v2.0.
                 </p>
               </div>
             )}
@@ -294,7 +294,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
                 {data.cached ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground border border-border/60 shadow-sm">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    Cached in MongoDB
+                    Saved Summary
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-3 py-1 text-xs font-semibold border border-emerald-500/30 shadow-sm">
