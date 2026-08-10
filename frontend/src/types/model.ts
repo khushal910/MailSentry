@@ -43,6 +43,10 @@ export interface ProductionModelInfo {
   device?: string;
   base_model?: string;
   adapter?: string;
+  serving_status?: string;
+  ml_service_healthy?: boolean;
+  ml_service_url?: string;
+  ml_service_message?: string;
 }
 
 
