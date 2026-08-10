@@ -74,7 +74,7 @@ jobs:
           python-version: "3.11"
 
       - name: 3. Setup Astral uv Package Manager
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
 
       - name: 4. Install Dependencies
         run: |
@@ -135,7 +135,7 @@ jobs:
           python-version: "3.11"
 
       - name: 3. Setup Astral uv Package Manager
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
 
       - name: 4. Install ML Microservice Dependencies
         run: |
@@ -183,7 +183,7 @@ jobs:
           python-version: "3.11"
 
       - name: 3. Setup Astral uv Package Manager
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
 
       - name: 4. Install Integration Test Dependencies
         run: |
