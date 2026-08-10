@@ -69,6 +69,14 @@ class JobService:
             return None
         return job
 
+    def set_total(self, job_id: str, total: int) -> None:
+        job = self._jobs.get(job_id)
+        if job:
+            job.total = max(1, total)
+            if job.processed > job.total:
+                job.processed = job.total
+            job.updated_at = datetime.now(timezone.utc)
+
     def update_progress(
         self,
         job_id: str,

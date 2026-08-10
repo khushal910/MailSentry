@@ -1,3 +1,4 @@
+
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -169,6 +170,19 @@ function AutoClassifierPage() {
                 : 0;
 
             if (statusRes.status === "completed") {
+              // First display 100% completed state on UI so progress bar finishes animating
+              setJobProgress({
+                processed: total,
+                total,
+                status: "completed",
+                current_subject: statusRes.current_subject,
+                startTime: startMs,
+                estRemainingSec: 0,
+              });
+
+              // Allow 600ms for visual progress bar & counter to fill up smoothly
+              await new Promise((r) => setTimeout(r, 600));
+
               isJobActiveRef.current = false;
               activeJobIdRef.current = null;
               setJobProgress(null);
@@ -259,9 +273,9 @@ function AutoClassifierPage() {
               estRemainingSec,
             });
 
-            // Schedule next poll ONLY after this request finished
+            // Schedule next poll ONLY after this request finished (fast 350ms interval)
             if (isJobActiveRef.current && activeJobIdRef.current === currentJobId) {
-              setTimeout(pollStep, 1000);
+              setTimeout(pollStep, 350);
             }
           } catch (pollErr) {
             if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
@@ -274,8 +288,8 @@ function AutoClassifierPage() {
           }
         };
 
-        // Start first poll after 1s
-        setTimeout(pollStep, 1000);
+        // Start first poll after 350ms
+        setTimeout(pollStep, 350);
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to classify emails.";

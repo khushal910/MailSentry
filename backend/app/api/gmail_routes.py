@@ -45,6 +45,8 @@ async def _run_classify_job_background(
             )
             return
 
+        job_service.set_total(job_id, len(emails_to_classify))
+
         # CRITICAL ARCHITECTURAL FIX: Offload CPU-bound ML prediction + DB writes to worker thread pool
         # This keeps the main FastAPI event loop 100% unblocked to instantly handle GET /api/gmail/jobs/{job_id} polling!
         await asyncio.to_thread(
