@@ -34,7 +34,7 @@ cryptography==48.0.1
 # Google Gmail API
 # ==========================
 google-api-python-client==2.108.0
-google-auth==2.56.2
+google-auth==2.56.3
 google-auth-oauthlib==1.0.0
 google-auth-httplib2==0.4.0
 requests-oauthlib==2.0.0
