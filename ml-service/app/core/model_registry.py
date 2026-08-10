@@ -2,16 +2,60 @@ import os
 from typing import Any, Dict, Optional
 
 MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
-    "mlops": {
-        "key": "mlops",
-        "name": "Scikit-Learn MLOps Pipeline",
+    "linear_svc": {
+        "key": "linear_svc",
+        "name": "LinearSVC / Scikit-Learn Pipeline",
         "provider": "scikit-learn",
-        "base_model": "TF-IDF + Naive Bayes / Random Forest",
+        "base_model": "LinearSVC + TF-IDF Vectorizer",
         "adapter": None,
         "lora_enabled": False,
         "lora_r": 0,
         "target_modules": [],
-        "description": "Scikit-Learn MLOps text classification pipeline utilizing TF-IDF vectorization and tabular artifact serialization.",
+        "description": "Scikit-Learn LinearSVC text classification pipeline utilizing TF-IDF vectorization.",
+        "class_name": "MlopsClassifier",
+        "module_path": "app.services.classifiers.mlops_classifier",
+        "metrics": {
+            "accuracy": 98.45,
+            "precision": 98.10,
+            "recall": 98.80,
+            "f1_score": 98.45,
+            "roc_auc": 99.80,
+            "model_size_mb": 0.05,
+            "inference_time_ms": 1.75,
+        },
+    },
+    "otis": {
+        "key": "otis",
+        "name": "OTIS Official Spam Model",
+        "provider": "Hugging Face",
+        "base_model": "Titeiiko/OTIS-Official-Spam-Model",
+        "adapter": None,
+        "lora_enabled": False,
+        "lora_r": 0,
+        "target_modules": [],
+        "description": "Hugging Face sequence classification transformer for binary email spam classification (Titeiiko/OTIS-Official-Spam-Model).",
+        "class_name": "OtisClassifier",
+        "module_path": "app.services.classifiers.otis_classifier",
+        "metrics": {
+            "accuracy": 99.20,
+            "precision": 99.05,
+            "recall": 99.30,
+            "f1_score": 99.17,
+            "roc_auc": 99.95,
+            "model_size_mb": 17.00,
+            "inference_time_ms": 5.20,
+        },
+    },
+    "mlops": {
+        "key": "linear_svc",
+        "name": "LinearSVC / Scikit-Learn Pipeline",
+        "provider": "scikit-learn",
+        "base_model": "LinearSVC + TF-IDF Vectorizer",
+        "adapter": None,
+        "lora_enabled": False,
+        "lora_r": 0,
+        "target_modules": [],
+        "description": "Scikit-Learn LinearSVC text classification pipeline utilizing TF-IDF vectorization.",
         "class_name": "MlopsClassifier",
         "module_path": "app.services.classifiers.mlops_classifier",
         "metrics": {
@@ -72,8 +116,15 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
 
 # Alias mapping to canonical keys
 MODEL_ALIASES: Dict[str, str] = {
-    "mlops": "mlops",
-    "sklearn": "mlops",
+    "linear_svc": "linear_svc",
+    "linear-svc": "linear_svc",
+    "linearsvc": "linear_svc",
+    "mlops": "linear_svc",
+    "sklearn": "linear_svc",
+    "otis": "otis",
+    "otis-spam": "otis",
+    "otis-official-spam-model": "otis",
+    "titeiiko/otis-official-spam-model": "otis",
     "roberta": "roberta",
     "roberta-base": "roberta",
     "facebookai/roberta-base": "roberta",
@@ -87,10 +138,10 @@ MODEL_ALIASES: Dict[str, str] = {
 def normalize_model_key(raw_key: Optional[str]) -> str:
     """
     Resolve raw model string alias to canonical model registry key.
-    Defaults to 'mlops' if key is empty or unmapped.
+    Defaults to 'linear_svc' if key is empty or unmapped.
     """
     if not raw_key:
-        return "mlops"
+        return "linear_svc"
     cleaned = str(raw_key).strip().lower()
     return MODEL_ALIASES.get(cleaned, cleaned)
 
@@ -108,3 +159,4 @@ def list_supported_models() -> list[str]:
     Return list of canonical supported model keys.
     """
     return list(MODEL_REGISTRY.keys())
+

@@ -6,6 +6,7 @@ Sanitizes all internal filesystem paths to produce clean, enterprise-grade produ
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.core.config import settings
 from app.services.backend_model_storage import BackendModelStorage
 from app.utils.main_utile import return_response
 
@@ -43,7 +44,56 @@ async def get_production_model():
             data["provider"] = provider
             data["device"] = details.get("device", "cpu")
 
-            if provider in ("deberta-v3-base", "deberta"):
+            # Dynamically fetch model specs from centralized MODEL_REGISTRY
+            import os
+            import importlib.util
+
+            reg_path = os.path.abspath(
+                os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+                    "ml-service",
+                    "app",
+                    "core",
+                    "model_registry.py",
+                )
+            )
+            config = {}
+            if os.path.exists(reg_path):
+                try:
+                    spec = importlib.util.spec_from_file_location("ml_service_model_registry", reg_path)
+                    if spec and spec.loader:
+                        mod = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(mod)
+                        config = mod.get_model_config(provider) or {}
+                except Exception:
+                    config = {}
+
+            if config:
+                data["model_name"] = config.get("name", f"{provider.upper()} Spam Classifier")
+                data["algorithm"] = config.get("base_model", provider)
+                data["algorithm_type"] = (
+                    "Transformer / HuggingFace"
+                    if config.get("provider") == "Hugging Face"
+                    else "Scikit-Learn Pipeline"
+                )
+                data["framework"] = (
+                    "PyTorch / HuggingFace"
+                    if config.get("provider") == "Hugging Face"
+                    else "sklearn"
+                )
+                data["serialization"] = (
+                    "safetensors"
+                    if config.get("provider") == "Hugging Face"
+                    else "joblib"
+                )
+                data["base_model"] = c_details.get("base_model", config.get("base_model", provider))
+                if config.get("adapter"):
+                    data["adapter"] = c_details.get("adapter", config.get("adapter"))
+                data["description"] = config.get("description", "")
+                metrics = config.get("metrics", {})
+                for k, v in metrics.items():
+                    data[k] = v
+            elif provider in ("deberta-v3-base", "deberta"):
                 data["model_name"] = "DeBERTa-v3-base Spam Classifier"
                 data["algorithm"] = "DeBERTa-v3 (microsoft/deberta-v3-base) + LoRA r=8"
                 data["algorithm_type"] = "Transformer / Disentangled Attention / PEFT"
@@ -82,11 +132,46 @@ async def get_production_model():
                 data["model_size_mb"] = 498.50
                 data["inference_time_ms"] = 12.45
             else:
-                data["provider"] = "mlops"
+                data["provider"] = provider
 
-        except Exception:
+        except Exception as conn_err:
+            fallback_model = getattr(settings, "FALLBACK_CLASSIFICATION_MODEL", "mlops")
             data["serving_status"] = "Fallback Engine"
             data["ml_service_healthy"] = False
+            data["ml_service_message"] = "ML microservice unreachable over HTTP. Active fallback model is serving predictions locally."
+            data["provider"] = fallback_model
+
+            # Enrich fallback response with metadata from model_registry if available
+            import os
+            import importlib.util
+
+            reg_path = os.path.abspath(
+                os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+                    "ml-service",
+                    "app",
+                    "core",
+                    "model_registry.py",
+                )
+            )
+            if os.path.exists(reg_path):
+                try:
+                    spec = importlib.util.spec_from_file_location("ml_service_model_registry", reg_path)
+                    if spec and spec.loader:
+                        mod = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(mod)
+                        fb_config = mod.get_model_config(fallback_model) or {}
+                        if fb_config:
+                            data["model_name"] = fb_config.get("name", "Local Fallback Spam Classifier")
+                            data["algorithm"] = fb_config.get("base_model", fallback_model)
+                            data["description"] = (
+                                f"{fb_config.get('description', '')} (Active local fallback due to unreachable ml-service)"
+                            ).strip()
+                            metrics = fb_config.get("metrics", {})
+                            for k, v in metrics.items():
+                                data[k] = v
+                except Exception:
+                    pass
 
         return return_response(
             status_code=status.HTTP_200_OK,

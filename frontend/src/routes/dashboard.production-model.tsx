@@ -130,13 +130,23 @@ function ProductionModelPage() {
             <h1 className="text-2xl font-semibold tracking-tight">Production Model</h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>Monitor and manage the model currently serving production traffic in MailSentry.</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-3 py-1 text-xs font-semibold shadow-xs">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_6px_#10b981]" />
+              {model?.serving_status === "Fallback Engine" ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-3 py-1 text-xs font-semibold shadow-xs">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 shadow-[0_0_6px_#f59e0b]" />
+                  </span>
+                  Fallback Engine ({model.provider || "mlops"})
                 </span>
-                Serving Traffic
-              </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-3 py-1 text-xs font-semibold shadow-xs">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_6px_#10b981]" />
+                  </span>
+                  Serving Traffic
+                </span>
+              )}
             </div>
           </div>
 
@@ -271,6 +281,32 @@ function ProductionModelPage() {
         {/* MAIN MLOPS DASHBOARD CONTENT */}
         {!isModelLoading && !isModelError && model && (
           <div className="space-y-6">
+            {/* FALLBACK ALERT BANNER WHEN ML-SERVICE IS UNREACHABLE */}
+            {model.serving_status === "Fallback Engine" && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-amber-500/20 p-2 text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-foreground">
+                      ML Microservice Offline — Serving Local Fallback Model ({model.provider || "mlops"})
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {model.ml_service_message ||
+                        "ML microservice is unreachable over HTTP. MailSentry is actively serving predictions locally using the LinearSVC / Scikit-Learn fallback model."}
+                    </p>
+                  </div>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-medium text-xs whitespace-nowrap"
+                >
+                  Fallback Active
+                </Badge>
+              </div>
+            )}
+
             {/* LIVE PRODUCTION (HERO & HEALTH) — EQUAL HEIGHT STRETCH GRID */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
               {/* Left Column: Live Model Technical Specifications Grid */}
