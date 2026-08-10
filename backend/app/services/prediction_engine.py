@@ -73,8 +73,8 @@ class PredictionEngine:
                 spec = importlib.util.spec_from_file_location("ml_service_ml_engine", ml_engine_path)
                 if spec and spec.loader:
                     ml_mod = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(ml_mod)
-                    local_engine = ml_mod.MLEngine.get_instance()
+                    fallback_model = getattr(settings, "FALLBACK_CLASSIFICATION_MODEL", "linear_svc")
+                    local_engine = ml_mod.MLEngine.get_instance(model_type=fallback_model)
                     if local_engine.is_loaded:
                         local_res = local_engine.predict(subject=subject, body=body)
                         logger.info(

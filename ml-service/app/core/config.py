@@ -60,13 +60,18 @@ class Settings:
     MODELS_DIR: str = os.getenv("MODELS_DIR", os.path.join(BASE_DIR, "models"))
     
     # ML Parameters
-    raw_model_choice: str = (
-        os.getenv("EMAIL_CLASSIFIER_MODEL")
-        or os.getenv("CLASSIFICATION_MODEL")
-        or "mlops"
-    ).lower().strip()
-    CLASSIFICATION_MODEL: str = raw_model_choice
-    EMAIL_CLASSIFIER_MODEL: str = raw_model_choice
+    @property
+    def EMAIL_CLASSIFIER_MODEL(self) -> str:
+        return (
+            os.getenv("EMAIL_CLASSIFIER_MODEL")
+            or os.getenv("CLASSIFICATION_MODEL")
+            or "mlops"
+        ).lower().strip()
+
+    @property
+    def CLASSIFICATION_MODEL(self) -> str:
+        return self.EMAIL_CLASSIFIER_MODEL
+
     CLASSIFICATION_THRESHOLD: float = float(os.getenv("CLASSIFICATION_THRESHOLD", 0.50))
     
     # Hugging Face & LoRA Settings

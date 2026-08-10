@@ -155,11 +155,18 @@ class Settings:
         # Classification decision threshold (default 0.50)
         CLASSIFICATION_THRESHOLD = float(os.getenv("CLASSIFICATION_THRESHOLD", 0.50))
 
-        # ML Microservice Config
+        # ML Microservice Fallback Config
+        FALLBACK_CLASSIFICATION_MODEL = (
+            os.getenv("FALLBACK_CLASSIFICATION_MODEL")
+            or os.getenv("EMAIL_CLASSIFIER_MODEL")
+            or os.getenv("CLASSIFICATION_MODEL")
+            or "linear_svc"
+        ).lower().strip()
+        EMAIL_CLASSIFIER_MODEL = FALLBACK_CLASSIFICATION_MODEL
+        CLASSIFICATION_MODEL = FALLBACK_CLASSIFICATION_MODEL
         ML_SERVICE_URL = os.getenv("ML_SERVICE_URL", "http://localhost:9000")
         ML_SERVICE_TIMEOUT = int(os.getenv("ML_SERVICE_TIMEOUT", 120))
         ML_SERVICE_API_KEY = os.getenv("ML_SERVICE_API_KEY", "")
-
 
         # Google OAuth
         GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
@@ -204,6 +211,23 @@ class Settings:
 
     except Exception as e:
         print(f"Error loading environment variables: {e!s}")
+
+    @property
+    def FALLBACK_CLASSIFICATION_MODEL(self) -> str:
+        return (
+            os.getenv("FALLBACK_CLASSIFICATION_MODEL")
+            or os.getenv("CLASSIFICATION_MODEL")
+            or os.getenv("EMAIL_CLASSIFIER_MODEL")
+            or "mlops"
+        ).lower().strip()
+
+    @property
+    def EMAIL_CLASSIFIER_MODEL(self) -> str:
+        return self.FALLBACK_CLASSIFICATION_MODEL
+
+    @property
+    def CLASSIFICATION_MODEL(self) -> str:
+        return self.FALLBACK_CLASSIFICATION_MODEL
 
 
 settings = Settings()
