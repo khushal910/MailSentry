@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -28,6 +29,10 @@ class EmailBaseSchema(BaseModel):
         ge=0.0,
         le=1.0,
         description="Optional classification confidence or probability score",
+    )
+    gmail_classification: dict[str, Any] | None = Field(
+        default=None,
+        description="Optional original Gmail status and labels",
     )
     fetch_time: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
