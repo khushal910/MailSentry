@@ -142,7 +142,8 @@ function AutoClassifierPage() {
         estRemainingSec: 0,
       });
 
-      // Step 2: Poll status sequentially every 1.0s until complete or failed
+      // Step 2: Poll status sequentially every 350ms with up to 3 transient retries
+      let retryCount = 0;
       await new Promise<void>((resolve, reject) => {
         const pollStep = async () => {
           if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
@@ -152,6 +153,7 @@ function AutoClassifierPage() {
 
           try {
             const statusRes = await emailsApi.getJobStatus(currentJobId);
+            retryCount = 0; // reset retry counter on successful poll response
 
             // Ignore response if job was completed/cancelled while HTTP request was in flight
             if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
@@ -280,6 +282,12 @@ function AutoClassifierPage() {
           } catch (pollErr) {
             if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
               resolve();
+              return;
+            }
+            // Allow up to 3 transient retries before rejecting to handle multi-worker sync lag
+            if (retryCount < 3) {
+              retryCount++;
+              setTimeout(pollStep, 500);
               return;
             }
             isJobActiveRef.current = false;
@@ -647,66 +655,64 @@ function AutoClassifierPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    <AnimatePresence>
-                      {paginatedEmails.map((email, index) => {
-                        const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
-                        const msgId = email.message_id || email.gmail_message_id;
-                        const gmailUrl = getGmailUrl(msgId, email.thread_id);
-                        return (
-                          <motion.tr
-                            key={msgId || index}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ delay: index * 0.02 }}
-                            onClick={(e) => {
-                              // Prevent triggering if user clicked an interactive child element
-                              const target = e.target as HTMLElement;
-                              if (target.closest("button, a, input, select, [role='button']"))
-                                return;
-                              if (gmailUrl) openGmailInNewTab(gmailUrl);
-                            }}
-                            className={`border-b border-border/40 last:border-0 transition-colors group ${
-                              gmailUrl ? "hover:bg-muted/30 cursor-pointer" : "hover:bg-muted/10"
-                            }`}
-                          >
-                            <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground">
-                              {rowNumber}
-                            </td>
-                            <td className="py-3 pr-4 font-medium">
-                              <span title={email.subject}>
-                                <HighlightText
-                                  text={truncate(email.subject ?? "(no subject)", 42)}
-                                  query={debouncedSearch}
-                                />
-                              </span>
-                            </td>
-                            <td className="py-3 pr-4 text-muted-foreground">
+                    {paginatedEmails.map((email, index) => {
+                      const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
+                      const msgId = email.message_id || email.gmail_message_id;
+                      const gmailUrl = getGmailUrl(msgId, email.thread_id);
+                      return (
+                        <motion.tr
+                          key={msgId || index}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ delay: index * 0.02 }}
+                          onClick={(e) => {
+                            // Prevent triggering if user clicked an interactive child element
+                            const target = e.target as HTMLElement;
+                            if (target.closest("button, a, input, select, [role='button']"))
+                              return;
+                            if (gmailUrl) openGmailInNewTab(gmailUrl);
+                          }}
+                          className={`border-b border-border/40 last:border-0 transition-colors group ${
+                            gmailUrl ? "hover:bg-muted/30 cursor-pointer" : "hover:bg-muted/10"
+                          }`}
+                        >
+                          <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground">
+                            {rowNumber}
+                          </td>
+                          <td className="py-3 pr-4 font-medium">
+                            <span title={email.subject}>
                               <HighlightText
-                                text={truncate(email.snippet ?? "—", 55)}
+                                text={truncate(email.subject ?? "(no subject)", 42)}
                                 query={debouncedSearch}
                               />
-                            </td>
-                            <td className="py-3 pr-4">
-                              <Badge
-                                variant="outline"
-                                className="border-brand/40 bg-brand/10 text-brand text-xs font-normal"
-                              >
-                                Unclassified
-                              </Badge>
-                            </td>
-                            <td className="py-3 text-left text-muted-foreground text-xs pr-2">
-                              {email.sent_at || email.received_at
-                                ? formatDate(email.sent_at || email.received_at!)
-                                : "—"}
-                            </td>
-                            <td className="py-3 text-center">
-                              <GmailOpenButton messageId={msgId} threadId={email.thread_id} />
-                            </td>
-                          </motion.tr>
-                        );
-                      })}
-                    </AnimatePresence>
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4 text-muted-foreground">
+                            <HighlightText
+                              text={truncate(email.snippet ?? "—", 55)}
+                              query={debouncedSearch}
+                            />
+                          </td>
+                          <td className="py-3 pr-4">
+                            <Badge
+                              variant="outline"
+                              className="border-brand/40 bg-brand/10 text-brand text-xs font-normal"
+                            >
+                              Unclassified
+                            </Badge>
+                          </td>
+                          <td className="py-3 text-left text-muted-foreground text-xs pr-2">
+                            {email.sent_at || email.received_at
+                              ? formatDate(email.sent_at || email.received_at!)
+                              : "—"}
+                          </td>
+                          <td className="py-3 text-center">
+                            <GmailOpenButton messageId={msgId} threadId={email.thread_id} />
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -60,12 +60,15 @@ class TestPredictionEngineFallback(unittest.TestCase):
         self.assertNotEqual(spam_res["predicted_score"], 0.50)
         self.assertGreater(spam_res["predicted_score"], 0.85)
 
-    def test_dynamic_heuristic_score_calculation(self):
+    @patch("app.services.ml_client.MLServiceClient.predict_sync")
+    def test_dynamic_heuristic_score_calculation(self, mock_predict_sync):
         """Tests that Backup 2 (Dynamic Heuristic) calculates variable confidence scores."""
+        mock_predict_sync.side_effect = Exception("Connection refused to port 9000")
+
         res_short = self.engine.predict(subject="Hi", body="Quick question")
         res_long = self.engine.predict(
-            subject="Detailed Quarterly Financial Report and Analysis",
-            body="Dear team, Attached is the complete breakdown of our quarterly revenues, expenditure, and growth metrics. Regards.",
+            subject="Quarterly Financial Report",
+            body="Dear team, Attached is the complete breakdown of our quarterly revenues and growth metrics. Regards.",
         )
 
         # Long email with greeting should have higher confidence score than short email
