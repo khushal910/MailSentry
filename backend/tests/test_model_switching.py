@@ -87,6 +87,19 @@ class TestModelSwitchingAndGmailLabelPreservation(unittest.TestCase):
         self.assertTrue(saved_doc["gmail_classification"]["is_spam"])
         self.assertEqual(saved_doc["gmail_classification"]["status"], "spam")
 
+    @patch("app.services.ml_client.MLServiceClient.check_health", new_callable=AsyncMock)
+    def test_production_model_endpoint_when_ml_service_offline(self, mock_check_health):
+        """Verify get_production_model returns 200 OK with fallback metadata when ml-service is offline."""
+        import asyncio
+        mock_check_health.side_effect = Exception("Connection refused / microservice terminated")
+        from app.api.model_routes import get_production_model
+
+        res = asyncio.run(get_production_model())
+        self.assertEqual(res.get("status_code"), 200)
+        data = res.get("data", {})
+        self.assertEqual(data.get("serving_status"), "Fallback Engine")
+        self.assertEqual(data.get("provider"), "mlops")
+
 
 if __name__ == "__main__":
     unittest.main()

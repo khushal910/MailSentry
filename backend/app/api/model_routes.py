@@ -6,6 +6,7 @@ Sanitizes all internal filesystem paths to produce clean, enterprise-grade produ
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.core.config import settings
 from app.services.backend_model_storage import BackendModelStorage
 from app.utils.main_utile import return_response
 
@@ -133,9 +134,44 @@ async def get_production_model():
             else:
                 data["provider"] = provider
 
-        except Exception:
+        except Exception as conn_err:
+            fallback_model = getattr(settings, "FALLBACK_CLASSIFICATION_MODEL", "mlops")
             data["serving_status"] = "Fallback Engine"
             data["ml_service_healthy"] = False
+            data["ml_service_message"] = "ML microservice unreachable over HTTP. Active fallback model is serving predictions locally."
+            data["provider"] = fallback_model
+
+            # Enrich fallback response with metadata from model_registry if available
+            import os
+            import importlib.util
+
+            reg_path = os.path.abspath(
+                os.path.join(
+                    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+                    "ml-service",
+                    "app",
+                    "core",
+                    "model_registry.py",
+                )
+            )
+            if os.path.exists(reg_path):
+                try:
+                    spec = importlib.util.spec_from_file_location("ml_service_model_registry", reg_path)
+                    if spec and spec.loader:
+                        mod = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(mod)
+                        fb_config = mod.get_model_config(fallback_model) or {}
+                        if fb_config:
+                            data["model_name"] = fb_config.get("name", "Local Fallback Spam Classifier")
+                            data["algorithm"] = fb_config.get("base_model", fallback_model)
+                            data["description"] = (
+                                f"{fb_config.get('description', '')} (Active local fallback due to unreachable ml-service)"
+                            ).strip()
+                            metrics = fb_config.get("metrics", {})
+                            for k, v in metrics.items():
+                                data[k] = v
+                except Exception:
+                    pass
 
         return return_response(
             status_code=status.HTTP_200_OK,
