@@ -132,18 +132,20 @@ class JobService:
     def get_job(
         self, job_id: str, user_id: str | None = None
     ) -> ClassificationJob | None:
-        job = self._jobs.get(job_id)
-        if not job:
-            try:
-                coll = _get_jobs_collection()
-                if coll is not None:
-                    doc = coll.find_one({"job_id": job_id})
-                    if doc:
-                        job = ClassificationJob.from_dict(doc)
-                        self._jobs[job_id] = job
-            except Exception as err:
-                logger.warning(f"Failed to query job {job_id} from MongoDB: {err}")
+        try:
+            coll = _get_jobs_collection()
+            if coll is not None:
+                doc = coll.find_one({"job_id": job_id})
+                if doc:
+                    job = ClassificationJob.from_dict(doc)
+                    self._jobs[job_id] = job
+                    if user_id and job.user_id != user_id:
+                        return None
+                    return job
+        except Exception as err:
+            logger.warning(f"Failed to query job {job_id} from MongoDB: {err}")
 
+        job = self._jobs.get(job_id)
         if job and user_id and job.user_id != user_id:
             return None
         return job
