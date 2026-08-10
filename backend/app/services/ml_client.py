@@ -35,8 +35,7 @@ class MLServiceClient:
         timeout: Optional[float] = None,
         api_key: Optional[str] = None,
     ):
-        raw_url = base_url or getattr(settings, "ML_SERVICE_URL", "http://127.0.0.1:9000")
-        self.base_url = raw_url.rstrip("/")
+        self.base_url = (base_url or getattr(settings, "ML_SERVICE_URL", "http://localhost:9000")).rstrip("/")
         self.timeout = float(timeout or getattr(settings, "ML_SERVICE_TIMEOUT", 120.0))
         self.api_key = api_key or getattr(settings, "ML_SERVICE_API_KEY", "")
 
@@ -48,32 +47,18 @@ class MLServiceClient:
 
     async def check_health(self) -> Dict[str, Any]:
         """
-        Probes the ml-service /health endpoint with IPv4/localhost fallback.
+        Probes the ml-service /health endpoint.
         Returns health status dict or raises Exception if unreachable.
         """
-        urls = [self.base_url]
-        if "127.0.0.1" in self.base_url:
-            urls.append(self.base_url.replace("127.0.0.1", "localhost"))
-        elif "localhost" in self.base_url:
-            urls.append(self.base_url.replace("localhost", "127.0.0.1"))
-
-        last_err = None
-        for base in urls:
-            url = f"{base}/health"
-            try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    resp = await client.get(url, headers=self._get_headers())
-                    if resp.status_code == 200:
-                        return resp.json()
-            except Exception as err:
-                last_err = err
-
-        if last_err:
-            raise last_err
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="ML Service health check failed.",
-        )
+        url = f"{self.base_url}/health"
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, headers=self._get_headers())
+            if resp.status_code == 200:
+                return resp.json()
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"ML Service returned status {resp.status_code}",
+            )
 
     async def predict_async(
         self,

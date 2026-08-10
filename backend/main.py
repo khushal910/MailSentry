@@ -27,10 +27,8 @@ async def lifespan(app: FastAPI):
 
         try:
             client = MLServiceClient()
-            health_info = await client.check_health()
-            print(
-                f"Successfully connected to independent ML Service microservice (status: {health_info.get('status', 'healthy')}, model: {health_info.get('details', {}).get('provider', 'mlops')})."
-            )
+            await client.check_health()
+            print("Successfully connected to independent ML Service microservice.")
         except Exception as ml_err:
             print(f"ML Service health check probe warning at startup: {ml_err}")
     except Exception as e:
