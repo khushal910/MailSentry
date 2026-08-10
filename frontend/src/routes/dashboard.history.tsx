@@ -240,65 +240,63 @@ function HistoryPage() {
               </thead>
 
               <tbody>
-                <AnimatePresence>
-                  {emails.map((email, index) => {
-                    const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
-                    const gmailUrl = getGmailUrl(email.message_id, email.thread_id);
-                    return (
-                      <motion.tr
-                        key={email.message_id || index}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ delay: index * 0.02 }}
-                        onClick={(e) => handleRowClick(email, e)}
-                        className="border-b border-border/40 last:border-0 transition-colors group hover:bg-muted/30 cursor-pointer"
-                      >
-                        <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground align-middle">
-                          {rowNumber}
-                        </td>
-                        <td className="py-3 text-muted-foreground text-xs font-medium pr-2 align-middle whitespace-nowrap">
-                          {email.sent_at || email.received_at
-                            ? formatDate(email.sent_at || email.received_at!)
-                            : "—"}
-                        </td>
-                        <td className="py-3 font-medium pr-2 align-middle">
-                          <HighlightText
-                            text={truncate(email.subject || "(no subject)", 38)}
-                            query={debouncedSearch}
-                          />
-                        </td>
-                        <td className="py-3 text-muted-foreground pr-2 align-middle">
-                          <HighlightText
-                            text={truncate(email.snippet || "—", 42)}
-                            query={debouncedSearch}
-                          />
-                        </td>
-                        <td className="py-3 pr-2 align-middle whitespace-nowrap">
-                          <GmailSpamIndicator
-                            mailsentryLabel={email.predicted_label}
-                            gmailClassification={email.gmail_classification}
-                          />
-                        </td>
+                {emails.map((email, index) => {
+                  const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
+                  const gmailUrl = getGmailUrl(email.message_id, email.thread_id);
+                  return (
+                    <motion.tr
+                      key={email.message_id || index}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ delay: index * 0.02 }}
+                      onClick={(e) => handleRowClick(email, e)}
+                      className="border-b border-border/40 last:border-0 transition-colors group hover:bg-muted/30 cursor-pointer"
+                    >
+                      <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground align-middle">
+                        {rowNumber}
+                      </td>
+                      <td className="py-3 text-muted-foreground text-xs font-medium pr-2 align-middle whitespace-nowrap">
+                        {email.sent_at || email.received_at
+                          ? formatDate(email.sent_at || email.received_at!)
+                          : "—"}
+                      </td>
+                      <td className="py-3 font-medium pr-2 align-middle">
+                        <HighlightText
+                          text={truncate(email.subject || "(no subject)", 38)}
+                          query={debouncedSearch}
+                        />
+                      </td>
+                      <td className="py-3 text-muted-foreground pr-2 align-middle">
+                        <HighlightText
+                          text={truncate(email.snippet || "—", 42)}
+                          query={debouncedSearch}
+                        />
+                      </td>
+                      <td className="py-3 pr-2 align-middle whitespace-nowrap">
+                        <GmailSpamIndicator
+                          mailsentryLabel={email.predicted_label}
+                          gmailClassification={email.gmail_classification}
+                        />
+                      </td>
 
-                        <td className="py-3 font-medium text-xs align-middle">
-                          {typeof email.predicted_score === "number"
-                            ? formatConfidence(email.predicted_score)
-                            : "—"}
-                        </td>
-                        <td className="py-3 text-left text-muted-foreground text-xs align-middle whitespace-nowrap">
-                          {email.classified_at ? formatDate(email.classified_at) : "—"}
-                        </td>
-                        <td className="py-3 text-center align-middle">
-                          <GmailOpenButton
-                            messageId={email.message_id}
-                            threadId={email.thread_id}
-                          />
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                </AnimatePresence>
+                      <td className="py-3 font-medium text-xs align-middle">
+                        {typeof email.predicted_score === "number"
+                          ? formatConfidence(email.predicted_score)
+                          : "—"}
+                      </td>
+                      <td className="py-3 text-left text-muted-foreground text-xs align-middle whitespace-nowrap">
+                        {email.classified_at ? formatDate(email.classified_at) : "—"}
+                      </td>
+                      <td className="py-3 text-center align-middle">
+                        <GmailOpenButton
+                          messageId={email.message_id}
+                          threadId={email.thread_id}
+                        />
+                      </td>
+                    </motion.tr>
+                  );
+                })}
               </tbody>
             </table>
 
