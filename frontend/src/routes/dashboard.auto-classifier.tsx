@@ -222,7 +222,7 @@ function AutoClassifierPage() {
 
               if (count > 0 && skipped === 0) {
                 toast.success(
-                  `Successfully classified & stored ${count} email(s) in MongoDB! View them in Prediction History.`,
+                  `Successfully classified ${count} email(s)! You can view them on the History page.`,
                   {
                     duration: 5000,
                     action: {
@@ -233,7 +233,7 @@ function AutoClassifierPage() {
                 );
               } else if (count > 0 && skipped > 0) {
                 toast.warning(
-                  `Classified ${count} email(s), but ${skipped} email(s) failed to classify and remain in queue.`,
+                  `Classified ${count} email(s). ${skipped} email(s) could not be classified and remain in queue.`,
                   {
                     duration: 5000,
                     action: {
@@ -244,7 +244,7 @@ function AutoClassifierPage() {
                 );
               } else if (skipped > 0 || count === 0) {
                 toast.error(
-                  `Classification unsuccessful for ${skipped || unclassifiedEmails.length} email(s). All emails remain in queue.`,
+                  `Could not classify ${skipped || unclassifiedEmails.length} email(s). All emails remain in queue.`,
                   { duration: 5000 },
                 );
               } else {
@@ -591,9 +591,9 @@ function AutoClassifierPage() {
               <div>
                 <p className="text-sm font-semibold">Queue is empty!</p>
                 <p className="mt-1 text-xs text-muted-foreground max-w-md">
-                  All latest emails in your connected Gmail account have been classified and stored
-                  in MongoDB. Click <span className="font-semibold">Fetch Queue</span> to check for
-                  new incoming messages.
+                  All latest emails in your connected Gmail account have been classified. Click{" "}
+                  <span className="font-semibold">Fetch Queue</span> to check for new incoming
+                  messages.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3 mt-3">
