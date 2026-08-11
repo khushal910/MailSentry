@@ -147,11 +147,15 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          cache-dependency-path: ml-service/requirements.txt
+          cache-dependency-path: |
+            ml-service/requirements-base.txt
+            ml-service/requirements.txt
 
       - name: 4. Install ML Microservice Dependencies
+        env:
+          CLASSIFICATION_MODEL: "mlops"
         run: |
-          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+          python install_deps.py --uv --cpu
           uv pip install --system ruff httpx
 
       - name: 5. Code Linting (Ruff)
