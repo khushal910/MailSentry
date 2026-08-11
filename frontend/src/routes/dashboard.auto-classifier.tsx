@@ -81,6 +81,8 @@ function AutoClassifierPage() {
 
   const isJobActiveRef = useRef(false);
   const activeJobIdRef = useRef<string | null>(null);
+  // PRODUCTION FIX: Snapshot email count at classification start to avoid stale closures
+  const classifySnapshotRef = useRef<{ total: number; emails: UnclassifiedEmail[] }>({ total: 0, emails: [] });
 
   /* ─── Fetch unclassified emails from Gmail ─── */
   const triggerFetch = useCallback(async () => {
@@ -125,17 +127,27 @@ function AutoClassifierPage() {
     setFetchError(null);
     const startMs = Date.now();
 
+    // PRODUCTION FIX: Snapshot the current email list and count at classification start.
+    // This prevents stale closure bugs where the list changes mid-classification
+    // (e.g., user refreshes, or emails get filtered) from breaking progress calculations.
+    const emailSnapshot = [...unclassifiedEmails];
+    const snapshotTotal = emailSnapshot.length;
+    classifySnapshotRef.current = { total: snapshotTotal, emails: emailSnapshot };
+
     try {
       // Step 1: Start background job (returns in <100ms)
-      const job = await emailsApi.startClassifyJob(unclassifiedEmails);
+      const job = await emailsApi.startClassifyJob(emailSnapshot);
       const currentJobId = job.job_id;
 
       isJobActiveRef.current = true;
       activeJobIdRef.current = currentJobId;
 
+      // Use snapshot total for initial progress (backend may return total=0 during race window)
+      const initialTotal = job.total || snapshotTotal;
+
       setJobProgress({
         processed: job.processed,
-        total: job.total || unclassifiedEmails.length,
+        total: initialTotal,
         status: job.status,
         current_subject: job.current_subject,
         startTime: startMs,
@@ -162,7 +174,9 @@ function AutoClassifierPage() {
             }
 
             const nowMs = Date.now();
-            const total = statusRes.total || unclassifiedEmails.length;
+            // PRODUCTION FIX: Use snapshot total when backend returns total=0
+            // (race window where job document hasn't been fully written yet)
+            const total = statusRes.total || classifySnapshotRef.current.total || snapshotTotal;
             const processed = statusRes.processed;
             const elapsedSec = (nowMs - startMs) / 1000;
             const avgItemSec = processed > 0 ? elapsedSec / processed : 0;
@@ -207,8 +221,8 @@ function AutoClassifierPage() {
                   })
                 );
               } else if (count > 0) {
-                // Fallback if count > 0 but classified_emails wasn't returned
-                if (count >= unclassifiedEmails.length) {
+                // Fallback: use snapshot total since classified_emails wasn't returned
+                if (count >= snapshotTotal) {
                   setUnclassifiedEmails([]);
                 }
               }
@@ -246,7 +260,7 @@ function AutoClassifierPage() {
                 );
               } else if (skipped > 0 || count === 0) {
                 toast.error(
-                  `Could not classify ${skipped || unclassifiedEmails.length} email(s). All emails remain in queue.`,
+                  `Could not classify ${skipped || snapshotTotal} email(s). All emails remain in queue.`,
                   { duration: 5000 },
                 );
               } else {
@@ -341,6 +355,15 @@ function AutoClassifierPage() {
 
     (async () => {
       try {
+        // PRODUCTION FIX: Skip re-fetching if a classification job is already active.
+        // Without this guard, refreshing the page mid-classification triggers a fresh
+        // Gmail fetch. Emails that were already classified get filtered out server-side,
+        // making them "disappear" from the queue without any progress bar feedback.
+        if (isJobActiveRef.current) {
+          setPageState("ready");
+          return;
+        }
+
         setPageState("loading");
         const status = await googleAuthApi.getStatus();
         if (!isMounted) return;
@@ -474,20 +497,32 @@ function AutoClassifierPage() {
                     <RefreshCw className="h-5 w-5 animate-spin" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-foreground">Classifying Emails...</h4>
+                    <h4 className="font-semibold text-foreground">
+                      {jobProgress.status === "started" && jobProgress.processed === 0
+                        ? "Initializing Classification..."
+                        : "Classifying Emails..."}
+                    </h4>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {jobProgress.processed} / {jobProgress.total} emails processed
-                      {jobProgress.estRemainingSec ? (
-                        <span className="ml-2 text-primary font-medium">
-                          • Est. remaining: ~{jobProgress.estRemainingSec}s
-                        </span>
-                      ) : null}
+                      {jobProgress.status === "started" && jobProgress.processed === 0 ? (
+                        "Preparing ML model and connecting to service..."
+                      ) : (
+                        <>
+                          {jobProgress.processed} / {jobProgress.total} emails processed
+                          {jobProgress.estRemainingSec ? (
+                            <span className="ml-2 text-primary font-medium">
+                              • Est. remaining: ~{jobProgress.estRemainingSec}s
+                            </span>
+                          ) : null}
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <span className="text-base font-bold text-primary">
-                    {Math.round((jobProgress.processed / (jobProgress.total || 1)) * 100)}%
+                    {jobProgress.status === "started" && jobProgress.processed === 0
+                      ? "…"
+                      : `${Math.round((jobProgress.processed / (jobProgress.total || 1)) * 100)}%`}
                   </span>
                 </div>
               </div>
@@ -500,12 +535,20 @@ function AutoClassifierPage() {
               )}
 
               <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full bg-gradient-brand transition-all duration-300 ease-out"
-                  style={{
-                    width: `${Math.min(100, Math.max(5, Math.round((jobProgress.processed / (jobProgress.total || 1)) * 100)))}%`,
-                  }}
-                />
+                {jobProgress.status === "started" && jobProgress.processed === 0 ? (
+                  /* Indeterminate pulsing bar while ML model initializes */
+                  <div
+                    className="h-full w-1/3 bg-gradient-brand rounded-full animate-pulse"
+                    style={{ animation: "pulse 1.5s ease-in-out infinite" }}
+                  />
+                ) : (
+                  <div
+                    className="h-full bg-gradient-brand transition-all duration-300 ease-out"
+                    style={{
+                      width: `${Math.min(100, Math.max(5, Math.round((jobProgress.processed / (jobProgress.total || 1)) * 100)))}%`,
+                    }}
+                  />
+                )}
               </div>
             </motion.div>
           )}

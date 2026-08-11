@@ -102,15 +102,35 @@ async def get_job_status(
     """
     GET /api/gmail/jobs/{job_id}
     Returns real-time progress (processed, total, status, result) for a background job.
+
+    PRODUCTION FIX: In multi-worker deployments (gunicorn on Render), there's a brief
+    race window where the job exists in Worker A's memory but hasn't propagated to
+    MongoDB yet when Worker B receives the poll request. Instead of returning a 404
+    (which breaks the frontend progress bar), we return a synthetic "started" status
+    so the frontend keeps polling gracefully.
     """
     user_id = str(current_user["_id"])
     job_service = JobService()
     job = job_service.get_job(job_id=job_id, user_id=user_id)
 
     if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job '{job_id}' not found or unauthorized.",
+        # Grace period: return a synthetic "started" response instead of 404.
+        # The frontend will poll again in 1s and by then MongoDB should have the real data.
+        logger.info(f"Job '{job_id}' not found yet (race window), returning synthetic started status")
+        return return_response(
+            status_code=status.HTTP_200_OK,
+            message="Job status retrieved",
+            data={
+                "job_id": job_id,
+                "status": "started",
+                "total": 0,
+                "processed": 0,
+                "classified": 0,
+                "skipped": 0,
+                "current_subject": None,
+                "result": None,
+                "error": None,
+            },
         )
 
     return return_response(
