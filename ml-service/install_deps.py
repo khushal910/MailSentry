@@ -57,14 +57,17 @@ def main():
         print("🔥 [ML Service] Installing Full Deep Learning Dependencies (PyTorch & Transformers)...")
         req_file = "requirements.txt"
 
+    # Default to CPU PyTorch index unless USE_GPU=true is set, as cloud hosts (Render/CI) are CPU environments
+    use_cpu = args.cpu or os.getenv("USE_GPU", "false").lower() not in ("true", "1", "yes")
+
     if args.uv:
         cmd = ["uv", "pip", "install", "--system"]
-        if not is_light_mode and args.cpu:
+        if not is_light_mode and use_cpu:
             cmd.extend(["--index-strategy", "unsafe-best-match", "--extra-index-url", "https://download.pytorch.org/whl/cpu"])
         cmd.extend(["-r", req_file])
     else:
-        cmd = [sys.executable, "-m", "pip", "install"]
-        if not is_light_mode and args.cpu:
+        cmd = [sys.executable, "-m", "pip", "install", "--no-cache-dir"]
+        if not is_light_mode and use_cpu:
             cmd.extend(["--extra-index-url", "https://download.pytorch.org/whl/cpu"])
         cmd.extend(["-r", req_file])
 
