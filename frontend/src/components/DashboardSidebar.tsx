@@ -58,6 +58,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <Link
               key={l.to}
               to={l.to}
+              preload="intent"
               onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",

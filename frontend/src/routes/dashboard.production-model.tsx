@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import {
   RefreshCw,
   AlertTriangle,
@@ -34,13 +34,18 @@ import {
 } from "@/components/ui/dialog";
 
 import { CandidateModelSection } from "@/components/mlops/CandidateModelSection";
-import { TrafficMonitoringSection } from "@/components/mlops/TrafficMonitoringSection";
 import { DeploymentTimelineSection } from "@/components/mlops/DeploymentTimelineSection";
 import { ModelComparisonTableSection } from "@/components/mlops/ModelComparisonTableSection";
 import { RuntimeConfigAccordionSection } from "@/components/mlops/RuntimeConfigAccordionSection";
 import { ArtifactIntegrityAccordionSection } from "@/components/mlops/ArtifactIntegrityAccordionSection";
 import { QuickActionsToolbarSection } from "@/components/mlops/QuickActionsToolbarSection";
 import { ModelComparisonDrawer } from "@/components/ModelComparisonDrawer";
+
+const TrafficMonitoringSection = lazy(() =>
+  import("@/components/mlops/TrafficMonitoringSection").then((m) => ({
+    default: m.TrafficMonitoringSection,
+  })),
+);
 
 import { modelService } from "@/services/modelService";
 import { downloadPklFile } from "@/utils/downloadHelper";
@@ -452,7 +457,9 @@ function ProductionModelPage() {
             />
 
             {/* TRAFFIC MONITORING TELEMETRY */}
-            <TrafficMonitoringSection />
+            <Suspense fallback={<Skeleton className="h-[380px] w-full rounded-2xl" />}>
+              <TrafficMonitoringSection />
+            </Suspense>
 
             {/* DEPLOYMENT TIMELINE AUDIT LOG */}
             <DeploymentTimelineSection
