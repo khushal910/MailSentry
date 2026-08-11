@@ -35,6 +35,7 @@ export function Navbar() {
               <Link
                 key={l.to}
                 to={l.to}
+                preload="intent"
                 className={cn(
                   "rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors relative",
                   active
@@ -63,19 +64,19 @@ export function Navbar() {
               size="sm"
               className="bg-gradient-brand shadow-elegant btn-gradient-glow font-semibold"
             >
-              <Link to="/dashboard">Dashboard</Link>
+              <Link to="/dashboard" preload="intent">Dashboard</Link>
             </Button>
           ) : (
             <>
               <Button asChild variant="ghost" size="sm" className="hover:bg-accent/50">
-                <Link to="/login">Login</Link>
+                <Link to="/login" preload="intent">Login</Link>
               </Button>
               <Button
                 asChild
                 size="sm"
                 className="bg-gradient-brand shadow-elegant btn-gradient-glow font-semibold"
               >
-                <Link to="/signup">Sign up</Link>
+                <Link to="/signup" preload="intent">Sign up</Link>
               </Button>
             </>
           )}
