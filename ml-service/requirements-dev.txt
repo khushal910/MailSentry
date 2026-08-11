@@ -1,0 +1,14 @@
+# MailSentry ML Microservice — Local Development & Model Training Requirements
+-r requirements-base.txt
+
+# MLOps & Experiment Tracking (Used for local model training in src/ & DVC pipelines)
+mlflow>=2.11.0
+dagshub>=0.3.0
+boto3>=1.34.0
+botocore>=1.34.0
+catboost>=1.2.0
+lightgbm>=4.3.0
+
+# Testing & Quality
+pytest>=8.0.0
+pytest-cov>=4.1.0
