@@ -42,6 +42,9 @@ class ModelRepository:
             self.collection.create_index(
                 [("created_at", DESCENDING)], name="idx_model_created_at"
             )
+            self.collection.create_index(
+                [("status", 1), ("created_at", DESCENDING)], name="idx_model_status_created_at"
+            )
             logger.info("Indexes ensured on models collection.")
         except OperationFailure as e:
             if e.code in (85, 86):

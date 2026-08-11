@@ -50,19 +50,24 @@ class EmailRepository:
             self.collection.create_index("user_id", name="idx_user_id")
             # Index on message_id
             self.collection.create_index("message_id", name="idx_message_id")
-            # Compound index for timeline queries
+            # Compound index for timeline queries (matching sent_at & classified_at sort)
             self.collection.create_index(
-                [("user_id", ASCENDING), ("classified_at", DESCENDING)],
-                name="idx_user_classified_at",
+                [
+                    ("user_id", ASCENDING),
+                    ("sent_at", DESCENDING),
+                    ("classified_at", DESCENDING),
+                ],
+                name="idx_user_sent_classified",
             )
             # Compound index for label filtering with timeline sorting
             self.collection.create_index(
                 [
                     ("user_id", ASCENDING),
                     ("predicted_label", ASCENDING),
+                    ("sent_at", DESCENDING),
                     ("classified_at", DESCENDING),
                 ],
-                name="idx_user_label_classified_at",
+                name="idx_user_label_sent_classified",
             )
             logger.info("Indexes ensured on emails collection.")
         except OperationFailure as e:
