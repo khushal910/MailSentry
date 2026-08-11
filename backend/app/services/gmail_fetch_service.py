@@ -510,7 +510,7 @@ class GmailFetchService:
         url_list = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults={max_results}&includeSpamTrash=true"
 
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.get(url_list, headers=headers)
                 if resp.status_code != 200:
                     logger.warning(

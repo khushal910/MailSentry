@@ -275,19 +275,19 @@ function AutoClassifierPage() {
               estRemainingSec,
             });
 
-            // Schedule next poll ONLY after this request finished (fast 350ms interval)
+            // Schedule next poll ONLY after this request finished (production-safe 1000ms interval)
             if (isJobActiveRef.current && activeJobIdRef.current === currentJobId) {
-              setTimeout(pollStep, 350);
+              setTimeout(pollStep, 1000);
             }
           } catch (pollErr) {
             if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
               resolve();
               return;
             }
-            // Allow up to 3 transient retries before rejecting to handle multi-worker sync lag
-            if (retryCount < 3) {
+            // Allow up to 10 transient retries before rejecting to handle production network latency & multi-worker sync
+            if (retryCount < 10) {
               retryCount++;
-              setTimeout(pollStep, 500);
+              setTimeout(pollStep, 1000);
               return;
             }
             isJobActiveRef.current = false;
@@ -296,8 +296,8 @@ function AutoClassifierPage() {
           }
         };
 
-        // Start first poll after 350ms
-        setTimeout(pollStep, 350);
+        // Start first poll after 1000ms
+        setTimeout(pollStep, 1000);
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to classify emails.";
