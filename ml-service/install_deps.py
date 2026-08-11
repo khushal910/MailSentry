@@ -29,6 +29,7 @@ def main():
     parser = argparse.ArgumentParser(description="Dynamic ML Service Dependency Installer")
     parser.add_argument("--uv", action="store_true", help="Use Astral uv package manager for installation")
     parser.add_argument("--cpu", action="store_true", help="Use CPU PyTorch index when installing PyTorch")
+    parser.add_argument("--dev", action="store_true", help="Install local development and MLOps training dependencies")
     args = parser.parse_args()
 
     # Load ml-service/.env file if present
@@ -48,9 +49,12 @@ def main():
     # Lightweight modes: mlops, linear_svc, light
     is_light_mode = model_name in ("mlops", "linear_svc", "light") and not install_heavy
 
-    if is_light_mode:
+    if args.dev:
+        print("🛠️ [ML Service] Installing Development & MLOps Training Dependencies...")
+        req_file = "requirements-dev.txt"
+    elif is_light_mode:
         print(f"📦 [ML Service] Detected CLASSIFICATION_MODEL='{model_name}'")
-        print("🚀 [ML Service] Installing Lightweight Dependencies (Skipping PyTorch/Transformers)...")
+        print("🚀 [ML Service] Installing Production Serving Dependencies (Skipping PyTorch/Transformers/MLflow)...")
         req_file = "requirements-base.txt"
     else:
         print(f"📦 [ML Service] Detected CLASSIFICATION_MODEL='{model_name}'")
