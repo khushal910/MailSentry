@@ -374,6 +374,11 @@ class TestFetchFromGmailPagination(unittest.TestCase):
 class TestGmailFetchServiceTokenError400(unittest.TestCase):
     """HTTP 400 from token manager also disconnects account."""
 
+    def setUp(self):
+        _LAST_FETCH_AT.clear()
+        _USER_LOCKS.clear()
+        _LOCK_ACQUIRED_AT.clear()
+
     def test_token_400_disconnects_account(self):
         svc = _make_service(token_ok=False)
         svc.token_manager.get_valid_access_token = AsyncMock(
