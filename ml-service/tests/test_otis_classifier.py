@@ -49,10 +49,16 @@ class TestOtisClassifierAndModelSwitching(unittest.TestCase):
 
     def test_normalize_spam_prediction_isolation(self):
         """Verify OTIS label normalization isolates labels into spam and not_spam / safe."""
-        import torch
+        try:
+            import torch
 
-        # Index 0 = safe, Index 1 = spam
-        logits = torch.tensor([[0.1, 2.5]])  # Higher score for index 1 (spam)
+            # Index 0 = safe, Index 1 = spam
+            logits = torch.tensor([[0.1, 2.5]])  # Higher score for index 1 (spam)
+            logits_safe = torch.tensor([[3.0, 0.2]])  # Higher score for index 0 (safe)
+        except ImportError:
+            logits = [0.1, 2.5]
+            logits_safe = [3.0, 0.2]
+
         id2label = {0: "LABEL_0", 1: "LABEL_1"}
 
         norm = normalize_spam_prediction(logits, id2label=id2label)
@@ -62,7 +68,6 @@ class TestOtisClassifierAndModelSwitching(unittest.TestCase):
         self.assertGreater(norm["confidence"], 0.8)
 
         # Index 0 = safe, Index 1 = spam
-        logits_safe = torch.tensor([[3.0, 0.2]])  # Higher score for index 0 (safe)
         norm_safe = normalize_spam_prediction(logits_safe, id2label=id2label)
         self.assertFalse(norm_safe["is_spam"])
         self.assertEqual(norm_safe["label"], "not_spam")

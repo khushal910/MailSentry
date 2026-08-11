@@ -18,6 +18,18 @@ class TestMLServiceAPIRouter(unittest.TestCase):
         self.assertEqual(data.get("status"), "healthy")
         self.assertIn("version", data)
 
+    def test_ready_endpoint(self):
+        response = self.client.get("/ready")
+        self.assertIn(response.status_code, [200, 503])
+        data = response.json()
+        if response.status_code == 200:
+            self.assertEqual(data.get("status"), "ready")
+            self.assertIn("model_version", data)
+
+    def test_ready_endpoint_alias_v1(self):
+        response = self.client.get("/api/v1/ready")
+        self.assertIn(response.status_code, [200, 503])
+
     def test_version_endpoint(self):
         response = self.client.get("/version")
         self.assertEqual(response.status_code, 200)

@@ -22,13 +22,16 @@ def normalize_spam_prediction(
       - Index 0: not_spam / safe / ham
       - Index 1: spam
     """
-    import torch
+    try:
+        import torch
 
-    if isinstance(logits_or_probs, torch.Tensor):
-        probs = torch.softmax(logits_or_probs, dim=-1).detach().cpu().numpy()
-        if len(probs.shape) > 1:
-            probs = probs[0]
-    else:
+        if isinstance(logits_or_probs, torch.Tensor):
+            probs = torch.softmax(logits_or_probs, dim=-1).detach().cpu().numpy()
+            if len(probs.shape) > 1:
+                probs = probs[0]
+        else:
+            probs = logits_or_probs
+    except ImportError:
         probs = logits_or_probs
 
     # Default binary assumption: index 0 = safe, index 1 = spam
