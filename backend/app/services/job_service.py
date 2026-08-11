@@ -3,6 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+import threading
+
 logger = logging.getLogger("mailsentry.job_service")
 
 
@@ -99,10 +101,15 @@ class JobService:
     """
     Singleton service for creating, updating, retrieving, and auto-expiring background classification jobs.
     Persists jobs to MongoDB classification_jobs collection for multi-worker process compatibility.
+
+    PRODUCTION FIX: MongoDB is the PRIMARY source of truth for all job lookups.
+    This ensures multi-worker gunicorn deployments (e.g., Render) can always find jobs
+    regardless of which worker process created the job vs. which worker handles the poll.
     """
 
     _instance = None
     _jobs: dict[str, ClassificationJob] = {}
+    _lock = threading.Lock()
 
     def __new__(cls):
         if cls._instance is None:
@@ -124,7 +131,10 @@ class JobService:
     def create_job(self, user_id: str, total: int) -> ClassificationJob:
         job_id = f"job_{uuid.uuid4().hex[:12]}"
         job = ClassificationJob(job_id=job_id, user_id=user_id, total=total)
-        self._jobs[job_id] = job
+        with self._lock:
+            self._jobs[job_id] = job
+        # CRITICAL: Sync to MongoDB BEFORE returning so that any worker
+        # can find this job immediately when the frontend starts polling.
         self._sync_to_db(job)
         self._cleanup_old_jobs()
         return job
@@ -132,20 +142,28 @@ class JobService:
     def get_job(
         self, job_id: str, user_id: str | None = None
     ) -> ClassificationJob | None:
+        """
+        Retrieves a job by ID. MongoDB is checked FIRST (source of truth for
+        multi-worker environments), then falls back to in-memory cache.
+        """
+        # 1. Try MongoDB first (works across all gunicorn workers)
         try:
             coll = _get_jobs_collection()
             if coll is not None:
                 doc = coll.find_one({"job_id": job_id})
                 if doc:
                     job = ClassificationJob.from_dict(doc)
-                    self._jobs[job_id] = job
+                    with self._lock:
+                        self._jobs[job_id] = job
                     if user_id and job.user_id != user_id:
                         return None
                     return job
         except Exception as err:
             logger.warning(f"Failed to query job {job_id} from MongoDB: {err}")
 
-        job = self._jobs.get(job_id)
+        # 2. Fallback to in-memory cache (same worker that created the job)
+        with self._lock:
+            job = self._jobs.get(job_id)
         if job and user_id and job.user_id != user_id:
             return None
         return job
@@ -157,7 +175,8 @@ class JobService:
             if job.processed > job.total:
                 job.processed = job.total
             job.updated_at = datetime.now(timezone.utc)
-            self._jobs[job_id] = job
+            with self._lock:
+                self._jobs[job_id] = job
             self._sync_to_db(job)
 
     def update_progress(
@@ -177,7 +196,8 @@ class JobService:
             if current_subject:
                 job.current_subject = current_subject
             job.updated_at = datetime.now(timezone.utc)
-            self._jobs[job_id] = job
+            with self._lock:
+                self._jobs[job_id] = job
             self._sync_to_db(job)
 
     def complete_job(self, job_id: str, result: dict[str, Any]) -> None:
@@ -187,7 +207,8 @@ class JobService:
             job.processed = job.total
             job.result = result
             job.updated_at = datetime.now(timezone.utc)
-            self._jobs[job_id] = job
+            with self._lock:
+                self._jobs[job_id] = job
             self._sync_to_db(job)
 
     def fail_job(self, job_id: str, error_message: str) -> None:
@@ -196,7 +217,8 @@ class JobService:
             job.status = "failed"
             job.error_message = error_message
             job.updated_at = datetime.now(timezone.utc)
-            self._jobs[job_id] = job
+            with self._lock:
+                self._jobs[job_id] = job
             self._sync_to_db(job)
 
     def _cleanup_old_jobs(self) -> None:
