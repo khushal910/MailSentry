@@ -36,6 +36,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Startup initialization warning: {e}")
     yield
+    try:
+        from app.services.ml_client import MLServiceClient
+        await MLServiceClient.close_async_client()
+    except Exception:
+        pass
     MongoDB.disconnect()
 
 
