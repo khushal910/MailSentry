@@ -175,29 +175,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, isLoading, isSessionExpired, login, signup, logout, refresh, triggerSessionExpired],
   );
 
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   return (
     <AuthContext.Provider value={value}>
-      {isMounted && isLoading ? (
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <div className="flex flex-col items-center gap-3">
-            <div className="relative h-12 w-12">
-              <div className="absolute inset-0 rounded-full border-4 border-muted" />
-              <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-brand" />
-            </div>
-            <p className="text-xs font-medium text-muted-foreground animate-pulse">
-              Verifying session…
-            </p>
-          </div>
-        </div>
-      ) : (
-        children
-      )}
+      {children}
       <SessionExpiredModal
         isOpen={isSessionExpired}
         redirectUrl={redirectUrl}
