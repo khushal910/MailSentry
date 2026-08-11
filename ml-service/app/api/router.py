@@ -45,6 +45,33 @@ async def health_check():
     )
 
 
+@ml_router.get("/ready", tags=["Health"])
+@ml_router.get("/api/v1/ready", tags=["Health"])
+async def ready_check():
+    """
+    GET /ready
+    Returns HTTP 200 OK only when ML server is running AND inference model is loaded into memory.
+    Returns HTTP 503 Service Unavailable if server is running but model is not ready.
+    """
+    engine = MLEngine.get_instance()
+    if engine.is_loaded:
+        return {
+            "status": "ready",
+            "service": settings.APP_NAME,
+            "model_version": engine.version,
+            "model_type": engine.model_type,
+        }
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "status": "not_ready",
+            "service": settings.APP_NAME,
+            "reason": "Model engine is not loaded into memory",
+        },
+    )
+
+
 @ml_router.get("/model/info", tags=["Metadata"])
 @ml_router.get("/api/v1/model/info", tags=["Metadata"])
 async def model_info_endpoint():
