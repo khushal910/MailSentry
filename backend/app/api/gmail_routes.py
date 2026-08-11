@@ -73,8 +73,11 @@ async def start_classify_job(
     Returns immediately (<2s) with job_id and status for real-time frontend polling.
     """
     user_id = str(current_user["_id"])
+    from app.core.config import settings
+
     emails_to_process = payload.emails if (payload and payload.emails) else []
-    total_count = len(emails_to_process) if emails_to_process else 50
+    default_max = int(getattr(settings, "FETCH_MAX_RESULTS", 50))
+    total_count = len(emails_to_process) if emails_to_process else default_max
 
     job_service = JobService()
     job = job_service.create_job(user_id=user_id, total=total_count)

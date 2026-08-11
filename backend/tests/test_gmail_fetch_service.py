@@ -315,5 +315,80 @@ class TestJobServiceSetTotal(unittest.TestCase):
         self.assertEqual(job.processed, 5)
 
 
+class TestFetchFromGmailPagination(unittest.TestCase):
+    """Verifies that _fetch_from_gmail caps page size to 500 and paginates using pageToken when FETCH_MAX_RESULTS > 500."""
+
+    def setUp(self):
+        self.patcher = patch.object(settings, "FETCH_MAX_RESULTS", 1000)
+        self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
+
+    def test_fetch_paginates_and_caps_500(self):
+        svc = GmailFetchService()
+        svc.email_repo = MagicMock()
+        svc.email_repo.get_existing_message_ids.return_value = set()
+
+        # Mock httpx AsyncClient response to simulate 2 pages of 500 messages
+        mock_resp_1 = MagicMock()
+        mock_resp_1.status_code = 200
+        mock_resp_1.json.return_value = {
+            "messages": [{"id": f"m_{i}"} for i in range(500)],
+            "nextPageToken": "token_page_2",
+        }
+
+        mock_resp_2 = MagicMock()
+        mock_resp_2.status_code = 200
+        mock_resp_2.json.return_value = {
+            "messages": [{"id": f"m_{i}"} for i in range(500, 1000)],
+        }
+
+        mock_msg_resp = MagicMock()
+        mock_msg_resp.status_code = 200
+        mock_msg_resp.json.return_value = {
+            "id": "m_0",
+            "snippet": "hello",
+            "payload": {"headers": [{"name": "Subject", "value": "Test"}]},
+        }
+
+        async def mock_get(url, **kwargs):
+            if "pageToken=token_page_2" in url:
+                return mock_resp_2
+            elif "messages?" in url:
+                return mock_resp_1
+            return mock_msg_resp
+
+        with patch("httpx.AsyncClient.get", side_effect=mock_get):
+            raw = run(
+                svc._fetch_from_gmail(
+                    user_id="user_123",
+                    google_email="test@gmail.com",
+                    access_token="tok",
+                )
+            )
+
+        self.assertEqual(len(raw), 1000)
+
+
+class TestGmailFetchServiceTokenError400(unittest.TestCase):
+    """HTTP 400 from token manager also disconnects account."""
+
+    def setUp(self):
+        _LAST_FETCH_AT.clear()
+        _USER_LOCKS.clear()
+        _LOCK_ACQUIRED_AT.clear()
+
+    def test_token_400_disconnects_account(self):
+        svc = _make_service(token_ok=False)
+        svc.token_manager.get_valid_access_token = AsyncMock(
+            side_effect=HTTPException(status_code=400, detail="invalid_grant")
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            run(svc.run_fetch_pipeline(USER_ID, GOOGLE_ACCOUNT))
+        self.assertEqual(ctx.exception.status_code, 403)
+        svc.google_repo.disconnect_account.assert_called_once_with(USER_ID)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -252,7 +252,9 @@ class GmailFetchService:
             access_token = await self.token_manager.get_valid_access_token(google_email)
         except HTTPException as exc:
             if exc.status_code in (
+                status.HTTP_400_BAD_REQUEST,
                 status.HTTP_401_UNAUTHORIZED,
+                status.HTTP_403_FORBIDDEN,
                 status.HTTP_404_NOT_FOUND,
             ):
                 # Token revoked or missing — mark account as disconnected
@@ -501,25 +503,41 @@ class GmailFetchService:
     ) -> list:
         """
         Fetches unclassified messages from Gmail REST API v1 using access_token.
-        Fetches up to FETCH_MAX_RESULTS (default 50) messages per batch.
+        Fetches up to FETCH_MAX_RESULTS messages per batch (capping maxResults per page to 500).
         Filters out messages that are already present in MongoDB.
         Uses concurrent batch fetching (asyncio.gather with Semaphore) for maximum performance.
         """
         headers = {"Authorization": f"Bearer {access_token}"}
-        max_results = int(getattr(settings, "FETCH_MAX_RESULTS", 50))
-        url_list = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults={max_results}&includeSpamTrash=true"
+        target_max_results = int(getattr(settings, "FETCH_MAX_RESULTS", 50))
+        message_summaries = []
+        page_token = None
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.get(url_list, headers=headers)
-                if resp.status_code != 200:
-                    logger.warning(
-                        f"[GmailAPI] List messages status {resp.status_code} for user_id={user_id}"
-                    )
-                    return []
+                while len(message_summaries) < target_max_results:
+                    remaining = target_max_results - len(message_summaries)
+                    page_size = min(remaining, 500)
+                    url_list = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults={page_size}&includeSpamTrash=true"
+                    if page_token:
+                        url_list += f"&pageToken={page_token}"
 
-                data = resp.json()
-                message_summaries = data.get("messages", [])
+                    resp = await client.get(url_list, headers=headers)
+                    if resp.status_code != 200:
+                        logger.warning(
+                            f"[GmailAPI] List messages status {resp.status_code} for user_id={user_id}"
+                        )
+                        break
+
+                    data = resp.json()
+                    page_messages = data.get("messages", [])
+                    if not page_messages:
+                        break
+
+                    message_summaries.extend(page_messages)
+                    page_token = data.get("nextPageToken")
+                    if not page_token:
+                        break
+
                 if not message_summaries:
                     return []
 

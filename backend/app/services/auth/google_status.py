@@ -40,6 +40,11 @@ def get_google_status_service(
     if not account or not account.get("google_connected", True):
         return {"connected": False}
 
+    refresh_token = account.get("refresh_token")
+    if not refresh_token or not str(refresh_token).strip():
+        repo.disconnect_account(user_id)
+        return {"connected": False}
+
     created_at = account.get("created_at")
     updated_at = account.get("updated_at")
 

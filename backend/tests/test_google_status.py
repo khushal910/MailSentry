@@ -119,6 +119,49 @@ class TestGoogleStatusEndpoint(unittest.TestCase):
         data = response.json()
         self.assertEqual(data, {"connected": False})
 
+    def test_google_status_missing_refresh_token_returns_not_connected(self):
+        user_id = str(ObjectId())
+        user_doc = {
+            "_id": ObjectId(user_id),
+            "username": "testuser",
+            "email": "testuser@example.com",
+        }
+        google_account_doc = {
+            "_id": ObjectId(),
+            "user_id": user_id,
+            "google_email": "testuser@gmail.com",
+            "refresh_token": None,
+            "google_connected": True,
+        }
+
+        mock_db = MagicMock()
+        mock_users_col = MagicMock()
+        mock_users_col.find_one.return_value = user_doc
+
+        mock_google_col = MagicMock()
+        mock_google_col.find_one.return_value = google_account_doc
+
+        def get_col(name):
+            if name == settings.USER_COLLECTION_NAME:
+                return mock_users_col
+            elif name == settings.GOOGLE_ACCOUNT_COLLECTION_NAME:
+                return mock_google_col
+            return MagicMock()
+
+        mock_db.__getitem__.side_effect = get_col
+        token = create_access_token(user_id=user_id, username="testuser")
+
+        with patch("app.dependencies.auth.get_database", return_value=mock_db), patch(
+            "app.repositories.google_account_repository.get_database",
+            return_value=mock_db,
+        ):
+            response = self.client.get(
+                "/api/google/status", headers={"Authorization": f"Bearer {token}"}
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"connected": False})
+
     def test_google_status_missing_jwt(self):
         response = self.client.get("/api/google/status")
         self.assertEqual(response.status_code, 401)

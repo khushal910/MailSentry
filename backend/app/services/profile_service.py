@@ -69,10 +69,18 @@ class ProfileService:
             str(raw_g_email) if (raw_g_email and isinstance(raw_g_email, str)) else None
         )
 
+        has_rt = (
+            google_acc.get("refresh_token") is not None
+            and bool(str(google_acc.get("refresh_token")).strip())
+        ) if (google_acc and "refresh_token" in google_acc) else bool(google_acc)
+
         google_connected = bool(
-            user.get("google_connected")
-            or (google_acc and google_acc.get("google_connected"))
+            google_acc and google_acc.get("google_connected", True) and has_rt
         )
+        if not google_connected and user.get("google_connected"):
+            self.google_repo.update_user_google_connected(
+                user_id, False, datetime.now(timezone.utc)
+            )
 
         raw_providers = user.get("providers", ["local"])
         if isinstance(raw_providers, str):

@@ -462,9 +462,15 @@ class GoogleOAuthService:
                 logger.error(
                     f"Google token refresh failed for {google_email}: {error_msg}"
                 )
+                # Automatically mark account as disconnected in MongoDB if token is invalid/revoked/expired
+                account_doc = self.repo.find_by_email(google_email)
+                if account_doc:
+                    target_u_id = account_doc.get("user_id")
+                    if target_u_id:
+                        self.repo.disconnect_account(str(target_u_id))
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Failed to refresh Google access token: {error_msg}",
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Gmail access revoked or refresh token expired: {error_msg}. Please reconnect your account.",
                 )
 
             access_token = data.get("access_token")

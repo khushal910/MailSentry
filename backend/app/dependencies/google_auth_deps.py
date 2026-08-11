@@ -65,6 +65,7 @@ def require_google_connected(
     # Rule 3: Refresh token missing or empty -> Reconnect Gmail
     refresh_token = account.get("refresh_token")
     if not refresh_token or not str(refresh_token).strip():
+        repo.disconnect_account(user_id)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Reconnect Gmail."
         )
