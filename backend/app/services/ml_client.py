@@ -25,9 +25,24 @@ class MLServiceClient:
         if cls._sync_client is None or cls._sync_client.is_closed:
             cls._sync_client = httpx.Client(
                 timeout=timeout,
-                limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
+                limits=httpx.Limits(max_keepalive_connections=20, max_connections=50, keepalive_expiry=30.0),
             )
         return cls._sync_client
+
+    @classmethod
+    def _get_async_client(cls, timeout: float) -> httpx.AsyncClient:
+        if cls._async_client is None or cls._async_client.is_closed:
+            cls._async_client = httpx.AsyncClient(
+                timeout=timeout,
+                limits=httpx.Limits(max_keepalive_connections=20, max_connections=50, keepalive_expiry=30.0),
+            )
+        return cls._async_client
+
+    @classmethod
+    async def close_async_client(cls):
+        if cls._async_client is not None and not cls._async_client.is_closed:
+            await cls._async_client.aclose()
+            cls._async_client = None
 
     def __init__(
         self,
@@ -61,10 +76,10 @@ class MLServiceClient:
         for base in urls:
             url = f"{base}/health"
             try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    resp = await client.get(url, headers=self._get_headers())
-                    if resp.status_code == 200:
-                        return resp.json()
+                client = self._get_async_client(10.0)
+                resp = await client.get(url, headers=self._get_headers())
+                if resp.status_code == 200:
+                    return resp.json()
             except Exception as err:
                 last_err = err
 
@@ -83,7 +98,7 @@ class MLServiceClient:
         max_retries: int = 3,
     ) -> Dict[str, Any]:
         """
-        Sends an asynchronous prediction request to ml-service with automatic retries.
+        Sends an asynchronous prediction request to ml-service using persistent HTTP connection pooling.
         """
         url = f"{self.base_url}/predict"
         payload = {
@@ -95,20 +110,21 @@ class MLServiceClient:
         last_error = None
         for attempt in range(1, max_retries + 1):
             try:
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    resp = await client.post(url, json=payload, headers=self._get_headers())
-                    if resp.status_code == 200:
-                        return resp.json()
-                    
-                    err_msg = f"ML Service returned HTTP {resp.status_code}: {resp.text}"
-                    logger.warning(f"[Attempt {attempt}/{max_retries}] {err_msg}")
-                    last_error = err_msg
+                client = self._get_async_client(self.timeout)
+                resp = await client.post(url, json=payload, headers=self._get_headers())
+                if resp.status_code == 200:
+                    return resp.json()
+                
+                err_msg = f"ML Service returned HTTP {resp.status_code}: {resp.text}"
+                logger.warning(f"[Attempt {attempt}/{max_retries}] {err_msg}")
+                last_error = err_msg
 
             except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError) as net_err:
                 last_error = str(net_err)
                 logger.warning(
                     f"[Attempt {attempt}/{max_retries}] Connection failed to ML Service at {url}: {net_err}"
                 )
+                await self.close_async_client()
             except Exception as err:
                 last_error = str(err)
                 logger.error(f"[Attempt {attempt}/{max_retries}] Unexpected error in MLServiceClient: {err}")

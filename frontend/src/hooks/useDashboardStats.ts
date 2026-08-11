@@ -12,7 +12,8 @@ export function useDashboardStats() {
   const query = useQuery({
     queryKey: DASHBOARD_STATS_QUERY_KEY,
     queryFn: () => dashboardApi.getStats(),
-    staleTime: 30_000,
+    staleTime: 5 * 60 * 1000, // 5 minutes fresh cache
+    gcTime: 10 * 60 * 1000, // 10 minutes cache retention
     retry: 2,
   });
 

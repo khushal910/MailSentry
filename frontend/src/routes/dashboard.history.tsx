@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, MailX, X, SearchX, RefreshCw, Sparkles, ShieldAlert, ShieldCheck, AlertTriangle } from "lucide-react";
 
@@ -23,7 +23,13 @@ import { GmailOpenButton } from "@/components/GmailOpenButton";
 import { getGmailUrl } from "@/utils/gmail";
 import { GmailSpamIndicator } from "@/components/GmailSpamIndicator";
 
-import { EmailSummaryModal, type HistoryEmailItem } from "@/components/EmailSummaryModal";
+import type { HistoryEmailItem } from "@/components/EmailSummaryModal";
+
+const EmailSummaryModal = lazy(() =>
+  import("@/components/EmailSummaryModal").then((m) => ({
+    default: m.EmailSummaryModal,
+  })),
+);
 
 
 
@@ -332,14 +338,16 @@ function HistoryPage() {
       </div>
 
       {/* AI Email Summary Modal */}
-      <EmailSummaryModal
-        email={selectedEmail}
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setSelectedEmail(null);
-        }}
-      />
+      <Suspense fallback={null}>
+        <EmailSummaryModal
+          email={selectedEmail}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedEmail(null);
+          }}
+        />
+      </Suspense>
     </PageTransition>
   );
 }

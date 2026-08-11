@@ -1,0 +1,10 @@
+# Deep Learning & Transformers (Optional for OTIS, DeBERTa, RoBERTa models)
+torch>=2.2.0
+transformers>=4.40.0
+peft>=0.10.0
+safetensors>=0.4.0
+sentencepiece>=0.2.0
+accelerate>=0.28.0
+tiktoken>=0.6.0
+onnxruntime>=1.17.0
+optimum>=1.19.0

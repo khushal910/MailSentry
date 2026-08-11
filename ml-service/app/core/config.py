@@ -74,10 +74,11 @@ class Settings:
 
     CLASSIFICATION_THRESHOLD: float = float(os.getenv("CLASSIFICATION_THRESHOLD", 0.50))
     
-    # Hugging Face & LoRA Settings
+    # Hugging Face, ONNX & Quantization Settings
     HF_HOME: str = os.getenv("HF_HOME", os.getenv("TRANSFORMERS_CACHE", ""))
     LORA_ENABLED: bool = os.getenv("LORA_ENABLED", "True").lower() in ("true", "1", "t")
     LORA_R: int = int(os.getenv("LORA_R", "8"))
+    USE_ONNX: bool = os.getenv("USE_ONNX", "False").lower() in ("true", "1", "t")
 
     # Internal Security Token (optional for production service-to-service auth)
 
