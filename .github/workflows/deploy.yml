@@ -72,7 +72,7 @@ jobs:
           HEALTH_URL="${TARGET_URL}/health"
           echo "Waiting for ML Service readiness probe at: ${READY_URL}"
           
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=40
           ATTEMPT=1
           SUCCESS=0
 
@@ -88,11 +88,11 @@ jobs:
               SUCCESS=1
               break
             else
-              echo "[${ATTEMPT}/${MAX_ATTEMPTS}] ML Service not ready (HTTP ${STATUS_CODE}). Retrying in 10s..."
+              echo "[${ATTEMPT}/${MAX_ATTEMPTS}] ML Service not ready (HTTP ${STATUS_CODE}). Retrying in 3s..."
             fi
 
             ATTEMPT=$((ATTEMPT + 1))
-            sleep 10
+            sleep 3
           done
 
           if [ $SUCCESS -eq 1 ]; then
@@ -147,7 +147,7 @@ jobs:
           HEALTH_URL="${TARGET_URL}/health"
           echo "Waiting for Backend health probe at: ${HEALTH_URL}"
           
-          MAX_ATTEMPTS=30
+          MAX_ATTEMPTS=40
           ATTEMPT=1
           SUCCESS=0
 
@@ -158,11 +158,11 @@ jobs:
               SUCCESS=1
               break
             else
-              echo "[${ATTEMPT}/${MAX_ATTEMPTS}] Backend Service not ready (HTTP ${STATUS_CODE}). Retrying in 10s..."
+              echo "[${ATTEMPT}/${MAX_ATTEMPTS}] Backend Service not ready (HTTP ${STATUS_CODE}). Retrying in 3s..."
             fi
 
             ATTEMPT=$((ATTEMPT + 1))
-            sleep 10
+            sleep 3
           done
 
           if [ $SUCCESS -eq 1 ]; then

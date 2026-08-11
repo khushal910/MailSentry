@@ -75,6 +75,9 @@ jobs:
 
       - name: 3. Setup Astral uv Package Manager
         uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-path: backend/requirements.txt
 
       - name: 4. Install Dependencies
         run: |
@@ -105,8 +108,14 @@ jobs:
         run: |
           python main.py > server.log 2>&1 &
           SERVER_PID=$!
-          sleep 3
-          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8000/health" || echo "000")
+          HEALTH_STATUS="000"
+          for i in {1..10}; do
+            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:8000/health" || echo "000")
+            if [ "$HEALTH_STATUS" -eq 200 ]; then
+              break
+            fi
+            sleep 1
+          done
           kill $SERVER_PID 2>/dev/null || true
           if [ "$HEALTH_STATUS" -ne 200 ]; then
             echo "FastAPI startup health probe failed (HTTP $HEALTH_STATUS)!"
@@ -136,10 +145,13 @@ jobs:
 
       - name: 3. Setup Astral uv Package Manager
         uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-path: ml-service/requirements.txt
 
       - name: 4. Install ML Microservice Dependencies
         run: |
-          uv pip install --system -r requirements.txt
+          uv pip install --system --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
           uv pip install --system ruff httpx
 
       - name: 5. Code Linting (Ruff)
@@ -154,9 +166,16 @@ jobs:
         run: |
           python main.py > ml_server.log 2>&1 &
           SERVER_PID=$!
-          sleep 4
-          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:9000/health" || echo "000")
-          VERSION_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:9000/version" || echo "000")
+          HEALTH_STATUS="000"
+          VERSION_STATUS="000"
+          for i in {1..10}; do
+            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:9000/health" || echo "000")
+            VERSION_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:9000/version" || echo "000")
+            if [ "$HEALTH_STATUS" -eq 200 ] && [ "$VERSION_STATUS" -eq 200 ]; then
+              break
+            fi
+            sleep 1
+          done
           kill $SERVER_PID 2>/dev/null || true
           if [ "$HEALTH_STATUS" -ne 200 ] || [ "$VERSION_STATUS" -ne 200 ]; then
             echo "ML Service startup endpoint probe failed (Health: $HEALTH_STATUS, Version: $VERSION_STATUS)!"
@@ -164,3 +183,36 @@ jobs:
             exit 1
           fi
           echo "ML Microservice startup check PASSED (Health: HTTP 200, Version: HTTP 200)."
+
+  # =========================================================================
+  # JOB 4: CROSS-SERVICE INTEGRATION GATE (REPORTS STATUS FOR BRANCH PROTECTION)
+  # =========================================================================
+  cross-service-gate:
+    name: Cross-Service Integration Gate
+    needs: [frontend-ci, backend-ci, ml-service-ci]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Report Cross-Service Integration Status
+        run: |
+          FRONTEND_RESULT="${{ needs.frontend-ci.result }}"
+          BACKEND_RESULT="${{ needs.backend-ci.result }}"
+          ML_RESULT="${{ needs.ml-service-ci.result }}"
+
+          echo "========================================================="
+          echo "MailSentry Cross-Service Integration Gate Verification"
+          echo "========================================================="
+          echo "Frontend CI Status:        $FRONTEND_RESULT"
+          echo "Backend CI Status:         $BACKEND_RESULT"
+          echo "ML Microservice CI Status: $ML_RESULT"
+          echo "========================================================="
+
+          if [ "$FRONTEND_RESULT" = "success" ] && [ "$BACKEND_RESULT" = "success" ] && [ "$ML_RESULT" = "success" ]; then
+            echo "✅ ALL MICROSERVICES PASSED CI INTEGRATION GATE SUCCESSFULLY!"
+            exit 0
+          else
+            echo "❌ CROSS-SERVICE INTEGRATION GATE FAILED: One or more microservices failed CI validation."
+            exit 1
+          fi
+
