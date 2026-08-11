@@ -39,6 +39,7 @@ import { ModelComparisonTableSection } from "@/components/mlops/ModelComparisonT
 import { RuntimeConfigAccordionSection } from "@/components/mlops/RuntimeConfigAccordionSection";
 import { ArtifactIntegrityAccordionSection } from "@/components/mlops/ArtifactIntegrityAccordionSection";
 import { QuickActionsToolbarSection } from "@/components/mlops/QuickActionsToolbarSection";
+import { ModelComparisonDrawer } from "@/components/ModelComparisonDrawer";
 
 const TrafficMonitoringSection = lazy(() =>
   import("@/components/mlops/TrafficMonitoringSection").then((m) => ({
