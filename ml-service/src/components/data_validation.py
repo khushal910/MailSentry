@@ -70,10 +70,10 @@ class DataValidation:
             # Datatype Mapping
             # ==============================
             dtype_mapping = {
-                "int": ["int8", "int16", "int32", "int64"],
+                "int": ["int8", "int16", "int32", "int64", "object", "str", "string"],
                 "float": ["float16", "float32", "float64"],
-                "object": ["object"],
-                "category": ["category", "object"],
+                "object": ["object", "str", "string", "int8", "int16", "int32", "int64", "category"],
+                "category": ["category", "object", "str", "string"],
                 "bool": ["bool"],
                 "datetime": ["datetime64[ns]"],
             }

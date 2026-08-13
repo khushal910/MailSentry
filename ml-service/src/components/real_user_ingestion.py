@@ -1,6 +1,5 @@
 import sys
 import os
-import hashlib
 import pandas as pd
 import numpy as np
 from typing import Optional, List, Dict, Tuple
@@ -23,17 +22,6 @@ class RealUserIngestion:
             self.config = config or DataIngestionConfig()
         except Exception as e:
             raise MyException(e, sys)
-
-    @staticmethod
-    def generate_synthetic_message_id(identifier: str) -> int:
-        """
-        Generates a stable int64 integer from string identifier (_id or message_id).
-        """
-        if not identifier:
-            return 0
-        digest = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
-        # Modulo 2^63 - 1 to fit in int64
-        return int(digest[:15], 16)
 
     @staticmethod
     def resolve_gmail_label(doc: dict) -> Optional[str]:
@@ -107,7 +95,6 @@ class RealUserIngestion:
             if os.path.exists(curated_path):
                 try:
                     existing_curated_df = pd.read_csv(curated_path)
-                    # Clean up schema columns if extra internal columns existed previously
                     existing_curated_df = existing_curated_df[[c for c in schema_cols if c in existing_curated_df.columns]].copy()
                     logger.info(f"Loaded existing accumulated real-user dataset from {curated_path} with {len(existing_curated_df)} records.")
                 except Exception as load_err:
@@ -156,11 +143,10 @@ class RealUserIngestion:
                     ambiguous_count += 1
                     continue
 
-                synthetic_msg_id = self.generate_synthetic_message_id(msg_id)
                 date_val = str(doc.get("sent_at") or doc.get("received_at") or pd.Timestamp.now().isoformat())
 
                 record = {
-                    "Message ID": int(synthetic_msg_id),
+                    "Message ID": msg_id,  # Store the actual Gmail message ID string directly
                     "Subject": subject,
                     "Message": message,
                     "Spam/Ham": label,
