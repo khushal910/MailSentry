@@ -108,7 +108,18 @@ class RealUserIngestion:
             )
 
             last_processed_id = fetch_mail.get_last_processed_id(state_file_path=state_file_path)
-            logger.info(f"Last processed MongoDB _id checkpoint before fetch: {last_processed_id}")
+
+            # Check if local dataset file exists and contains data.
+            # If local dataset is missing or empty, ignore checkpoint and perform full fetch from scratch.
+            if len(existing_curated_df) == 0:
+                if last_processed_id is not None:
+                    logger.warning(
+                        f"Local curated dataset ({curated_path}) is missing or empty despite checkpoint {last_processed_id}. "
+                        "Resetting checkpoint to None to perform full re-ingestion from MongoDB 2."
+                    )
+                last_processed_id = None
+            else:
+                logger.info(f"Last processed MongoDB _id checkpoint before fetch: {last_processed_id}")
 
             # Fetch ONLY newer documents (_id > last_processed_id) from MongoDB 2
             raw_docs = fetch_mail.fetch_new_user_emails(last_processed_id=last_processed_id)
