@@ -14,8 +14,8 @@ from src.data_access.fetch_data import FetchRealUserMail
 
 class RealUserIngestion:
     """
-    Component for incremental ingestion, normalization, validation, deduplication,
-    and persistent curation of real user email data from MongoDB 2.
+    Component for incremental ingestion, normalization, validation,
+    and persistent curation of real user email data from MongoDB 2 using _id checkpointing.
     """
 
     def __init__(self, config: Optional[DataIngestionConfig] = None):
@@ -27,7 +27,7 @@ class RealUserIngestion:
     @staticmethod
     def generate_synthetic_message_id(identifier: str) -> int:
         """
-        Generates a stable int64 integer from string identifier (message_id or _id).
+        Generates a stable int64 integer from string identifier (_id or message_id).
         """
         if not identifier:
             return 0
@@ -88,32 +88,31 @@ class RealUserIngestion:
     def ingest_incremental_real_user_data(self) -> DataFrame:
         """
         Performs incremental fetch of new records (_id > last_processed_id) from MongoDB 2,
-        normalizes fields, validates records, deduplicates by message_id,
-        appends NEW records to the persistent real_user_curated.csv,
+        normalizes fields, validates records, appends NEW records to real_user_curated.csv,
         and updates the checkpoint state ONLY AFTER successful file persistence.
 
         Returns full accumulated real-user DataFrame matching 5-column schema:
         ["Message ID", "Subject", "Message", "Spam/Ham", "Date"]
         """
         try:
-            logger.info("Starting incremental real-user email data ingestion from MongoDB 2.")
+            logger.info("Starting incremental real-user email data ingestion from MongoDB 2 via _id checkpointing.")
 
             curated_path = self.config.real_user_curated_file_path
             state_file_path = self.config.ingestion_state_file_path
+            schema_cols = ["Message ID", "Subject", "Message", "Spam/Ham", "Date"]
 
             # Load existing curated real-user dataset if present
-            existing_curated_df = DataFrame()
-            existing_msg_ids = set()
+            existing_curated_df = DataFrame(columns=schema_cols)
 
             if os.path.exists(curated_path):
                 try:
                     existing_curated_df = pd.read_csv(curated_path)
-                    logger.info(f"Loaded existing curated real-user dataset from {curated_path} with {len(existing_curated_df)} records.")
-                    if "Message_ID_Raw" in existing_curated_df.columns:
-                        existing_msg_ids = set(existing_curated_df["Message_ID_Raw"].dropna().astype(str))
+                    # Clean up schema columns if extra internal columns existed previously
+                    existing_curated_df = existing_curated_df[[c for c in schema_cols if c in existing_curated_df.columns]].copy()
+                    logger.info(f"Loaded existing accumulated real-user dataset from {curated_path} with {len(existing_curated_df)} records.")
                 except Exception as load_err:
-                    logger.warning(f"Could not load existing curated dataset file ({load_err}). Starting fresh.")
-                    existing_curated_df = DataFrame()
+                    logger.warning(f"Could not load existing accumulated dataset file ({load_err}). Starting fresh.")
+                    existing_curated_df = DataFrame(columns=schema_cols)
 
             # Initialize MongoDB 2 client
             fetch_mail = FetchRealUserMail(
@@ -122,24 +121,17 @@ class RealUserIngestion:
             )
 
             last_processed_id = fetch_mail.get_last_processed_id(state_file_path=state_file_path)
-            logger.info(f"Last processed MongoDB _id checkpoint: {last_processed_id}")
+            logger.info(f"Last processed MongoDB _id checkpoint before fetch: {last_processed_id}")
 
-            # Fetch new documents from MongoDB 2
+            # Fetch ONLY newer documents (_id > last_processed_id) from MongoDB 2
             raw_docs = fetch_mail.fetch_new_user_emails(last_processed_id=last_processed_id)
 
             if not raw_docs:
-                logger.info("No new real-user email documents found in MongoDB 2.")
-                if not existing_curated_df.empty:
-                    # Return formatted existing curated dataframe
-                    cols = ["Message ID", "Subject", "Message", "Spam/Ham", "Date"]
-                    res_df = existing_curated_df[[c for c in cols if c in existing_curated_df.columns]].copy()
-                    return res_df
-                else:
-                    return DataFrame(columns=["Message ID", "Subject", "Message", "Spam/Ham", "Date"])
+                logger.info("No new real-user email documents found in MongoDB 2 (_id > checkpoint).")
+                return existing_curated_df
 
             fetched_count = len(raw_docs)
             valid_new_records = []
-            duplicate_count = 0
             ambiguous_count = 0
             empty_count = 0
             highest_processed_id = last_processed_id
@@ -148,29 +140,22 @@ class RealUserIngestion:
                 mongo_id = str(doc.get("_id"))
                 msg_id = str(doc.get("message_id") or doc.get("gmail_message_id") or mongo_id).strip()
 
-                # Update highest seen ID in batch
                 if mongo_id:
                     highest_processed_id = mongo_id
 
-                # Deduplication check against already ingested real user dataset
-                if msg_id in existing_msg_ids:
-                    duplicate_count += 1
-                    continue
-
                 subject, message = self.extract_text_and_subject(doc)
 
-                # Validation: Skip only if BOTH subject and message are empty
+                # Skip only if BOTH subject and message are empty
                 if not subject and not message:
                     empty_count += 1
                     continue
 
-                # Label Resolution: Skip if ambiguous
+                # Skip if label is ambiguous or missing
                 label = self.resolve_gmail_label(doc)
                 if not label:
                     ambiguous_count += 1
                     continue
 
-                # Prepare normalized training record
                 synthetic_msg_id = self.generate_synthetic_message_id(msg_id)
                 date_val = str(doc.get("sent_at") or doc.get("received_at") or pd.Timestamp.now().isoformat())
 
@@ -180,27 +165,25 @@ class RealUserIngestion:
                     "Message": message,
                     "Spam/Ham": label,
                     "Date": date_val,
-                    "Message_ID_Raw": msg_id,  # Internal column for deduplication
                 }
                 valid_new_records.append(record)
-                existing_msg_ids.add(msg_id)
 
             new_appended_count = len(valid_new_records)
             logger.info(
                 f"Ingestion Statistics: Fetched={fetched_count} | Valid New={new_appended_count} | "
-                f"Duplicates={duplicate_count} | Ambiguous={ambiguous_count} | Empty={empty_count}"
+                f"Ambiguous Skipped={ambiguous_count} | Empty Skipped={empty_count}"
             )
 
             if new_appended_count > 0:
-                new_df = DataFrame(valid_new_records)
+                new_df = DataFrame(valid_new_records)[schema_cols]
                 if not existing_curated_df.empty:
                     combined_curated = pd.concat([existing_curated_df, new_df], ignore_index=True)
                 else:
                     combined_curated = new_df
 
-                # Ensure directory exists and write accumulated dataset to disk
+                # Ensure directory exists and write accumulated dataset to disk (5 schema columns only)
                 os.makedirs(os.path.dirname(curated_path), exist_ok=True)
-                combined_curated.to_csv(curated_path, index=False, header=True)
+                combined_curated[schema_cols].to_csv(curated_path, index=False, header=True)
                 logger.info(f"Successfully appended {new_appended_count} new records and saved accumulated dataset ({len(combined_curated)} total records) to {curated_path}")
 
                 # FAIL-SAFE CHECKPOINT UPDATE: Update state ONLY AFTER successful file persistence
@@ -208,15 +191,13 @@ class RealUserIngestion:
                     fetch_mail.update_last_processed_id(highest_processed_id, state_file_path=state_file_path)
                     logger.info(f"Fail-safe checkpoint successfully updated to: {highest_processed_id}")
 
-                existing_curated_df = combined_curated
+                existing_curated_df = combined_curated[schema_cols]
 
             elif highest_processed_id and highest_processed_id != last_processed_id:
-                # Even if no valid records were added (all duplicate/empty/ambiguous), update checkpoint to avoid re-scanning
+                # Even if no valid records were added (all empty/ambiguous), update checkpoint to avoid re-scanning
                 fetch_mail.update_last_processed_id(highest_processed_id, state_file_path=state_file_path)
 
-            cols = ["Message ID", "Subject", "Message", "Spam/Ham", "Date"]
-            final_df = existing_curated_df[[c for c in cols if c in existing_curated_df.columns]].copy()
-            return final_df
+            return existing_curated_df[schema_cols]
 
         except Exception as e:
             logger.error(f"Error in ingest_incremental_real_user_data: {e}")
