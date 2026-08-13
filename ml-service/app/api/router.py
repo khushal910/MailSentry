@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Header, HTTPException, status
 from typing import Optional
+from fastapi import APIRouter, Header, HTTPException, Response, status
 
 from app.core.config import settings
 from app.schemas.predict import (
@@ -24,12 +24,15 @@ def verify_service_auth(x_internal_token: Optional[str] = Header(default=None)):
 
 @ml_router.get("/health", response_model=HealthResponse, tags=["Health"])
 @ml_router.get("/api/v1/health", response_model=HealthResponse, tags=["Health"])
-async def health_check():
+async def health_check(response: Response):
     engine = MLEngine.get_instance()
     is_ok = engine.is_loaded
     details = engine.metadata.get("details", {})
+    if not is_ok:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
     return HealthResponse(
-        status="healthy" if is_ok else "degraded",
+        status="healthy" if is_ok else "unhealthy",
         service=settings.APP_NAME,
         version=engine.version,
         model_loaded=is_ok,

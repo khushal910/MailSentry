@@ -30,8 +30,8 @@ class GroqProvider(LLMProvider):
     ):
         self.api_key = (
             api_key
-            or getattr(settings, "GROQ_API_KEY", "")
-            or os.getenv("GROQ_API_KEY", "")
+            if api_key is not None
+            else (getattr(settings, "GROQ_API_KEY", "") or os.getenv("GROQ_API_KEY", ""))
         )
         self._model_name = (
             model_name

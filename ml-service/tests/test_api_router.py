@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch, PropertyMock
 from fastapi.testclient import TestClient
 from main import app
 from app.core.config import settings
@@ -16,7 +17,17 @@ class TestMLServiceAPIRouter(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data.get("status"), "healthy")
+        self.assertTrue(data.get("model_loaded"))
         self.assertIn("version", data)
+
+    @patch("app.services.ml_engine.MLEngine.is_loaded", new_callable=PropertyMock)
+    def test_health_endpoint_unhealthy_when_model_not_loaded(self, mock_is_loaded):
+        mock_is_loaded.return_value = False
+        response = self.client.get("/health")
+        self.assertEqual(response.status_code, 503)
+        data = response.json()
+        self.assertEqual(data.get("status"), "unhealthy")
+        self.assertFalse(data.get("model_loaded"))
 
     def test_ready_endpoint(self):
         response = self.client.get("/ready")

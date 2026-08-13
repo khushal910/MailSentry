@@ -64,7 +64,7 @@ class MLServiceClient:
     async def check_health(self) -> Dict[str, Any]:
         """
         Probes the ml-service /health endpoint with IPv4/localhost fallback.
-        Returns health status dict or raises Exception if unreachable.
+        Returns health status dict or raises Exception if unreachable or model not ready.
         """
         urls = [self.base_url]
         if "127.0.0.1" in self.base_url:
@@ -79,7 +79,13 @@ class MLServiceClient:
                 client = self._get_async_client(10.0)
                 resp = await client.get(url, headers=self._get_headers())
                 if resp.status_code == 200:
-                    return resp.json()
+                    data = resp.json()
+                    if data.get("model_loaded", True):
+                        return data
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="ML Service running but model is not loaded.",
+                    )
             except Exception as err:
                 last_err = err
 
@@ -99,6 +105,8 @@ class MLServiceClient:
     ) -> Dict[str, Any]:
         """
         Sends an asynchronous prediction request to ml-service using persistent HTTP connection pooling.
+        Does not retry permanent client errors (400, 401, 403, 422).
+        Retries temporary failures (502, 503, 504, connection errors) with backoff.
         """
         url = f"{self.base_url}/predict"
         payload = {
@@ -114,11 +122,23 @@ class MLServiceClient:
                 resp = await client.post(url, json=payload, headers=self._get_headers())
                 if resp.status_code == 200:
                     return resp.json()
-                
+
+                # Do NOT retry permanent client errors (400, 401, 403, 422)
+                if resp.status_code in (400, 401, 403, 422):
+                    logger.warning(
+                        f"[Attempt {attempt}/{max_retries}] Permanent client error HTTP {resp.status_code} from ML Service. Skipping retries."
+                    )
+                    raise HTTPException(
+                        status_code=resp.status_code,
+                        detail=f"ML Service returned HTTP {resp.status_code}: {resp.text}",
+                    )
+
                 err_msg = f"ML Service returned HTTP {resp.status_code}: {resp.text}"
                 logger.warning(f"[Attempt {attempt}/{max_retries}] {err_msg}")
                 last_error = err_msg
 
+            except HTTPException:
+                raise
             except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError) as net_err:
                 last_error = str(net_err)
                 logger.warning(
@@ -145,10 +165,10 @@ class MLServiceClient:
         threshold: Optional[float] = None,
         max_retries: int = 3,
     ) -> Dict[str, Any]:
-
         """
         Synchronous prediction helper for worker threads or synchronous routes.
-        Uses persistent HTTP connection pooling to prevent socket exhaustion during bulk email classification.
+        Does not retry permanent client errors (400, 401, 403, 422).
+        Retries temporary failures (502, 503, 504, connection errors) with backoff.
         """
         url = f"{self.base_url}/predict"
         payload = {
@@ -164,17 +184,28 @@ class MLServiceClient:
                 resp = client.post(url, json=payload, headers=self._get_headers())
                 if resp.status_code == 200:
                     return resp.json()
-                
+
+                # Do NOT retry permanent client errors (400, 401, 403, 422)
+                if resp.status_code in (400, 401, 403, 422):
+                    logger.warning(
+                        f"[Sync Attempt {attempt}/{max_retries}] Permanent client error HTTP {resp.status_code} from ML Service. Skipping retries."
+                    )
+                    raise HTTPException(
+                        status_code=resp.status_code,
+                        detail=f"ML Service returned HTTP {resp.status_code}: {resp.text}",
+                    )
+
                 err_msg = f"ML Service returned HTTP {resp.status_code}: {resp.text}"
                 logger.warning(f"[Sync Attempt {attempt}/{max_retries}] {err_msg}")
                 last_error = err_msg
 
+            except HTTPException:
+                raise
             except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError) as net_err:
                 last_error = str(net_err)
                 logger.warning(
                     f"[Sync Attempt {attempt}/{max_retries}] Connection failed to ML Service at {url}: {net_err}"
                 )
-                # Reset cached connection pool on socket error
                 try:
                     client.close()
                 except Exception:

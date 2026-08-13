@@ -20,34 +20,37 @@ concurrency:
 
 jobs:
   # =========================================================================
-  # JOB 1: PRE-DEPLOYMENT VALIDATION GATE
+  # STEP 1: PRE-DEPLOYMENT VALIDATION GATE & TESTS VERIFICATION
   # =========================================================================
   pre-deploy-gate:
-    name: Validate CI Pipeline Success Gate
+    name: "[1/5] Running tests & CI Gate"
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Validate Pipeline Gate
+      - name: Validate Tests & CI Pipeline Gate
         run: |
-          echo "CI pipeline completed successfully on main. Proceeding to sequential production deployment."
+          echo "[1/5] Running tests..."
+          if [ "${{ github.event_name }}" = "workflow_run" ] && [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "ERROR: Deployment failed during [1/5] Running tests (CI pipeline failed)."
+            exit 1
+          fi
+          echo "CI test suite verification passed. Proceeding to ML Service deployment."
 
   # =========================================================================
-  # JOB 2: AUTOMATED ML MICROSERVICE DEPLOYMENT & READINESS PROBE
+  # STEP 2 & 3: ML MICROSERVICE DEPLOYMENT & HEALTH CHECK PROBE
   # =========================================================================
   deploy-ml-service:
-    name: Deploy ML Microservice (Render) & Wait for Ready
+    name: "[2/5] & [3/5] Deploy ML Service & Wait for Health"
     needs: [pre-deploy-gate]
     runs-on: ubuntu-latest
 
     steps:
-      - name: Trigger Render ML Microservice Deployment Hook
+      - name: Deploy ML Service
         env:
           RENDER_ML_HOOK: ${{ secrets.RENDER_ML_SERVICE_DEPLOY_HOOK_URL || secrets.RENDER_ML_SERVICE_HOOK }}
         run: |
-          echo "========================================"
-          echo "Deploying ML Microservice"
-          echo "========================================"
+          echo "[2/5] Deploying ML Service..."
           if [ -z "$RENDER_ML_HOOK" ]; then
             echo "WARNING: RENDER_ML_SERVICE_DEPLOY_HOOK_URL secret is not set in GitHub repository secrets."
             echo "Assuming external/auto deployment trigger."
@@ -55,75 +58,65 @@ jobs:
             echo "Triggering Render ML Microservice deployment hook..."
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$RENDER_ML_HOOK")
             HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
-            echo "Render ML Service Deploy Hook HTTP Status: $HTTP_STATUS"
             if [ "$HTTP_STATUS" -ne 200 ] && [ "$HTTP_STATUS" -ne 201 ] && [ "$HTTP_STATUS" -ne 202 ]; then
-              echo "Error triggering Render ML Service deploy hook!"
+              echo "ERROR: Deployment failed during [2/5] Deploying ML Service (Hook HTTP ${HTTP_STATUS})."
               exit 1
             fi
-            echo "Render ML Service deployment trigger submitted successfully."
+            echo "Render ML Service deployment hook triggered successfully."
           fi
 
-      - name: Wait for ML Service Readiness
+      - name: Wait for ML Service Health
         env:
           ML_SERVICE_URL: ${{ secrets.PRODUCTION_ML_SERVICE_URL }}
         run: |
+          echo "[3/5] Waiting for ML Service health..."
           TARGET_URL="${ML_SERVICE_URL:-https://mailsentry-ml-service.onrender.com}"
-          READY_URL="${TARGET_URL}/ready"
           HEALTH_URL="${TARGET_URL}/health"
-          echo "Waiting for ML Service readiness probe at: ${READY_URL}"
           
           MAX_ATTEMPTS=40
           ATTEMPT=1
           SUCCESS=0
 
           while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-            # Try /ready endpoint first, fallback to /health if /ready returns 404
-            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${READY_URL}" || echo "000")
-            if [ "$STATUS_CODE" -eq 404 ]; then
-              STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_URL}" || echo "000")
-            fi
+            HTTP_STATUS=$(curl -s -o ml_health.json -w "%{http_code}" "${HEALTH_URL}" || echo "000")
+            echo "ML Service status: ${HTTP_STATUS}"
 
-            if [ "$STATUS_CODE" -eq 200 ]; then
-              echo "[${ATTEMPT}/${MAX_ATTEMPTS}] ML Service READY (HTTP 200)"
-              SUCCESS=1
-              break
-            else
-              echo "[${ATTEMPT}/${MAX_ATTEMPTS}] ML Service not ready (HTTP ${STATUS_CODE}). Retrying in 3s..."
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              MODEL_LOADED=$(python3 -c "import json; d=json.load(open('ml_health.json')); print(d.get('model_loaded', False))" 2>/dev/null || echo "True")
+              if [ "$MODEL_LOADED" = "True" ] || [ "$MODEL_LOADED" = "true" ]; then
+                echo "ML Service is healthy."
+                SUCCESS=1
+                break
+              fi
             fi
 
             ATTEMPT=$((ATTEMPT + 1))
-            sleep 3
+            sleep 5
           done
 
-          if [ $SUCCESS -eq 1 ]; then
+          if [ $SUCCESS -ne 1 ]; then
             echo "========================================"
-            echo "ML Service deployment successful and healthy."
-            echo "Proceeding to backend deployment."
-            echo "========================================"
-          else
-            echo "========================================"
-            echo "ERROR: ML Service failed to become ready within 5 minutes."
-            echo "Stopping deployment. Backend deployment will NOT run."
+            echo "ERROR: Deployment failed during [3/5] Waiting for ML Service health."
+            echo "ML Service never became healthy. Stopping deployment."
+            echo "Backend deployment will NOT run."
             echo "========================================"
             exit 1
           fi
 
   # =========================================================================
-  # JOB 3: AUTOMATED BACKEND DEPLOYMENT TO RENDER (Gated on ML Ready)
+  # STEP 4 & 5: BACKEND API DEPLOYMENT & HEALTH CHECK PROBE (Gated on ML)
   # =========================================================================
   deploy-backend:
-    name: Deploy Backend Service (Render) & Verify Health
+    name: "[4/5] & [5/5] Deploy Backend & Wait for Health"
     needs: [deploy-ml-service]
     runs-on: ubuntu-latest
 
     steps:
-      - name: Trigger Render Backend Deployment Hook
+      - name: Deploy Backend
         env:
           RENDER_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          echo "========================================"
-          echo "Deploying Backend API Service"
-          echo "========================================"
+          echo "[4/5] Deploying Backend..."
           if [ -z "$RENDER_HOOK" ]; then
             echo "WARNING: RENDER_DEPLOY_HOOK_URL secret is not set in GitHub repository secrets."
             echo "Assuming external/auto deployment trigger."
@@ -131,53 +124,49 @@ jobs:
             echo "Triggering Render backend deployment hook..."
             RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$RENDER_HOOK")
             HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
-            echo "Render Backend Deploy Hook HTTP Status: $HTTP_STATUS"
             if [ "$HTTP_STATUS" -ne 200 ] && [ "$HTTP_STATUS" -ne 201 ] && [ "$HTTP_STATUS" -ne 202 ]; then
-              echo "Error triggering Render backend deploy hook!"
+              echo "ERROR: Deployment failed during [4/5] Deploying Backend (Hook HTTP ${HTTP_STATUS})."
               exit 1
             fi
-            echo "Render backend deployment trigger submitted successfully."
+            echo "Render backend deployment hook triggered successfully."
           fi
 
-      - name: Wait for Backend Health Verification
+      - name: Wait for Backend Health
         env:
           BACKEND_URL: ${{ secrets.PRODUCTION_BACKEND_URL }}
         run: |
+          echo "[5/5] Waiting for Backend health..."
           TARGET_URL="${BACKEND_URL:-https://mailsentry-backend.onrender.com}"
           HEALTH_URL="${TARGET_URL}/health"
-          echo "Waiting for Backend health probe at: ${HEALTH_URL}"
           
           MAX_ATTEMPTS=40
           ATTEMPT=1
           SUCCESS=0
 
           while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_URL}" || echo "000")
-            if [ "$STATUS_CODE" -eq 200 ]; then
-              echo "[${ATTEMPT}/${MAX_ATTEMPTS}] Backend Service READY (HTTP 200)"
+            HTTP_STATUS=$(curl -s -o backend_health.json -w "%{http_code}" "${HEALTH_URL}" || echo "000")
+            echo "Backend status: ${HTTP_STATUS}"
+
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "Backend is healthy."
+              echo "Deployment successful."
               SUCCESS=1
               break
-            else
-              echo "[${ATTEMPT}/${MAX_ATTEMPTS}] Backend Service not ready (HTTP ${STATUS_CODE}). Retrying in 3s..."
             fi
 
             ATTEMPT=$((ATTEMPT + 1))
-            sleep 3
+            sleep 5
           done
 
-          if [ $SUCCESS -eq 1 ]; then
+          if [ $SUCCESS -ne 1 ]; then
             echo "========================================"
-            echo "Backend deployment successful and healthy."
-            echo "========================================"
-          else
-            echo "========================================"
-            echo "ERROR: Backend Service failed to become healthy within 5 minutes."
+            echo "ERROR: Deployment failed during [5/5] Waiting for Backend health."
             echo "========================================"
             exit 1
           fi
 
   # =========================================================================
-  # JOB 4: POST-DEPLOYMENT STATUS SUMMARY REPORT
+  # POST-DEPLOYMENT STATUS SUMMARY REPORT
   # =========================================================================
   post-deploy-summary:
     name: Generate Deployment Status Report
@@ -197,7 +186,7 @@ jobs:
           echo "| --- | --- | --- | --- |" >> $GITHUB_STEP_SUMMARY
 
           if [ "$ML_STATUS" = "success" ]; then
-            echo "| **ML Microservice** | ✅ Success | Render Hook | `/ready` = 200 OK |" >> $GITHUB_STEP_SUMMARY
+            echo "| **ML Microservice** | ✅ Success | Render Hook | `/health` = 200 OK |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| **ML Microservice** | ❌ Failed | Render Hook | Readiness Failed |" >> $GITHUB_STEP_SUMMARY
           fi
