@@ -315,8 +315,20 @@ function AutoClassifierPage() {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to classify emails.";
-      setFetchError(msg);
-      toast.error(msg);
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes("connect gmail") ||
+        lower.includes("not connected") ||
+        lower.includes("reconnect gmail") ||
+        lower.includes("forbidden") ||
+        lower.includes("403")
+      ) {
+        setPageState("gmail-not-connected");
+        toast.error("Please connect your Gmail account to start classifying emails.", { duration: 6000 });
+      } else {
+        setFetchError(msg);
+        toast.error(msg, { duration: 5000 });
+      }
     } finally {
       isJobActiveRef.current = false;
       activeJobIdRef.current = null;

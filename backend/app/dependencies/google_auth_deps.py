@@ -71,3 +71,21 @@ def require_google_connected(
         )
 
     return account
+
+
+def get_google_account_optional(
+    current_user: dict = Depends(get_current_user),
+    repo: GoogleAccountRepository = Depends(get_google_account_repository),
+) -> dict | None:
+    """
+    FastAPI Dependency that returns the google_account document if connected, or None if not connected.
+    Does not raise 403 HTTP exceptions.
+    """
+    user_id = str(current_user["_id"])
+    account = repo.find_by_user_id(user_id)
+    if not account or not account.get("google_connected", True):
+        return None
+    refresh_token = account.get("refresh_token")
+    if not refresh_token or not str(refresh_token).strip():
+        return None
+    return account

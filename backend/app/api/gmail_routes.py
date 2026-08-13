@@ -6,7 +6,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.dependencies.auth import get_current_user
-from app.dependencies.google_auth_deps import require_google_connected
+from app.dependencies.google_auth_deps import (
+    get_google_account_optional,
+    require_google_connected,
+)
 from app.services.gmail_fetch_service import GmailFetchService
 from app.services.job_service import JobService
 from app.utils.main_utile import return_response
@@ -24,7 +27,7 @@ gmail_router = APIRouter()
 
 
 async def _run_classify_job_background(
-    job_id: str, user_id: str, emails_to_classify: list, google_account: dict
+    job_id: str, user_id: str, emails_to_classify: list, google_account: dict | None
 ):
     job_service = JobService()
     try:
@@ -35,6 +38,9 @@ async def _run_classify_job_background(
         service = GmailFetchService(model_service=model_service)
 
         if not emails_to_classify:
+            if not google_account:
+                job_service.fail_job(job_id, "Gmail account not connected.")
+                return
             emails_to_classify = await service.fetch_unclassified_raw_emails(
                 user_id=user_id, google_account=google_account
             )
@@ -65,7 +71,7 @@ async def start_classify_job(
     background_tasks: BackgroundTasks,
     payload: ClassifyBatchRequest | None = None,
     current_user: dict = Depends(get_current_user),
-    account: dict = Depends(require_google_connected),
+    account: dict | None = Depends(get_google_account_optional),
 ):
     """
     POST /api/gmail/classify-job
@@ -76,6 +82,13 @@ async def start_classify_job(
     from app.core.config import settings
 
     emails_to_process = payload.emails if (payload and payload.emails) else []
+
+    # If no emails provided in payload and Google account is not connected -> require connection
+    if not emails_to_process and not account:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Please connect Gmail."
+        )
+
     default_max = int(getattr(settings, "FETCH_MAX_RESULTS", 50))
     total_count = len(emails_to_process) if emails_to_process else default_max
 
