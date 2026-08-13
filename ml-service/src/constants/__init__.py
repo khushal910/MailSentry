@@ -1,5 +1,6 @@
 import dotenv
 import os
+
 dotenv.load_dotenv()
 
 # For MongoDB connection
@@ -7,12 +8,21 @@ DATABASE_NAME = os.getenv("DATA_BASE_NAME")
 COLLECTION_NAME = os.getenv("COLLECTION_NAME")
 MONGODB_URL_KEY = os.getenv("MONGODB_URI")
 
+# For Real User Email Data (MongoDB 2) connection & incremental ingestion
+MONGODB_URI_REAL_USER = os.getenv("MONGODB_URI_REAL_USER")
+DATABASE_NAME_REAL_USER = os.getenv("DATABASE_NAME_REAL_USER", "mailsentry")
+EMAIL_COLLECTION_NAME_REAL_USER = os.getenv("EMAIL_COLLECTION_NAME_REAL_USER", "emails")
+INGESTION_STATE_COLLECTION_NAME = os.getenv("INGESTION_STATE_COLLECTION_NAME", "ingestion_state")
+FETCH_REAL_USER_DATA: bool = os.getenv("FETCH_REAL_USER_DATA", "false").lower() in ("true", "1", "yes", "t")
+
 # Data Ingestion related constant start with DATA_INGESTION VAR NAME
 DATA_INGESTION_COLLECTION_NAME: str = COLLECTION_NAME
 DATA_INGESTION_DIR_NAME: str = "data_ingestion"
 DATA_INGESTION_FEATURE_STORE_DIR: str = "feature_store"
 DATA_INGESTION_INGESTED_DIR: str = "ingested"
 DATA_INGESTION_TRAIN_TEST_SPLIT_RATIO: float = 0.25
+REAL_USER_CURATED_FILE_NAME: str = "real_user_curated.csv"
+INGESTION_STATE_FILE_NAME: str = "ingestion_state.json"
 
 # Pipeline and artifact related constants
 PIPELINE_NAME: str = ""
@@ -52,9 +62,24 @@ MODEL_TRAINER_DIR_NAME = "model_trainer"
 MODEL_FILE_NAME = "model.pkl"
 MODEL_REPORT_FILE_NAME = "model_report.yaml"
 MODEL_EVALUATE_METRIC = "f1"
-ENABLE_FINE_TUNING: bool = os.getenv("ENABLE_FINE_TUNING", "true").lower() in ("true", "1", "yes", "t")
-ENABLE_DISTILBERT: bool = os.getenv("ENABLE_DISTILBERT", "true").lower() in ("true", "1", "yes", "t")
-ENABLE_TABPFN: bool = os.getenv("ENABLE_TABPFN", "true").lower() in ("true", "1", "yes", "t")
+ENABLE_FINE_TUNING: bool = os.getenv("ENABLE_FINE_TUNING", "true").lower() in (
+    "true",
+    "1",
+    "yes",
+    "t",
+)
+ENABLE_DISTILBERT: bool = os.getenv("ENABLE_DISTILBERT", "true").lower() in (
+    "true",
+    "1",
+    "yes",
+    "t",
+)
+ENABLE_TABPFN: bool = os.getenv("ENABLE_TABPFN", "true").lower() in (
+    "true",
+    "1",
+    "yes",
+    "t",
+)
 
 # Model Registry constants
 MODEL_REGISTRY_DIR_NAME = "model_registry"
@@ -62,6 +87,6 @@ MODEL_REGISTRY_CHAMPION_DIR = "champion"
 MODEL_REGISTRY_ARCHIVE_DIR = "archive"
 
 # MLflow configuration
-DAGSHUB_USERNAME =  os.getenv("DAGSHUB_USERNAME")
-DAGSHUB_REPOSITORY =  os.getenv("DAGSHUB_REPOSITORY")
-EXPERIMENT_NAME =  os.getenv("EXPERIMENT_NAME")
+DAGSHUB_USERNAME = os.getenv("DAGSHUB_USERNAME")
+DAGSHUB_REPOSITORY = os.getenv("DAGSHUB_REPOSITORY")
+EXPERIMENT_NAME = os.getenv("EXPERIMENT_NAME")
