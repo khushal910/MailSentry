@@ -130,5 +130,31 @@ async def health_check():
     }
 
 
+@app.get("/ready", tags=["Health"])
+@app.get("/api/ready", tags=["Health"])
+@app.get("/api/v1/ready", tags=["Health"])
+async def ready_check():
+    from fastapi import Response, status
+    from app.services.ml_client import MLServiceClient
+
+    db_ready = MongoDB.client is not None
+    ml_status = "unknown"
+    try:
+        client = MLServiceClient()
+        ml_health = await client.check_health()
+        ml_status = ml_health.get("status", "healthy")
+    except Exception as e:
+        ml_status = f"unreachable ({e!s})"
+
+    is_ready = db_ready
+    status_code = 200 if is_ready else 503
+
+    return Response(
+        status_code=status_code,
+        media_type="application/json",
+        content=f'{{"status":"{"ready" if is_ready else "not_ready"}","service":"MailSentry API","database_connected":{str(db_ready).lower()},"ml_service":"{ml_status}"}}',
+    )
+
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=settings.DEBUG)

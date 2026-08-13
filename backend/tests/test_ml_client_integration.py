@@ -51,6 +51,19 @@ class TestMLServiceClientIntegration(unittest.TestCase):
             pass
         self.assertEqual(mock_post.call_count, 3)
 
+    @patch("httpx.Client.post")
+    def test_predict_sync_no_retry_on_422_client_error(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 422
+        mock_response.text = "Unprocessable Entity"
+        mock_post.return_value = mock_response
+
+        with self.assertRaises(Exception) as ctx:
+            self.client.predict_sync(subject="Invalid", body="Payload")
+        
+        # Must only call post ONCE and immediately fail on 422
+        self.assertEqual(mock_post.call_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
