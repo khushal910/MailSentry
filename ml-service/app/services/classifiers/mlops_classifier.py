@@ -18,19 +18,27 @@ from app.services.ml_preprocessing import MLPreprocessing, URLFeatureExtractor
 
 logger = logging.getLogger("ml_service.mlops_classifier")
 
-# Register global unpickling aliases for URLFeatureExtractor
+# Register global unpickling aliases for URLFeatureExtractor safely
 setattr(builtins, "URLFeatureExtractor", URLFeatureExtractor)
+try:
+    import src.components
+except ImportError:
+    pass
+
 for _mod_name in (
     "__main__",
     "unittest.__main__",
     "src.components.data_transformation",
-    "src.components",
     "app.services.ml_preprocessing",
 ):
     if _mod_name not in sys.modules:
         _mod = types.ModuleType(_mod_name)
         sys.modules[_mod_name] = _mod
     setattr(sys.modules[_mod_name], "URLFeatureExtractor", URLFeatureExtractor)
+
+if "src.components" in sys.modules:
+    setattr(sys.modules["src.components"], "URLFeatureExtractor", URLFeatureExtractor)
+
 
 
 class CustomUnpickler(pickle.Unpickler):

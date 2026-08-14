@@ -15,6 +15,12 @@ import pandas as pd
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+try:
+    import mlflow
+    HAS_MLFLOW = True
+except ImportError:
+    HAS_MLFLOW = False
+
 from src.services.mlflow_model_registry import (
     MLflowModelRegistryService,
     get_git_commit_sha,
@@ -23,10 +29,12 @@ from src.services.mlflow_model_registry import (
 from app.services.mlflow_model_loader import MLflowModelLoader, LoadedModelContainer
 
 
+@unittest.skipUnless(HAS_MLFLOW, "MLflow package not installed")
 class TestMLflowModelVersioning(unittest.TestCase):
 
     def setUp(self):
         MLflowModelLoader.clear_cache()
+
 
     def test_git_sha_and_dvc_hash_helpers(self):
         """Test Git SHA and DVC dataset hash extraction helpers."""
@@ -111,10 +119,12 @@ class TestMLflowModelVersioning(unittest.TestCase):
         self.assertEqual(res["model_version"], "18")
         self.assertEqual(res["model_name"], "mailsentry-email-classifier")
 
+    @patch("src.services.mlflow_model_registry.MlflowClient")
     @patch("src.services.mlflow_model_registry.MLflowModelRegistryService.resolve_alias")
-    def test_dual_layer_caching_and_clear(self, mock_resolve):
+    def test_dual_layer_caching_and_clear(self, mock_resolve, mock_client):
         """Test in-memory cache hit, disk cache hit, and memory cache clearing."""
         mock_resolve.return_value = "18"
+
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             loader = MLflowModelLoader(cache_dir=tmp_dir)

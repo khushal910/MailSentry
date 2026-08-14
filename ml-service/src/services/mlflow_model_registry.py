@@ -14,8 +14,12 @@ import subprocess
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-import mlflow
-from mlflow.tracking import MlflowClient
+try:
+    import mlflow
+    from mlflow.tracking import MlflowClient
+except ImportError:
+    mlflow = None
+    MlflowClient = None
 
 from src.constants import (
     MLFLOW_MODEL_NAME,
@@ -61,7 +65,12 @@ class MLflowModelRegistryService:
 
     def __init__(self, model_name: Optional[str] = None) -> None:
         self.model_name = model_name or MLFLOW_MODEL_NAME
-        self.client = MlflowClient()
+        try:
+            self.client = MlflowClient() if MlflowClient is not None else None
+        except Exception as e:
+            logger.warning("Could not initialize MlflowClient: %s", e)
+            self.client = None
+
 
     def register_and_promote_model(
         self,
