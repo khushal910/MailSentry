@@ -498,25 +498,18 @@ class DataTransformation:
                 exist_ok=True,
             )
 
-            # Save TF-IDF CSV files
+            # Save Raw Text CSV files to transform_train_file & transform_test_file (Fast I/O)
             logger.info(
-                f"Saving TF-IDF train data to {self.data_transformation_config.transform_train_file}"
+                f"Saving text train data to {self.data_transformation_config.transform_train_file}"
             )
-            train_tfidf_df.to_csv(
+            train_raw_df.to_csv(
                 self.data_transformation_config.transform_train_file, index=False
             )
-            train_tfidf_df.to_csv(
-                self.data_transformation_config.transform_train_tfidf_file, index=False
-            )
-
             logger.info(
-                f"Saving TF-IDF test data to {self.data_transformation_config.transform_test_file}"
+                f"Saving text test data to {self.data_transformation_config.transform_test_file}"
             )
-            test_tfidf_df.to_csv(
+            test_raw_df.to_csv(
                 self.data_transformation_config.transform_test_file, index=False
-            )
-            test_tfidf_df.to_csv(
-                self.data_transformation_config.transform_test_tfidf_file, index=False
             )
 
             # Validate and Save Raw Text CSV files for transformer models

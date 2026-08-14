@@ -1,13 +1,18 @@
 import sys
-import pymongo
-import certifi
+try:
+    import pymongo
+    import certifi
+    ca = certifi.where()
+except ImportError:
+    pymongo = None
+    certifi = None
+    ca = None
 
 from src.exception import MyException
 from src.logger import logger
 from src.constants import DATABASE_NAME, MONGODB_URL_KEY
 
-# Load the certificate authority file to avoid timeout errors when connecting to MongoDB
-ca = certifi.where()
+
 
 class MongoDBClient:
 

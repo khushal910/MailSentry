@@ -44,6 +44,14 @@ from src.utils.main_utils import (
     read_yaml_file,
     write_yaml_file,
 )
+from src.components.data_transformation import URLFeatureExtractor
+import builtins, types
+setattr(builtins, "URLFeatureExtractor", URLFeatureExtractor)
+for _mod_name in ("__main__", "src.components.model_traning", "src.components.data_transformation"):
+    if _mod_name not in sys.modules:
+        _mod = types.ModuleType(_mod_name)
+        sys.modules[_mod_name] = _mod
+    setattr(sys.modules[_mod_name], "URLFeatureExtractor", URLFeatureExtractor)
 from src.utils.mlflow_utils import log_model_to_mlflow
 from src.configuration.mlflow_connection import setup_mlflow
 from src.entity.config_entity import _ModelBundle, _ModelEvaluation
@@ -114,6 +122,16 @@ class ModelTrainer:
 
             x = data.drop(columns=[target_column])
             y = data[target_column]
+
+            # If x contains raw text (e.g. email_text or combined_text), transform using preprocessor
+            if "email_text" in x.columns or "combined_text" in x.columns:
+                text_col = "email_text" if "email_text" in x.columns else "combined_text"
+                prep_file = self.transform_config.preprocessor_file
+                if os.path.exists(prep_file):
+                    import joblib
+                    preprocessor = joblib.load(prep_file)
+                    x = preprocessor.transform(x[text_col].fillna(""))
+
             return x, y
         except Exception as exc:
             raise MyException(exc, sys) from exc
@@ -154,7 +172,9 @@ class ModelTrainer:
                         "Fitting TabPFN directly without RandomizedSearchCV: %s",
                         model_name,
                     )
-                    bundle.model.fit(x_train.to_numpy(), y_train.to_numpy())
+                    x_mat = x_train.to_numpy() if isinstance(x_train, pd.DataFrame) else x_train
+                    y_mat = y_train.to_numpy() if isinstance(y_train, pd.Series) else y_train
+                    bundle.model.fit(x_mat, y_mat)
                     model_params = (
                         getattr(bundle.model, "get_params", lambda: {})()
                         or bundle.params
@@ -224,8 +244,9 @@ class ModelTrainer:
         for model_name, bundle in trained_models.items():
             logger.info("Evaluating model: %s", model_name)
             try:
-                y_pred = bundle.model.predict(x_test.to_numpy())
-                y_score = self._get_model_scores(bundle.model, x_test.to_numpy())
+                x_test_mat = x_test.to_numpy() if isinstance(x_test, pd.DataFrame) else x_test
+                y_pred = bundle.model.predict(x_test_mat)
+                y_score = self._get_model_scores(bundle.model, x_test_mat)
 
                 metrics = evaluate_classification_model(
                     y_true=y_test,
@@ -306,9 +327,10 @@ class ModelTrainer:
             loader = ModelLoaderFactory.create(meta)
             production_model = loader.load(registry.champion_path, meta)
 
-            production_pred = production_model.predict(x_test.to_numpy())
+            x_test_mat = x_test.to_numpy() if isinstance(x_test, pd.DataFrame) else x_test
+            production_pred = production_model.predict(x_test_mat)
             production_score = self._get_model_scores(
-                production_model, x_test.to_numpy()
+                production_model, x_test_mat
             )
 
             production_metrics = evaluate_classification_model(
@@ -427,7 +449,7 @@ class ModelTrainer:
                 # 1. Run Benchmark Stage
                 benchmark_results = Benchmark().run(
                     model=winner.model,
-                    x_test=x_test.to_numpy(),
+                    x_test=x_test.to_numpy() if isinstance(x_test, pd.DataFrame) else x_test,
                     serialization=serialization,
                 )
 
@@ -482,6 +504,25 @@ class ModelTrainer:
                     registry.promote_champion(
                         staging_dir=staging_dir, metadata=metadata
                     )
+
+                    # 5. Register winning model artifact bundle in MLflow Model Registry (@champion)
+                    try:
+                        from src.constants import SCHEMA_FILE_PATH
+                        log_model_to_mlflow(
+                            model_name=winner.name,
+                            model=winner.model,
+                            params=winner.hyperparameters,
+                            metrics=winner.metrics,
+                            preprocessor_path=self.transform_config.preprocessor_file,
+                            label_encoder_path=self.transform_config.label_encoder_file_path,
+                            schema_path=SCHEMA_FILE_PATH,
+                            metadata_dict=metadata.to_dict(),
+                            register_model=True,
+                            alias="champion",
+                        )
+                        logger.info("Successfully registered winning model '%s' in MLflow Model Registry.", winner.name)
+                    except Exception as mlflow_reg_err:
+                        logger.warning("MLflow Model Registry logging warning: %s", mlflow_reg_err)
 
                 finally:
                     if os.path.exists(staging_dir):
@@ -801,7 +842,9 @@ class ModelTrainer:
                             "Fitting TabPFN directly without RandomizedSearchCV: %s",
                             model_name,
                         )
-                        bundle.model.fit(x_train.to_numpy(), y_train.to_numpy())
+                        x_mat = x_train.to_numpy() if isinstance(x_train, pd.DataFrame) else x_train
+                        y_mat = y_train.to_numpy() if isinstance(y_train, pd.Series) else y_train
+                        bundle.model.fit(x_mat, y_mat)
                         model_params = (
                             getattr(bundle.model, "get_params", lambda: {})()
                             or bundle.params
@@ -820,8 +863,9 @@ class ModelTrainer:
 
                     # Evaluate model immediately
                     logger.info("Evaluating model: %s", model_name)
-                    y_pred = trained_model.predict(x_test.to_numpy())
-                    y_score = self._get_model_scores(trained_model, x_test.to_numpy())
+                    x_test_mat = x_test.to_numpy() if isinstance(x_test, pd.DataFrame) else x_test
+                    y_pred = trained_model.predict(x_test_mat)
+                    y_score = self._get_model_scores(trained_model, x_test_mat)
 
                     metrics = evaluate_classification_model(
                         y_true=y_test,

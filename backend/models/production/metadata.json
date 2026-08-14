@@ -1,0 +1,29 @@
+{
+  "model_name": "LinearSVC",
+  "framework": "sklearn",
+  "serialization": "joblib",
+  "task": "binary_classification",
+  "input_type": "tfidf",
+  "output_type": "probability",
+  "preprocessor": "tfidf",
+  "metric": "f1",
+  "score": 0.9909784871616932,
+  "metrics": {
+    "accuracy": 0.9907462332423775,
+    "precision": 0.986869384934347,
+    "recall": 0.9951219512195122,
+    "f1": 0.9909784871616932,
+    "roc_auc": 0.9995097393124408,
+    "best_cv_score": 0.0
+  },
+  "version": "v5",
+  "trained_at": "2026-08-06T19:26:54.168136+00:00",
+  "training_time_sec": 0.0,
+  "inference_time_ms": 1.083,
+  "model_size_mb": 0.09,
+  "memory_usage_mb": 0.0,
+  "deployment_date": "2026-08-06T19:26:54.234514+00:00",
+  "deployment_status": "Production",
+  "status": "Production",
+  "is_active": true
+}

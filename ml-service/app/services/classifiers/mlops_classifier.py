@@ -18,19 +18,27 @@ from app.services.ml_preprocessing import MLPreprocessing, URLFeatureExtractor
 
 logger = logging.getLogger("ml_service.mlops_classifier")
 
-# Register global unpickling aliases for URLFeatureExtractor
+# Register global unpickling aliases for URLFeatureExtractor safely
 setattr(builtins, "URLFeatureExtractor", URLFeatureExtractor)
+try:
+    import src.components
+except ImportError:
+    pass
+
 for _mod_name in (
     "__main__",
     "unittest.__main__",
     "src.components.data_transformation",
-    "src.components",
     "app.services.ml_preprocessing",
 ):
     if _mod_name not in sys.modules:
         _mod = types.ModuleType(_mod_name)
         sys.modules[_mod_name] = _mod
     setattr(sys.modules[_mod_name], "URLFeatureExtractor", URLFeatureExtractor)
+
+if "src.components" in sys.modules:
+    setattr(sys.modules["src.components"], "URLFeatureExtractor", URLFeatureExtractor)
+
 
 
 class CustomUnpickler(pickle.Unpickler):
@@ -83,6 +91,24 @@ class MlopsClassifier(BaseClassifier):
         }
 
     def load(self) -> bool:
+        # Try loading active champion model container from MLflowModelLoader first
+        try:
+            from app.services.mlflow_model_loader import MLflowModelLoader
+            loader = MLflowModelLoader.get_instance()
+            container = loader.load_model()
+            if container and container.model_obj is not None:
+                self.model = container.model_obj
+                self.preprocessor = container.preprocessor
+                self.label_encoder = container.label_encoder
+                self.metadata = container.metadata
+                self.version = container.version
+                self._is_loaded = True
+                self.model_path = container.model_uri
+                logger.info("MlopsClassifier loaded active champion model from MLflow (version %s)", self.version)
+                return True
+        except Exception as mlflow_err:
+            logger.warning("Could not load model via MLflowModelLoader: %s. Falling back to local models_dir.", mlflow_err)
+
         logger.info(f"Loading MLOps artifacts from directory: '{self.models_dir}'")
         if not os.path.exists(self.models_dir):
             os.makedirs(self.models_dir, exist_ok=True)
