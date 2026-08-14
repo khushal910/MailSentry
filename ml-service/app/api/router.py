@@ -145,3 +145,87 @@ async def predict_endpoint(
         probabilities=result.get("probabilities"),
     )
 
+
+@ml_router.post("/api/v1/model/promote", tags=["Model Lifecycle"])
+async def promote_model_endpoint(
+    version: str,
+    alias: str = "champion",
+    x_internal_token: Optional[str] = Header(default=None),
+):
+    """
+    Promote a specific MLflow registered model version to an alias (e.g. @champion).
+    """
+    verify_service_auth(x_internal_token)
+    from src.services.mlflow_model_registry import MLflowModelRegistryService
+    from app.services.mlflow_model_loader import MLflowModelLoader
+
+    try:
+        reg = MLflowModelRegistryService()
+        res = reg.set_model_alias(version=version, alias=alias)
+        # Clear in-memory cache to force immediate reload on next prediction
+        MLflowModelLoader.clear_cache()
+        return {
+            "status": "success",
+            "message": f"Successfully promoted version {version} to alias @{alias}",
+            "details": res,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to promote model version: {e}",
+        )
+
+
+@ml_router.post("/api/v1/model/rollback", tags=["Model Lifecycle"])
+async def rollback_model_endpoint(
+    version: str,
+    alias: str = "champion",
+    x_internal_token: Optional[str] = Header(default=None),
+):
+    """
+    Safely rollback the production alias (@champion) to an earlier model version.
+    """
+    verify_service_auth(x_internal_token)
+    from src.services.mlflow_model_registry import MLflowModelRegistryService
+    from app.services.mlflow_model_loader import MLflowModelLoader
+
+    try:
+        reg = MLflowModelRegistryService()
+        res = reg.rollback_alias(target_version=version, alias=alias)
+        # Clear in-memory cache to force immediate reload on next prediction
+        MLflowModelLoader.clear_cache()
+        return {
+            "status": "success",
+            "message": f"Successfully rolled back alias @{alias} to version {version}",
+            "details": res,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to rollback model version: {e}",
+        )
+
+
+@ml_router.get("/api/v1/model/versions", tags=["Model Lifecycle"])
+async def list_model_versions_endpoint():
+    """
+    List all registered versions and active aliases from MLflow Model Registry.
+    """
+    from src.services.mlflow_model_registry import MLflowModelRegistryService
+
+    try:
+        reg = MLflowModelRegistryService()
+        versions = reg.list_model_versions()
+        return {
+            "model_name": reg.model_name,
+            "total_versions": len(versions),
+            "versions": versions,
+        }
+    except Exception as e:
+        return {
+            "model_name": "mailsentry-email-classifier",
+            "total_versions": 0,
+            "versions": [],
+            "error": str(e),
+        }
+
