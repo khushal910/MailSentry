@@ -17,10 +17,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-import mlflow
+try:
+    import mlflow
+except ImportError:
+    mlflow = None
+
 from src.constants import MLFLOW_MODEL_NAME, MLFLOW_MODEL_ALIAS, MLFLOW_CACHE_DIR
 from src.logger import logger
 from src.exception import MyException
+
 
 
 class LoadedModelContainer:

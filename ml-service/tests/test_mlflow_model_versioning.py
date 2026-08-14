@@ -17,20 +17,25 @@ from unittest.mock import MagicMock, patch
 
 try:
     import mlflow
+    from src.services.mlflow_model_registry import (
+        MLflowModelRegistryService,
+        get_git_commit_sha,
+        get_dvc_dataset_hash,
+    )
+    from app.services.mlflow_model_loader import MLflowModelLoader, LoadedModelContainer
     HAS_MLFLOW = True
 except ImportError:
     HAS_MLFLOW = False
-
-from src.services.mlflow_model_registry import (
-    MLflowModelRegistryService,
-    get_git_commit_sha,
-    get_dvc_dataset_hash,
-)
-from app.services.mlflow_model_loader import MLflowModelLoader, LoadedModelContainer
+    MLflowModelRegistryService = None
+    MLflowModelLoader = None
+    LoadedModelContainer = None
+    def get_git_commit_sha(): return ""
+    def get_dvc_dataset_hash(): return ""
 
 
 @unittest.skipUnless(HAS_MLFLOW, "MLflow package not installed")
 class TestMLflowModelVersioning(unittest.TestCase):
+
 
     def setUp(self):
         MLflowModelLoader.clear_cache()

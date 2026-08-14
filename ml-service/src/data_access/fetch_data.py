@@ -61,9 +61,20 @@ class FetchMail:
 
 import json
 import os
-import pymongo
-import certifi
-from bson.objectid import ObjectId
+try:
+    import pymongo
+    import certifi
+    ca = certifi.where()
+except ImportError:
+    pymongo = None
+    certifi = None
+    ca = None
+
+try:
+    from bson.objectid import ObjectId
+except ImportError:
+    ObjectId = None
+
 from src.constants import (
     MONGODB_URI_REAL_USER,
     DATABASE_NAME_REAL_USER,
@@ -72,7 +83,6 @@ from src.constants import (
 )
 from src.logger import logger
 
-ca = certifi.where()
 
 
 class FetchRealUserMail:
