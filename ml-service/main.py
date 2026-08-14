@@ -8,12 +8,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from app.api.router import ml_router
 from app.core.config import settings
 from app.services.ml_engine import MLEngine
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger("ml_service.main")
+from src.logger import logger
 
 
 @asynccontextmanager

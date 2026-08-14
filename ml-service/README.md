@@ -41,3 +41,25 @@ python -m src.components.model_traning
 FETCH_REAL_USER_DATA=true dvc repro
 ```
 
+## Centralized MLflow Model Registry & Promotion
+
+MailSentry uses **MLflow Model Registry** (`mailsentry-email-classifier`) as the single source of truth for versioning, artifacts, alias management (`@champion`, `@staging`), and instant zero-downtime rollbacks.
+
+### Model Retrieval & Caching
+- **Model URI:** `models:/mailsentry-email-classifier@champion`
+- **Dual-Layer Cache:** In-Memory LRU Cache + Local Disk Cache (`~/.cache/mailsentry_models/`)
+- **MongoDB Sync:** MongoDB stores lightweight metadata references only (`mlflow_run_id`, `version`, `git_commit`, `dvc_hash`). No model binary blobs are stored in MongoDB.
+
+### Model Promotion & Rollback Endpoints
+
+```bash
+# Promote a registered version (e.g. 18) to @champion
+POST http://localhost:9000/api/v1/model/promote?version=18&alias=champion
+
+# Rollback @champion alias to an earlier version (e.g. 17)
+POST http://localhost:9000/api/v1/model/rollback?version=17&alias=champion
+
+# List all registered versions and aliases
+GET http://localhost:9000/api/v1/model/versions
+```
+

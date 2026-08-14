@@ -89,4 +89,10 @@ MODEL_REGISTRY_ARCHIVE_DIR = "archive"
 # MLflow configuration
 DAGSHUB_USERNAME = os.getenv("DAGSHUB_USERNAME")
 DAGSHUB_REPOSITORY = os.getenv("DAGSHUB_REPOSITORY")
-EXPERIMENT_NAME = os.getenv("EXPERIMENT_NAME")
+EXPERIMENT_NAME = os.getenv("EXPERIMENT_NAME", "MailSentry_Experiment")
+
+# Centralized MLflow Model Registry constants
+MLFLOW_MODEL_NAME: str = os.getenv("MLFLOW_MODEL_NAME", "mailsentry-email-classifier")
+MLFLOW_MODEL_ALIAS: str = os.getenv("MLFLOW_MODEL_ALIAS", "champion")
+MLFLOW_CACHE_DIR: str = os.getenv("MLFLOW_CACHE_DIR", os.path.expanduser("~/.cache/mailsentry_models"))
+MODEL_METADATA_COLLECTION_NAME: str = os.getenv("MODEL_METADATA_COLLECTION_NAME", "model_metadata")
