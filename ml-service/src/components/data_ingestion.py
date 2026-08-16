@@ -10,6 +10,9 @@ from pandas import DataFrame
 from src.components.data_validation import DataValidation
 from src.entity.config_entity import DataIngestionConfig
 
+import pandas as pd
+from src.components.real_user_ingestion import RealUserIngestion
+
 class DataIngestion:
       def __init__(self):
             """
@@ -24,18 +27,35 @@ class DataIngestion:
       def export_data_into_feature_store(self)->DataFrame:
             """
             Method Name :   export_data_into_feature_store
-            Description :   This method exports data from mongodb to csv file
+            Description :   This method exports data from mongodb 1 (Kaggle) and optionally mongodb 2 (Real User)
             
             Output      :   data is returned as artifact of data ingestion components
             On Failure  :   Write an exception log and then raise an exception
             """
             try:
-                  logger.info(f"Exporting data from mongodb")
+                  logger.info(f"Exporting baseline Kaggle data from MongoDB 1")
                   
                   my_data = FetchMail()
                   dataframe = my_data.export_collection_as_dataframe(collection_name=self.data_ingestion_config.collection_name)
                   
-                  logger.info(f"Shape of dataframe: {dataframe.shape}")
+                  logger.info(f"Shape of Kaggle baseline dataframe: {dataframe.shape}")
+
+                  # Optional Real User Data Ingestion from MongoDB 2
+                  if self.data_ingestion_config.fetch_real_user_data:
+                        logger.info("FETCH_REAL_USER_DATA=True. Triggering incremental real user data ingestion from MongoDB 2.")
+                        real_user_ingestion = RealUserIngestion(config=self.data_ingestion_config)
+                        real_user_df = real_user_ingestion.ingest_incremental_real_user_data()
+
+                        if not real_user_df.empty:
+                              logger.info(f"Combining Kaggle baseline ({len(dataframe)}) with accumulated real-user dataset ({len(real_user_df)}).")
+                              # Combine Kaggle + Real User data
+                              cols = ["Message ID", "Subject", "Message", "Spam/Ham", "Date"]
+                              dataframe = pd.concat([dataframe[cols], real_user_df[cols]], ignore_index=True)
+                              logger.info(f"Final combined training dataset shape: {dataframe.shape}")
+                        else:
+                              logger.info("No real-user data available to append. Using Kaggle baseline dataset.")
+                  else:
+                        logger.info("FETCH_REAL_USER_DATA=False. Proceeding with Kaggle baseline dataset only.")
                   
                   feature_store_file_path  = self.data_ingestion_config.feature_store_file_path
                   dir_path = os.path.dirname(feature_store_file_path)

@@ -1,5 +1,5 @@
 columns:
-  Message ID: int64
+  Message ID: object
   Subject: object
   Message: object
   Spam/Ham: object

@@ -86,7 +86,9 @@ class BackendModelStorage:
         os.makedirs(self.versions_dir, exist_ok=True)
 
         meta_path = os.path.join(self.production_dir, "metadata.json")
-        prod_model_file = find_artifact_file(self.production_dir, "model.pkl")
+        prod_model_file = find_artifact_file(self.production_dir, "model.joblib")
+        if not os.path.exists(prod_model_file):
+            prod_model_file = find_artifact_file(self.production_dir, "model.pkl")
 
         # Initialize default metadata if missing
         if not os.path.exists(meta_path) and os.path.exists(prod_model_file):
@@ -148,7 +150,9 @@ class BackendModelStorage:
         """Ensures all required evaluation metrics and metadata fields are present and normalized to 0-100%."""
         now_iso = datetime.now(timezone.utc).isoformat()
 
-        model_file = find_artifact_file(base_dir, "model.pkl")
+        model_file = find_artifact_file(base_dir, "model.joblib")
+        if not os.path.exists(model_file):
+            model_file = find_artifact_file(base_dir, "model.pkl")
         prep_file = find_artifact_file(base_dir, "preprocessing.pkl")
         enc_file = find_artifact_file(base_dir, "label_encoder.pkl")
 
@@ -471,4 +475,28 @@ class BackendModelStorage:
         logger.info(
             "Successfully promoted new production model to %s", self.production_dir
         )
+
+        # Sync standalone model files directly to backend/models/ root for offline fallback
+        try:
+            prod_model = find_artifact_file(self.production_dir, "model.joblib")
+            if not prod_model:
+                prod_model = find_artifact_file(self.production_dir, "model.pkl")
+            if prod_model and os.path.exists(prod_model):
+                shutil.copy2(prod_model, os.path.join(self.models_dir, "model.joblib"))
+
+            prod_prep = find_artifact_file(self.production_dir, "preprocessing.pkl")
+            if prod_prep and os.path.exists(prod_prep):
+                shutil.copy2(prod_prep, os.path.join(self.models_dir, "preprocessing.pkl"))
+
+            prod_enc = find_artifact_file(self.production_dir, "label_encoder.pkl")
+            if prod_enc and os.path.exists(prod_enc):
+                shutil.copy2(prod_enc, os.path.join(self.models_dir, "label_encoder.pkl"))
+
+            if os.path.exists(new_meta_path):
+                shutil.copy2(new_meta_path, os.path.join(self.models_dir, "metadata.json"))
+
+            logger.info("Successfully synced standalone model files to %s root for offline fallback", self.models_dir)
+        except Exception as sync_root_err:
+            logger.warning("Could not sync model files to root models_dir: %s", sync_root_err)
+
         return new_metadata

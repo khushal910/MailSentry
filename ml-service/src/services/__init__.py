@@ -1,1 +1,1 @@
-"""Services package for ml-service — model registry, persistence, and storage."""
+# Package marker for src.services

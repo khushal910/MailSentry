@@ -6,6 +6,7 @@ stages:
 
     deps:
       - src/components/data_ingestion.py
+      - src/components/real_user_ingestion.py
       - src/data_access/fetch_data.py
 
     outs:
