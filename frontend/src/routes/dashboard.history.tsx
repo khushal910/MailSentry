@@ -1,11 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, lazy, Suspense } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, MailX, X, SearchX, RefreshCw, Sparkles, ShieldAlert, ShieldCheck, AlertTriangle } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { Search, X, RefreshCw, Sparkles, ShieldAlert, ShieldCheck, AlertTriangle } from "lucide-react";
 
 import { PageTransition } from "@/components/PageTransition";
-
-import { EmailLabelBadge } from "@/components/EmailLabelBadge";
+import { ClassifiedEmailsTable } from "@/components/ClassifiedEmailsTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,31 +13,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatConfidence, formatDate, truncate } from "@/utils/format";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePredictiveHistory } from "@/hooks/usePredictiveHistory";
-import { HighlightText } from "@/components/HighlightText";
-import { GmailOpenButton } from "@/components/GmailOpenButton";
-import { getGmailUrl } from "@/utils/gmail";
-import { GmailSpamIndicator } from "@/components/GmailSpamIndicator";
-
-import type { HistoryEmailItem } from "@/components/EmailSummaryModal";
-
-const EmailSummaryModal = lazy(() =>
-  import("@/components/EmailSummaryModal").then((m) => ({
-    default: m.EmailSummaryModal,
-  })),
-);
-
-
 
 export const Route = createFileRoute("/dashboard/history")({
   head: () => ({
     meta: [
-      { title: "Prediction History — MailSentry" },
+      { title: "Classified Emails — MailSentry" },
       {
         name: "description",
-        content: "Search and filter every stored email prediction in your database.",
+        content: "Search, filter, and inspect all classified emails in your database.",
       },
     ],
   }),
@@ -49,18 +32,12 @@ export const Route = createFileRoute("/dashboard/history")({
 const PAGE_SIZE = 15;
 
 function HistoryPage() {
-  const navigate = useNavigate();
-
   // Search and Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 250);
 
   const [filter, setFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
-
-  // Selected email for AI summary modal
-  const [selectedEmail, setSelectedEmail] = useState<HistoryEmailItem | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // TanStack Query with Intelligent Predictive Idle Prefetching
   const { emails, totalCount, pageCount, isLoading, isFetching, error } = usePredictiveHistory({
@@ -70,25 +47,12 @@ function HistoryPage() {
     search: debouncedSearch,
   });
 
-  const handleRowClick = (emailDoc: any, e: React.MouseEvent) => {
-    // Prevent triggering if user clicked an interactive child (e.g. Gmail open button)
-    const target = e.target as HTMLElement;
-    if (target.closest("button, a, input, select, [role='button']")) return;
-
-    const targetId = emailDoc.message_id || emailDoc._id || emailDoc.id;
-    if (targetId) {
-      navigate({
-        to: "/dashboard/email-summary/$emailId",
-        params: { emailId: String(targetId) },
-      });
-    }
-  };
-
   return (
     <PageTransition>
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Prediction History</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Classified Emails</h1>
 
           <p className="mt-1 text-sm text-muted-foreground">
             All classified emails stored in your MailSentry database.
@@ -114,7 +78,7 @@ function HistoryPage() {
             {/* AI Summary Tip Badge */}
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary/15 via-brand/20 to-sky-500/15 px-3 py-1 font-semibold text-primary border border-primary/30 shadow-xs">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Click any row for AI Summary
+              Click any row for AI Summary & Details
             </span>
           </div>
         </div>
@@ -122,25 +86,25 @@ function HistoryPage() {
         {isFetching && !isLoading && (
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary shadow-sm">
             <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-            <span className="hidden sm:inline">Predictive Sync Active</span>
+            <span className="hidden sm:inline">Syncing Emails</span>
           </div>
         )}
       </div>
 
-
-      <div className="glass mt-6 rounded-2xl p-4 md:p-6">
+      {/* Main Container */}
+      <div className="glass mt-6 rounded-2xl p-4 md:p-6 border border-border/60 shadow-lg">
+        {/* Search & Filter Toolbar */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Real-time search bar */}
           <div className="relative min-w-[240px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              id="history-search-input"
-              placeholder="Search by subject, body, prediction, or sender…"
+              id="emails-search-input"
+              placeholder="Search by subject, body, sender, or prediction…"
               className="pl-9 pr-8 bg-background/50 border-border/60 focus:border-brand"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setPage(1); // Reset to page 1 on typing search
+                setPage(1);
               }}
             />
             {searchTerm && (
@@ -183,136 +147,25 @@ function HistoryPage() {
           </div>
         )}
 
-        <div className="mt-5 overflow-x-auto">
-          {isLoading ? (
-            <div className="py-16 text-center text-sm text-muted-foreground">
-              Loading prediction history from database…
-            </div>
-          ) : emails.length === 0 ? (
-            debouncedSearch.trim() ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/40 text-muted-foreground">
-                  <SearchX className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">No emails found</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    No stored email matches "
-                    <span className="font-medium text-foreground">{debouncedSearch}</span>".
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setPage(1);
-                  }}
-                  className="mt-2 text-xs"
-                >
-                  Clear Search
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                <MailX className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm font-medium">No stored emails found in database</p>
-                <p className="text-xs text-muted-foreground">
-                  Fetch emails in the Auto Classifier page to save predictions.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => navigate({ to: "/dashboard/auto-classifier" })}
-                >
-                  Go to Auto Classifier
-                </Button>
-              </div>
-            )
-          ) : (
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="pb-3 text-left font-medium w-[5%]">#</th>
-                  <th className="pb-3 text-left font-medium w-[16%]">Email Sent Date</th>
-                  <th className="pb-3 text-left font-medium w-[24%]">Subject</th>
-                  <th className="pb-3 text-left font-medium w-[22%]">Snippet</th>
-                  <th className="pb-3 text-left font-medium w-[11%]">Category</th>
-                  <th className="pb-3 text-left font-medium w-[8%]">Score</th>
-                  <th className="pb-3 text-left font-medium w-[8%]">Classified</th>
-                  <th className="pb-3 text-center font-medium w-[6%]">Open</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {emails.map((email, index) => {
-                  const rowNumber = (page - 1) * PAGE_SIZE + index + 1;
-                  const gmailUrl = getGmailUrl(email.message_id, email.thread_id);
-                  return (
-                    <motion.tr
-                      key={email.message_id || index}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ delay: index * 0.02 }}
-                      onClick={(e) => handleRowClick(email, e)}
-                      className="border-b border-border/40 last:border-0 transition-colors group hover:bg-muted/30 cursor-pointer"
-                    >
-                      <td className="py-3 pr-2 text-xs font-semibold text-muted-foreground align-middle">
-                        {rowNumber}
-                      </td>
-                      <td className="py-3 text-muted-foreground text-xs font-medium pr-2 align-middle whitespace-nowrap">
-                        {email.sent_at || email.received_at
-                          ? formatDate(email.sent_at || email.received_at!)
-                          : "—"}
-                      </td>
-                      <td className="py-3 font-medium pr-2 align-middle">
-                        <HighlightText
-                          text={truncate(email.subject || "(no subject)", 38)}
-                          query={debouncedSearch}
-                        />
-                      </td>
-                      <td className="py-3 text-muted-foreground pr-2 align-middle">
-                        <HighlightText
-                          text={truncate(email.snippet || "—", 42)}
-                          query={debouncedSearch}
-                        />
-                      </td>
-                      <td className="py-3 pr-2 align-middle whitespace-nowrap">
-                        <GmailSpamIndicator
-                          mailsentryLabel={email.predicted_label}
-                          gmailClassification={email.gmail_classification}
-                        />
-                      </td>
-
-                      <td className="py-3 font-medium text-xs align-middle">
-                        {typeof email.predicted_score === "number"
-                          ? formatConfidence(email.predicted_score)
-                          : "—"}
-                      </td>
-                      <td className="py-3 text-left text-muted-foreground text-xs align-middle whitespace-nowrap">
-                        {email.classified_at ? formatDate(email.classified_at) : "—"}
-                      </td>
-                      <td className="py-3 text-center align-middle">
-                        <GmailOpenButton
-                          messageId={email.message_id}
-                          threadId={email.thread_id}
-                        />
-                      </td>
-                    </motion.tr>
-                  );
-                })}
-              </tbody>
-            </table>
-
-          )}
+        {/* Interactive Classified Emails Table */}
+        <div className="mt-5">
+          <ClassifiedEmailsTable
+            emails={emails}
+            isLoading={isLoading}
+            searchQuery={debouncedSearch}
+            isCompact={false}
+            page={page}
+            pageSize={PAGE_SIZE}
+            emptyMessage={debouncedSearch.trim() ? `No emails matching "${debouncedSearch}"` : "No stored emails found in database"}
+            emptySubtitle={debouncedSearch.trim() ? "Try clearing your search query or adjusting the category filter." : "Fetch emails in the Auto Classifier page to view classified emails."}
+          />
         </div>
 
+        {/* Pagination Bar */}
         {!isLoading && totalCount > 0 && (
-          <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="mt-5 flex items-center justify-between border-t border-border/40 pt-4 text-xs text-muted-foreground">
             <span>
-              Page {page} of {pageCount} · {totalCount} total prediction
+              Page {page} of {pageCount} · {totalCount} total email
               {totalCount !== 1 ? "s" : ""}
             </span>
             <div className="flex gap-2">
@@ -336,19 +189,8 @@ function HistoryPage() {
           </div>
         )}
       </div>
-
-      {/* AI Email Summary Modal */}
-      <Suspense fallback={null}>
-        <EmailSummaryModal
-          email={selectedEmail}
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedEmail(null);
-          }}
-        />
-      </Suspense>
     </PageTransition>
   );
 }
+
 

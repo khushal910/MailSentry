@@ -28,10 +28,10 @@ const links: Array<{
   exact?: boolean;
 }> = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/dashboard/classifier", label: "Email Classifier", icon: Wand2 },
-  { to: "/dashboard/auto-classifier", label: "Auto Classifier", icon: MailSearch },
+  { to: "/dashboard/auto-classifier", label: "New Emails", icon: MailSearch },
+  { to: "/dashboard/history", label: "Classified Emails", icon: History },
+  { to: "/dashboard/classifier", label: "Manual Classifier", icon: Wand2 },
   { to: "/dashboard/production-model", label: "Production Model", icon: Cpu },
-  { to: "/dashboard/history", label: "History", icon: History },
   { to: "/dashboard/profile", label: "Profile", icon: UserCircle },
   { to: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

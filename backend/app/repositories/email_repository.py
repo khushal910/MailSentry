@@ -277,6 +277,11 @@ class EmailRepository:
         }
 
         self.collection.update_one(query, update_doc, upsert=True)
+        try:
+            from app.utils.cache_util import dashboard_stats_cache
+            dashboard_stats_cache.delete(f"stats:{user_id}")
+        except Exception:
+            pass
         return self.find_by_message_id(user_id, message_id)
 
     def save_emails_bulk(

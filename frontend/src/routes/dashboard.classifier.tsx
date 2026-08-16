@@ -15,8 +15,8 @@ import { usePrediction } from "@/context/PredictionContext";
 export const Route = createFileRoute("/dashboard/classifier")({
   head: () => ({
     meta: [
-      { title: "Email Classifier — MailSentry" },
-      { name: "description", content: "Run an email through the MailSentry AI classifier." },
+      { title: "Manual Classifier — MailSentry" },
+      { name: "description", content: "Run an email through the MailSentry manual AI classifier." },
     ],
   }),
   component: ClassifierPage,
@@ -54,9 +54,9 @@ function ClassifierPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-4xl">
+      <div className="w-full max-w-5xl">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Email Classifier</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Manual Classifier</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Paste an email and let MailSentry analyze it in real time.
           </p>
