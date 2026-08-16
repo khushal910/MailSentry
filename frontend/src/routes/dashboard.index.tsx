@@ -1,4 +1,3 @@
-import { useEffect, useState, useCallback } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ShieldCheck,
@@ -6,26 +5,27 @@ import {
   Inbox,
   Target,
   Wand2,
-  History as HistoryIcon,
+  Mail as MailIcon,
   ArrowRight,
   AlertCircle,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { StatsCard } from "@/components/StatsCard";
-import { PredictionBadge } from "@/components/PredictionBadge";
+import { ClassifiedEmailsTable } from "@/components/ClassifiedEmailsTable";
 import { Button } from "@/components/ui/button";
-import { formatConfidence, formatDate, formatNumber, truncate } from "@/utils/format";
+import { formatNumber } from "@/utils/format";
 import { PageTransition } from "@/components/PageTransition";
 import { useAuth } from "@/context/AuthContext";
 import { GmailStatusCard } from "@/components/GmailStatusCard";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { emailsApi, type ClassifiedEmail } from "@/services/emailsApi";
+import { usePredictiveHistory } from "@/hooks/usePredictiveHistory";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({
     meta: [
       { title: "Dashboard — MailSentry" },
-      { name: "description", content: "Overview of your inbox protection." },
+      { name: "description", content: "Overview of your inbox protection and classified emails." },
     ],
   }),
   component: DashboardHome,
@@ -53,32 +53,18 @@ function StatsSkeleton() {
 
 function DashboardHome() {
   const { user } = useAuth();
-  const { stats, isLoading, isError, error, refetch } = useDashboardStats();
+  const { stats, isLoading: statsLoading, isError: statsError, error: statsErrorMessage, refetch: refetchStats } = useDashboardStats();
 
-  const [recentEmails, setRecentEmails] = useState<ClassifiedEmail[]>([]);
-  const [loadingRecent, setLoadingRecent] = useState(true);
-
-  const fetchRecent = useCallback(async () => {
-    setLoadingRecent(true);
-    try {
-      const res = await emailsApi.getEmails({ page: 1, limit: 5 });
-      setRecentEmails(res.emails || []);
-    } catch {
-      setRecentEmails([]);
-    } finally {
-      setLoadingRecent(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    queueMicrotask(() => {
-      if (active) void fetchRecent();
-    });
-    return () => {
-      active = false;
-    };
-  }, [fetchRecent]);
+  // Shared TanStack Query for recent emails (5-8 latest items)
+  const {
+    emails: recentEmails,
+    isLoading: emailsLoading,
+    totalCount,
+    refetch: refetchEmails,
+  } = usePredictiveHistory({
+    page: 1,
+    limit: 8,
+  });
 
   // Helper for Total Predictions Trend
   const getTotalTrend = () => {
@@ -92,45 +78,55 @@ function DashboardHome() {
 
   return (
     <PageTransition>
-      <div className="flex items-end justify-between gap-4">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
             Welcome{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Here's a snapshot of your inbox intelligence.
+            Here's a snapshot of your inbox intelligence and classified emails.
           </p>
         </div>
-        <Button asChild className="hidden bg-gradient-brand shadow-elegant sm:inline-flex">
-          <Link to="/dashboard/classifier">
-            Run classifier <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button asChild variant="outline" size="sm" className="shadow-xs">
+            <Link to="/dashboard/history">
+              <MailIcon className="mr-1.5 h-4 w-4" /> Classified Emails ({totalCount})
+            </Link>
+          </Button>
+          <Button asChild size="sm" className="bg-gradient-brand shadow-elegant">
+            <Link to="/dashboard/classifier">
+              Run classifier <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
+      {/* Gmail Connection Status Card */}
       <div className="mt-6">
         <GmailStatusCard />
       </div>
 
-      {isLoading ? (
+      {/* Summary Statistics */}
+      {statsLoading ? (
         <StatsSkeleton />
-      ) : isError ? (
+      ) : statsError ? (
         <div className="mt-6 glass rounded-xl p-5 text-center border-destructive/30">
           <div className="flex items-center justify-center gap-2 text-destructive font-medium">
             <AlertCircle className="h-5 w-5" />
             <span>Failed to load dashboard statistics</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {error || "Could not retrieve data from server."}
+            {statsErrorMessage || "Could not retrieve data from server."}
           </p>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-3">
+          <Button variant="outline" size="sm" onClick={() => refetchStats()} className="mt-3">
             <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry
           </Button>
         </div>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard
-            label="Total predictions"
+            label="Total emails"
             value={formatNumber(stats?.total_predictions)}
             icon={Inbox}
             trend={getTotalTrend()}
@@ -176,83 +172,75 @@ function DashboardHome() {
         </div>
       )}
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-3">
-        <div className="glass rounded-xl p-5 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Recent predictions</h2>
+      {/* Main Content Grid: Recent Emails + Quick Actions */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        {/* Recent Emails (2 Columns on large screens) */}
+        <div className="glass rounded-2xl p-5 md:p-6 lg:col-span-2 border border-border/60 shadow-lg space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                  Recent Emails
+                </h2>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand/20 via-purple-500/15 to-primary/20 px-3 py-1 text-xs font-semibold text-primary border border-primary/30 shadow-xs backdrop-blur-xs transition-all hover:border-primary/60 hover:shadow-soft">
+                  <Sparkles className="h-3.5 w-3.5 text-brand animate-pulse" />
+                  <span>Click any row for <strong className="text-foreground font-bold">AI Summary & Details</strong></span>
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Latest classified messages with real-time threat intelligence.
+              </p>
+            </div>
             <Link
               to="/dashboard/history"
-              className="text-xs text-muted-foreground hover:text-foreground"
+              className="text-xs font-semibold text-primary hover:underline whitespace-nowrap"
             >
-              View all
+              View classified emails ({totalCount}) →
             </Link>
           </div>
-          <div className="mt-4 overflow-x-auto">
-            {loadingRecent ? (
-              <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">
-                Loading recent predictions…
-              </div>
-            ) : recentEmails.length === 0 ? (
-              <div className="py-8 text-center text-xs text-muted-foreground">
-                No predictions recorded yet. Run the classifier or sync Gmail to get started!
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-3 text-left font-medium">Date</th>
-                    <th className="pb-3 text-left font-medium">Subject</th>
-                    <th className="pb-3 text-left font-medium">Prediction</th>
-                    <th className="pb-3 text-right font-medium">Confidence</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentEmails.map((r) => (
-                    <tr key={r.message_id} className="border-b border-border/40 last:border-0">
-                      <td className="py-3 text-muted-foreground">
-                        {formatDate(r.classified_at || r.fetch_time || new Date().toISOString())}
-                      </td>
-                      <td className="py-3">{truncate(r.subject || "(No Subject)", 45)}</td>
-                      <td className="py-3">
-                        <PredictionBadge
-                          prediction={r.predicted_label === "spam" ? "Spam" : "Ham"}
-                        />
-                      </td>
-                      <td className="py-3 text-right font-medium">
-                        {r.predicted_score !== undefined && r.predicted_score !== null
-                          ? formatConfidence(r.predicted_score)
-                          : "N/A"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+
+          <ClassifiedEmailsTable
+            emails={recentEmails}
+            isLoading={emailsLoading}
+            isCompact={true}
+            emptyMessage="No emails classified yet"
+            emptySubtitle="Run the classifier or fetch emails from Gmail to start seeing classified emails."
+          />
         </div>
 
-        <div className="glass rounded-xl p-5">
-          <h2 className="text-base font-semibold">Quick actions</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Jump into the tools you use most.</p>
-          <div className="mt-4 space-y-2">
-            <Button asChild variant="outline" className="w-full justify-start">
-              <Link to="/dashboard/classifier">
-                <Wand2 className="mr-2 h-4 w-4" /> New prediction
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start">
-              <Link to="/dashboard/history">
-                <HistoryIcon className="mr-2 h-4 w-4" /> View history
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full justify-start">
-              <Link to="/dashboard/settings">
-                <Target className="mr-2 h-4 w-4" /> Tune thresholds
-              </Link>
-            </Button>
+        {/* Quick Actions (1 Column on large screens) */}
+        <div className="space-y-6">
+          <div className="glass rounded-2xl p-5 md:p-6 border border-border/60 shadow-lg space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Quick actions</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Jump into the tools you use most.</p>
+            </div>
+            <div className="space-y-2.5">
+              <Button asChild variant="outline" className="w-full justify-start text-sm">
+                <Link to="/dashboard/auto-classifier">
+                  <Inbox className="mr-2.5 h-4 w-4 text-primary" /> New Emails Queue
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full justify-start text-sm">
+                <Link to="/dashboard/history">
+                  <MailIcon className="mr-2.5 h-4 w-4 text-primary" /> View Classified Emails
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full justify-start text-sm">
+                <Link to="/dashboard/classifier">
+                  <Wand2 className="mr-2.5 h-4 w-4 text-primary" /> Manual Classifier
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full justify-start text-sm">
+                <Link to="/dashboard/settings">
+                  <Target className="mr-2.5 h-4 w-4 text-primary" /> Tune Thresholds & Settings
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
     </PageTransition>
   );
 }
+

@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from app.core.config import settings
 from app.repositories.email_repository import EmailRepository
 from app.services.summary_service import SummaryService
+from app.utils.cache_util import email_summary_cache
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ async def _get_email_lock(email_id: str) -> asyncio.Lock:
 class EmailSummaryService:
     """
     Business logic layer for Lazy Email Summarization using Google Gemini API.
-    Follows clean architecture, double-checked concurrency locking, and dependency injection.
+    Follows clean architecture, double-checked concurrency locking, in-memory caching, and dependency injection.
     """
 
     def __init__(
@@ -117,11 +118,12 @@ class EmailSummaryService:
 
         Lifecycle Rules:
         1. Validates email_id format (must be valid ObjectId or non-empty string).
-        2. Retrieves the email document from MongoDB repository.
-        3. If 'summary' field exists and is not empty:
-           - Returns it immediately (NEVER calls Gemini API).
-        4. Double-Checked Lock: Prevents duplicate API calls if 2 requests arrive concurrently.
-        5. Generates summary via Gemini, stores in MongoDB, and returns summary.
+        2. Checks in-memory TTL cache for instantaneous sub-millisecond response.
+        3. Retrieves the email document from MongoDB repository.
+        4. If 'summary' field exists and is not empty:
+           - Returns it immediately (NEVER calls Gemini API) and caches it in memory.
+        5. Double-Checked Lock: Prevents duplicate API calls if 2 requests arrive concurrently.
+        6. Generates summary via Gemini, stores in MongoDB, populates memory cache, and returns summary.
         """
         if not email_id or not str(email_id).strip():
             raise HTTPException(
@@ -130,6 +132,17 @@ class EmailSummaryService:
             )
 
         clean_id = str(email_id).strip()
+
+        # Step 0: In-Memory TTL Cache Check (Instant 0ms memory hit)
+        mem_cached = email_summary_cache.get(clean_id)
+        if mem_cached and isinstance(mem_cached, dict):
+            # If current_user_id check is needed, verify ownership
+            if current_user_id:
+                cached_user = mem_cached.get("_user_id")
+                if not cached_user or cached_user == str(current_user_id).strip():
+                    return {k: v for k, v in mem_cached.items() if not k.startswith("_")}
+            else:
+                return {k: v for k, v in mem_cached.items() if not k.startswith("_")}
 
         # Step 1: Query database for the email document
         email_doc = self.repository.find_by_id(clean_id)
@@ -140,8 +153,8 @@ class EmailSummaryService:
             )
 
         # Security check: if current_user_id provided, verify email ownership
+        doc_user_id = str(email_doc.get("user_id", "")).strip()
         if current_user_id:
-            doc_user_id = str(email_doc.get("user_id", "")).strip()
             if doc_user_id and doc_user_id != str(current_user_id).strip():
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -159,7 +172,10 @@ class EmailSummaryService:
                 f"Summary for email_id='{clean_id}' found in database cache. "
                 f"Returning cached summary without calling Gemini API."
             )
-            return self._format_summary_response(email_doc, existing_summary.strip(), is_cached=True)
+            response_data = self._format_summary_response(email_doc, existing_summary.strip(), is_cached=True)
+            # Store in in-memory cache for subsequent requests
+            email_summary_cache.set(clean_id, {**response_data, "_user_id": doc_user_id})
+            return response_data
 
         # Step 3: Concurrency protection (Double-Checked Locking)
         # Prevents duplicate Gemini API calls if two requests arrive simultaneously
@@ -222,13 +238,17 @@ class EmailSummaryService:
                 f"Successfully generated and stored new summary for email_id='{clean_id}' via LLM provider '{self.summary_service.provider_name}'."
             )
 
-            return self._format_summary_response(
+            formatted_resp = self._format_summary_response(
                 rechecked_doc,
                 generated_summary,
                 is_cached=False,
                 summary_created_at=summary_created_at.isoformat(),
                 summary_model=summary_model,
             )
+            # Store in in-memory cache for fast repeat requests
+            email_summary_cache.set(clean_id, {**formatted_resp, "_user_id": doc_user_id, "cached": True})
+
+            return formatted_resp
 
     async def _call_gemini_api(self, body_text: str) -> str:
         """

@@ -32,7 +32,7 @@ import { getGmailUrl, openGmailInNewTab } from "@/utils/gmail";
 export const Route = createFileRoute("/dashboard/auto-classifier")({
   head: () => ({
     meta: [
-      { title: "Auto Classifier — MailSentry" },
+      { title: "New Emails — MailSentry" },
       {
         name: "description",
         content:
@@ -600,7 +600,7 @@ function AutoClassifierPage() {
               to="/dashboard/history"
               className="text-brand underline underline-offset-2 hover:text-brand/80"
             >
-              Prediction History
+              Classified Emails
             </Link>
           </span>
         </div>

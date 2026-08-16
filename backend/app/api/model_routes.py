@@ -191,6 +191,8 @@ async def get_production_model():
 
 
 
+from app.utils.cache_util import static_data_cache
+
 @model_router.get(
     "/model/history",
     summary="Get history of all production models",
@@ -200,8 +202,16 @@ async def get_model_history():
     """
     GET /api/v1/model/history (also accessible at /api/model/history)
     Returns list of all model versions stored in backend/models/ (production + versions),
-    enriched with active microservice provider status.
+    enriched with active microservice provider status and cached in memory.
     """
+    cached = static_data_cache.get("model:history")
+    if cached is not None:
+        return return_response(
+            status_code=status.HTTP_200_OK,
+            message="Model version history retrieved successfully",
+            data=cached,
+        )
+
     try:
         history = storage.get_history()
         try:
@@ -213,10 +223,13 @@ async def get_model_history():
         except Exception:
             pass
 
+        data_payload = {"history": history, "total": len(history)}
+        static_data_cache.set("model:history", data_payload, ttl_seconds=120)
+
         return return_response(
             status_code=status.HTTP_200_OK,
             message="Model version history retrieved successfully",
-            data={"history": history, "total": len(history)},
+            data=data_payload,
         )
     except Exception:
         raise HTTPException(
@@ -236,8 +249,18 @@ async def get_model_version(version: str):
     GET /api/v1/model/version/{version} (also accessible at /api/model/version/{version})
     Returns metadata for a specific model version from backend/models/versions/{version}/.
     """
+    cache_key = f"model:version:{version}"
+    cached = static_data_cache.get(cache_key)
+    if cached is not None:
+        return return_response(
+            status_code=status.HTTP_200_OK,
+            message=f"Model version {version} metadata retrieved successfully",
+            data=cached,
+        )
+
     try:
         data = storage.get_version_metadata(version)
+        static_data_cache.set(cache_key, data, ttl_seconds=600)
         return return_response(
             status_code=status.HTTP_200_OK,
             message=f"Model version {version} metadata retrieved successfully",

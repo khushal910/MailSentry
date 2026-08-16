@@ -40,7 +40,7 @@ export function getRealtimeSuggestions(query: string): string[] {
     "Password",
     "Theme Mode",
     "Auto Classifier",
-    "Prediction History",
+    "Emails",
     "Email Classifier",
     "User Profile",
     "Notifications",
@@ -63,7 +63,7 @@ export function getRealtimeSuggestions(query: string): string[] {
   return [
     `Search "${query}" in Emails`,
     `Search "${query}" in Settings`,
-    `Search "${query}" in History`,
+    `Search "${query}" in Auto Classifier`,
   ];
 }
 
@@ -74,58 +74,66 @@ export async function executeGlobalSearch(
   query: string,
   ctx: GlobalSearchContext,
 ): Promise<SearchGroup[]> {
-  const q = query.toLowerCase().trim();
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+
   const results: SearchResultItem[] = [];
 
-  // 1. Suggestions Category (Always top priority)
-  if (q) {
-    const matchingSuggestions = getRealtimeSuggestions(q);
-    matchingSuggestions.forEach((sugg, i) => {
-      const clean = sugg.startsWith('Search "')
-        ? sugg.replace(/^Search "(.*)" in .*$/, "$1")
-        : sugg;
+  // Helper for fuzzy keyword scoring
+  const getScore = (keywords: string, term: string, baseScore = 50) => {
+    if (keywords.includes(term)) return baseScore + 20;
+    const words = term.split(" ");
+    let matchCount = 0;
+    for (const w of words) {
+      if (w.length > 1 && keywords.includes(w)) matchCount++;
+    }
+    if (matchCount > 0) return baseScore + matchCount * 10;
+    return 0;
+  };
 
-      results.push({
-        id: `sugg-${i}-${clean}`,
-        title: `Search for "${clean}"`,
-        description: `Filter emails, subjects & settings for "${clean}"`,
-        category: "Suggestions",
-        icon: Sparkles,
-        badge: "SUGGESTION",
-        action: () => ctx.navigate({ to: "/dashboard/history" }),
-        score: 200 - i * 10,
+  // 1. Direct Page Action: Jump to History search
+  results.push({
+    id: "action-search-history",
+    title: `Search emails for "${query}"`,
+    description: "Open the Emails page filtered by this query",
+    category: "Quick Actions",
+    icon: Search,
+    action: () => {
+      ctx.navigate({
+        to: "/dashboard/history",
       });
-    });
-  }
+    },
+    score: 95,
+  });
 
   // 2. Quick Actions & Keywords
   const quickActions: SearchResultItem[] = [
     {
       id: "qa-auto-classifier",
-      title: "Open Auto Classifier",
+      title: "Open New Emails Queue",
       description: "Queue of unclassified incoming emails waiting to be processed",
       category: "Quick Actions",
       icon: MailSearch,
       action: () => ctx.navigate({ to: "/dashboard/auto-classifier" }),
-      score: getScore("open auto classifier refresh gmail queue unclassified new", q, 100),
+      score: getScore("open new emails queue auto classifier refresh gmail unclassified", q, 100),
     },
     {
-      id: "qa-history",
-      title: "View Prediction History",
-      description: "Search and filter all classified emails in MongoDB",
+      id: "qa-emails",
+      title: "View Classified Emails",
+      description: "Search and inspect all classified emails in MongoDB",
       category: "Quick Actions",
       icon: History,
       action: () => ctx.navigate({ to: "/dashboard/history" }),
-      score: getScore("view prediction history emails classified stored", q, 90),
+      score: getScore("view classified emails history all stored", q, 90),
     },
     {
       id: "qa-classifier",
-      title: "Open Email Classifier",
+      title: "Open Manual Classifier",
       description: "Run instant ML prediction on single subject and body text",
       category: "Quick Actions",
       icon: Wand2,
       action: () => ctx.navigate({ to: "/dashboard/classifier" }),
-      score: getScore("open email classifier single test predict ml", q, 85),
+      score: getScore("open manual classifier email single test predict ml", q, 85),
     },
     {
       id: "qa-settings",
@@ -183,30 +191,30 @@ export async function executeGlobalSearch(
     },
     {
       id: "nav-auto-classifier",
-      title: "Auto Classifier Queue",
+      title: "New Emails",
       description: "Process new incoming Gmail messages",
       category: "Navigation",
       icon: MailSearch,
       action: () => ctx.navigate({ to: "/dashboard/auto-classifier" }),
-      score: getScore("auto classifier queue unclassified gmail new", q, 85),
+      score: getScore("new emails auto classifier queue unclassified gmail", q, 85),
     },
     {
-      id: "nav-history",
-      title: "Prediction History",
-      description: "All saved email predictions & classifications",
+      id: "nav-emails",
+      title: "Classified Emails",
+      description: "All saved emails & classifications",
       category: "Navigation",
       icon: History,
       action: () => ctx.navigate({ to: "/dashboard/history" }),
-      score: getScore("prediction history classified emails search filter", q, 85),
+      score: getScore("classified emails history search filter", q, 85),
     },
     {
       id: "nav-classifier",
-      title: "Email Classifier",
+      title: "Manual Classifier",
       description: "Manual prediction tool for text content",
       category: "Navigation",
       icon: Wand2,
       action: () => ctx.navigate({ to: "/dashboard/classifier" }),
-      score: getScore("email classifier manual predict ml score", q, 80),
+      score: getScore("manual classifier email predict ml score", q, 80),
     },
     {
       id: "nav-profile",

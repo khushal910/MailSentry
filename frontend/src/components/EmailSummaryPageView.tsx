@@ -164,7 +164,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
   const generatedBadgeText = formatLLMBadge(data?.summary_model);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-12 animate-in fade-in duration-300">
+    <div className="w-full max-w-5xl space-y-6 pb-12 animate-in fade-in duration-300">
       {/* Navigation & Action Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/40 pb-4">
         <Button
@@ -174,7 +174,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
           className="gap-2 bg-background/50 border-border/60 hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to History
+          Back to Emails
         </Button>
 
         <div className="flex items-center gap-3">
@@ -189,31 +189,6 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
               View Original Email
             </Button>
           )}
-
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowRegenerateTooltip(!showRegenerateTooltip)}
-              onMouseEnter={() => setShowRegenerateTooltip(true)}
-              onMouseLeave={() => setShowRegenerateTooltip(false)}
-              className="gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Regenerate Summary
-            </Button>
-
-            {showRegenerateTooltip && (
-              <div className="absolute right-0 top-10 z-20 w-64 rounded-xl border border-border/80 bg-popover p-3 text-xs shadow-xl text-popover-foreground animate-in fade-in zoom-in-95">
-                <p className="font-semibold text-primary flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5" /> Future Feature
-                </p>
-                <p className="mt-1 text-muted-foreground">
-                  Summaries are securely saved to eliminate redundant processing. Force re-summarize will be enabled in v2.0.
-                </p>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -264,7 +239,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
             <Button variant="outline" onClick={fetchSummary} className="gap-2">
               <RefreshCw className="h-4 w-4" /> Try Again
             </Button>
-            <Button onClick={handleBackNavigation}>Back to History</Button>
+            <Button onClick={handleBackNavigation}>Back to Emails</Button>
           </div>
         </div>
       )}
