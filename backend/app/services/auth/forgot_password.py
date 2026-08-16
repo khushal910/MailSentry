@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from app.core.config import settings
 from app.db.mongodb import get_database
 from app.schemas.user import ForgotPasswordRequest
-from app.utils.email_util import send_reset_otp_email
+from app.utils.email_util import send_reset_otp_email_background
 from app.utils.main_utile import return_response
 from app.utils.otp_util import generate_otp, hash_otp
 from app.utils.rate_limit_util import check_and_update_rate_limit
@@ -46,12 +46,16 @@ async def forgot_password_service(payload: ForgotPasswordRequest):
                 },
             )
 
-            # Send the email – catch SMTP/network errors gracefully so we don't leak user existence
+            # Send the email non-blockingly so the user gets an instant response
             try:
-                send_reset_otp_email(email=payload.email, otp=otp)
+                send_reset_otp_email_background(
+                    email=payload.email,
+                    otp=otp,
+                    expire_minutes=settings.OTP_EXPIRATION_MINUTES,
+                )
             except Exception as mail_err:
                 print(
-                    f"[WARNING] Failed to deliver OTP email to {payload.email}: {mail_err}"
+                    f"[WARNING] Failed to queue OTP email to {payload.email}: {mail_err}"
                 )
 
         # Whether user exists or not, return the same generic message.

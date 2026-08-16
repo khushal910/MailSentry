@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from app.core.config import settings
 from app.db.mongodb import get_database
 from app.repositories.google_account_repository import GoogleAccountRepository
-from app.utils.email_util import send_reset_otp_email
+from app.utils.email_util import send_reset_otp_email, send_reset_otp_email_background
 from app.utils.main_utile import hash_password, verify_password
 from app.utils.otp_util import generate_otp, hash_otp, verify_otp
 from app.utils.rate_limit_util import check_and_update_rate_limit
@@ -215,12 +215,12 @@ class ProfileService:
             },
         )
 
-        # Send OTP email
+        # Send OTP email non-blockingly for instant user response
         try:
-            send_reset_otp_email(email=new_email, otp=otp)
+            send_reset_otp_email_background(email=new_email, otp=otp, expire_minutes=5)
         except Exception as mail_err:
             logger.error(
-                f"[WARNING] Failed to deliver email change OTP to {new_email}: {mail_err}"
+                f"[WARNING] Failed to queue email change OTP to {new_email}: {mail_err}"
             )
 
         logger.info(

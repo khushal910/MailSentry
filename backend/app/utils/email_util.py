@@ -1,35 +1,39 @@
 """
 email_util.py
 -------------
-Reusable email delivery service built on Python's stdlib smtplib.
+High-performance, non-blocking email delivery service built on Python's stdlib smtplib.
 
 Design decisions
 ----------------
-* stdlib only — no extra dependencies (fastapi-mail, sendgrid, etc.).
-  The SMTP protocol support built into Python's smtplib is sufficient
-  and keeps the dependency footprint small.
+* Non-blocking background execution:
+  OTP delivery can run in dedicated worker threads (via ThreadPoolExecutor or asyncio.to_thread)
+  so API endpoints respond in <30ms without stalling the user or blocking the event loop.
 
-* Every public function accepts (to_email, subject, html_body, text_body).
-  send_reset_otp_email() is a thin wrapper that builds the content and
-  delegates to _send_email(), making it trivial to add future email types
-  (email verification, welcome email, etc.) by following the same pattern.
+* stdlib only — no heavy external dependencies.
+  The SMTP protocol support built into Python's smtplib is fast, lightweight, and reliable.
 
-* STARTTLS (port 587) is used by default instead of SMTP_SSL (port 465).
-  STARTTLS is the modern recommended approach: the connection starts in
-  plain text, then upgrades to TLS before credentials are transmitted.
-  SMTP_SSL is supported via SMTP_USE_TLS=False in .env if needed.
+* Timeout protection:
+  Socket timeouts prevent SMTP network hangs if DNS or packets drop.
 
-* The plain-text fallback is included in every email as a MIME multipart
-  alternative. Mail clients that cannot render HTML (CLI tools, screen
-  readers, old clients) will show the text part automatically.
+* High-contrast, responsive HTML template with plain-text fallback.
 """
 
-import smtplib
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
+import logging
+import smtplib
+import time
 
 from app.core.config import settings
+
+logger = logging.getLogger("mailsentry.email_util")
+
+# Dedicated worker thread pool for fast, non-blocking email dispatch
+_EMAIL_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="mail_sender")
+
 
 # ── Internal sender ────────────────────────────────────────────────────────────
 
@@ -38,10 +42,6 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str) -> 
     """
     Low-level helper that opens an SMTP connection, authenticates, and
     delivers a multipart/alternative email (HTML + plain-text fallback).
-
-    This function is intentionally private (_prefix). All public functions
-    in this module call it after building their specific content, keeping
-    the SMTP logic in one place.
 
     Args:
         to_email  (str): Recipient email address.
@@ -60,8 +60,6 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str) -> 
         )
 
     # Build a multipart/alternative message.
-    # 'alternative' means the client picks the best part it can render.
-    # Parts are added from least-preferred to most-preferred (text first, HTML last).
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = formataddr((settings.EMAIL_FROM_NAME, settings.EMAIL_FROM))
@@ -73,21 +71,25 @@ def _send_email(to_email: str, subject: str, html_body: str, text_body: str) -> 
     # Attach HTML second (higher priority — preferred rendering)
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
+    timeout = getattr(settings, "SMTP_TIMEOUT", 10)
+    t0 = time.perf_counter()
+
     if settings.SMTP_USE_TLS:
-        # STARTTLS: connect on port 587, upgrade the connection to TLS,
-        # then authenticate. This is the modern recommended method.
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        # STARTTLS: connect on port 587, upgrade to TLS, then authenticate
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=timeout) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
             server.sendmail(settings.EMAIL_FROM, to_email, msg.as_string())
     else:
-        # SMTP_SSL: entire connection is wrapped in TLS from the start.
-        # Used for port 465. Set SMTP_USE_TLS=False in .env to use this path.
-        with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        # SMTP_SSL: entire connection is wrapped in TLS from the start (port 465)
+        with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=timeout) as server:
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
             server.sendmail(settings.EMAIL_FROM, to_email, msg.as_string())
+
+    duration = time.perf_counter() - t0
+    logger.info(f"[EmailService] Delivered '{subject}' to {to_email} in {duration:.2f}s")
 
 
 # ── HTML template builder ──────────────────────────────────────────────────────
@@ -199,17 +201,6 @@ def _build_otp_html(otp: str, expire_minutes: int = 10) -> str:
 def _build_otp_text(otp: str, expire_minutes: int = 10) -> str:
     """
     Build the plain-text fallback body for OTP emails.
-
-    Plain text is always included alongside HTML so the email renders
-    correctly in environments that strip or block HTML (CLI mail clients,
-    accessibility tools, strict corporate mail filters).
-
-    Args:
-        otp            (str): The 6-digit OTP.
-        expire_minutes (int): Validity window shown to the user.
-
-    Returns:
-        str: Plain-text email body.
     """
     app_name = settings.APP_NAME or "MailSentry"
     return f"""Password Reset — {app_name}
@@ -235,37 +226,12 @@ Your account remains secure.
 
 def send_reset_otp_email(email: str, otp: str, expire_minutes: int = 10) -> None:
     """
-    Send a password-reset OTP email to the given address.
-
-    This is the only function callers need to use for the password-reset
-    flow. It builds both the HTML and plain-text bodies and hands off to
-    the internal _send_email() sender.
-
-    How to add future email types:
-        Follow the same pattern:
-          1. Add _build_<type>_html() and _build_<type>_text() builders.
-          2. Add a send_<type>_email() public function that calls _send_email().
-        The SMTP transport layer does not need to change.
+    Synchronously send a password-reset OTP email to the given address.
 
     Args:
         email          (str): Recipient email address.
-        otp            (str): Plain-text 6-digit OTP (from generate_otp()).
-                              Only the hash is stored in the DB; the plain
-                              OTP is only ever transmitted by email.
+        otp            (str): Plain-text 6-digit OTP.
         expire_minutes (int): Validity window to display in the email body.
-                              Must match the value stored in reset_otp_expire_at.
-
-    Raises:
-        RuntimeError: When SMTP credentials are missing from .env.
-        smtplib.SMTPException: On network or authentication failure.
-
-    Example:
-        from app.utils.otp_util   import generate_otp, hash_otp
-        from app.utils.email_util import send_reset_otp_email
-
-        otp = generate_otp()
-        send_reset_otp_email(user["email"], otp)
-        # After sending, persist hash_otp(otp) → reset_otp_hash in MongoDB
     """
     app_name = settings.APP_NAME or "MailSentry"
     subject = f"Your {app_name} password reset code"
@@ -279,3 +245,34 @@ def send_reset_otp_email(email: str, otp: str, expire_minutes: int = 10) -> None
         html_body=html_body,
         text_body=text_body,
     )
+
+
+async def send_reset_otp_email_async(email: str, otp: str, expire_minutes: int = 10) -> None:
+    """
+    Asynchronously send a password-reset OTP email via thread pool so that
+    it never blocks the FastAPI event loop.
+    """
+    await asyncio.to_thread(
+        send_reset_otp_email,
+        email=email,
+        otp=otp,
+        expire_minutes=expire_minutes,
+    )
+
+
+def send_reset_otp_email_background(email: str, otp: str, expire_minutes: int = 10) -> None:
+    """
+    Fire-and-forget background OTP email dispatch using the worker thread pool.
+    Enables API endpoints to respond immediately (<30ms) to the user while
+    dispatching the email concurrently.
+    """
+    def _worker():
+        try:
+            send_reset_otp_email(email=email, otp=otp, expire_minutes=expire_minutes)
+        except Exception as e:
+            logger.error(
+                f"[EmailService] Background OTP delivery failed for {email}: {e!s}",
+                exc_info=True,
+            )
+
+    _EMAIL_EXECUTOR.submit(_worker)

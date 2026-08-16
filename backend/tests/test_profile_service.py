@@ -105,7 +105,7 @@ class TestProfileService(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(ctx.exception.status_code, 409)
 
-    @patch("app.services.profile_service.send_reset_otp_email")
+    @patch("app.services.profile_service.send_reset_otp_email_background")
     @patch(
         "app.services.profile_service.check_and_update_rate_limit", return_value=None
     )
