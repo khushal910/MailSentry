@@ -73,7 +73,7 @@ export function getRealtimeSuggestions(query: string): string[] {
 export async function executeGlobalSearch(
   query: string,
   ctx: GlobalSearchContext,
-): Promise<SearchResultItem[]> {
+): Promise<SearchGroup[]> {
   const q = query.trim().toLowerCase();
   if (!q) return [];
 
@@ -96,7 +96,7 @@ export async function executeGlobalSearch(
     id: "action-search-history",
     title: `Search emails for "${query}"`,
     description: "Open the Emails page filtered by this query",
-    category: "Direct Actions",
+    category: "Quick Actions",
     icon: Search,
     action: () => {
       ctx.navigate({
