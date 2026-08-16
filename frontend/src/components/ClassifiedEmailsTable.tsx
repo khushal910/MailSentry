@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { MailX } from "lucide-react";
+import { MailX, Sparkles } from "lucide-react";
 import { GmailSpamIndicator } from "./GmailSpamIndicator";
 import { GmailOpenButton } from "./GmailOpenButton";
 import { HighlightText } from "./HighlightText";
@@ -132,11 +132,12 @@ export const ClassifiedEmailsTable: React.FC<ClassifiedEmailsTableProps> = ({
                   {dateVal ? formatDate(dateVal) : "—"}
                 </td>
                 <td className="py-3 align-middle pr-3">
-                  <div className="font-medium text-foreground group-hover:text-primary transition-colors">
+                  <div className="flex items-center gap-1.5 font-medium text-foreground group-hover:text-primary transition-colors">
                     <HighlightText
                       text={truncate(email.subject || "(no subject)", isCompact ? 50 : 38)}
                       query={searchQuery}
                     />
+                    <Sparkles className="h-3 w-3 text-primary shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   {email.sender && (
                     <p className="text-xs text-muted-foreground/80 truncate max-w-sm mt-0.5">

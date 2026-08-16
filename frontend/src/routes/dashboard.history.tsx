@@ -76,9 +76,9 @@ function HistoryPage() {
             </span>
 
             {/* AI Summary Tip Badge */}
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary/15 via-brand/20 to-sky-500/15 px-3 py-1 font-semibold text-primary border border-primary/30 shadow-xs">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Click any row for AI Summary & Details
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand/20 via-purple-500/15 to-primary/20 px-3.5 py-1 text-xs font-semibold text-primary border border-primary/30 shadow-xs backdrop-blur-xs transition-all hover:border-primary/60 hover:shadow-soft">
+              <Sparkles className="h-3.5 w-3.5 text-brand animate-pulse" />
+              <span>Click any row for <strong className="text-foreground font-bold">AI Summary & Details</strong></span>
             </span>
           </div>
         </div>

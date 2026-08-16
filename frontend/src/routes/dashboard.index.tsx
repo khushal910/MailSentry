@@ -176,21 +176,24 @@ function DashboardHome() {
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
         {/* Recent Emails (2 Columns on large screens) */}
         <div className="glass rounded-2xl p-5 md:p-6 lg:col-span-2 border border-border/60 shadow-lg space-y-4">
-          <div className="flex items-center justify-between border-b border-border/40 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground flex items-center gap-2">
-                Recent Emails
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                  <Sparkles className="h-3 w-3" /> Click row for AI Summary
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">
+                  Recent Emails
+                </h2>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand/20 via-purple-500/15 to-primary/20 px-3 py-1 text-xs font-semibold text-primary border border-primary/30 shadow-xs backdrop-blur-xs transition-all hover:border-primary/60 hover:shadow-soft">
+                  <Sparkles className="h-3.5 w-3.5 text-brand animate-pulse" />
+                  <span>Click any row for <strong className="text-foreground font-bold">AI Summary & Details</strong></span>
                 </span>
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
                 Latest classified messages with real-time threat intelligence.
               </p>
             </div>
             <Link
               to="/dashboard/history"
-              className="text-xs font-semibold text-primary hover:underline"
+              className="text-xs font-semibold text-primary hover:underline whitespace-nowrap"
             >
               View classified emails ({totalCount}) →
             </Link>
