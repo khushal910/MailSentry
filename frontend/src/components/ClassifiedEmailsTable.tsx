@@ -86,16 +86,26 @@ export const ClassifiedEmailsTable: React.FC<ClassifiedEmailsTableProps> = ({
 
   return (
     <div className="w-full overflow-x-auto">
-      <table className="w-full min-w-[640px] text-sm text-left">
+      <table className="w-full min-w-[640px] text-sm">
         <thead>
-          <tr className="border-b border-border/60 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {!isCompact && <th className="pb-3 text-left w-12 pl-2">#</th>}
-            <th className="pb-3 text-left font-medium w-36">Date</th>
-            <th className="pb-3 text-left font-medium">Subject</th>
-            {!isCompact && <th className="pb-3 text-left font-medium w-44">Snippet</th>}
-            <th className="pb-3 text-left font-medium w-36">Category</th>
-            <th className="pb-3 text-right font-medium w-24 pr-2">Confidence</th>
-            <th className="pb-3 text-center font-medium w-16">Gmail</th>
+          <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
+            {!isCompact && <th className="pb-3 text-left font-medium w-[5%] pl-2">#</th>}
+            <th className={`pb-3 text-left font-medium ${isCompact ? "w-[22%]" : "w-[16%]"}`}>
+              {isCompact ? "Date" : "Email Sent Date"}
+            </th>
+            <th className={`pb-3 text-left font-medium ${isCompact ? "w-[42%]" : "w-[26%]"}`}>
+              Subject
+            </th>
+            {!isCompact && <th className="pb-3 text-left font-medium w-[24%]">Snippet</th>}
+            <th className={`pb-3 text-left font-medium ${isCompact ? "w-[18%]" : "w-[13%]"}`}>
+              Category
+            </th>
+            <th className={`pb-3 text-left font-medium ${isCompact ? "w-[10%]" : "w-[9%]"}`}>
+              Score
+            </th>
+            <th className={`pb-3 text-center font-medium ${isCompact ? "w-[8%]" : "w-[7%]"}`}>
+              Open
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/30">
@@ -111,20 +121,20 @@ export const ClassifiedEmailsTable: React.FC<ClassifiedEmailsTableProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.15, delay: index * 0.02 }}
                 onClick={(e) => handleRowClick(email, e)}
-                className="group transition-colors hover:bg-muted/40 cursor-pointer"
+                className="group transition-colors hover:bg-muted/40 cursor-pointer border-b border-border/40 last:border-0"
               >
                 {!isCompact && (
-                  <td className="py-3.5 pl-2 text-xs font-semibold text-muted-foreground align-middle">
+                  <td className="py-3 pl-2 text-xs font-semibold text-muted-foreground align-middle">
                     {rowNumber}
                   </td>
                 )}
-                <td className="py-3.5 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap">
+                <td className="py-3 text-xs text-muted-foreground font-medium align-middle whitespace-nowrap pr-2">
                   {dateVal ? formatDate(dateVal) : "—"}
                 </td>
-                <td className="py-3.5 align-middle pr-3">
-                  <div className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                <td className="py-3 align-middle pr-3">
+                  <div className="font-medium text-foreground group-hover:text-primary transition-colors">
                     <HighlightText
-                      text={truncate(email.subject || "(No Subject)", isCompact ? 50 : 40)}
+                      text={truncate(email.subject || "(no subject)", isCompact ? 50 : 38)}
                       query={searchQuery}
                     />
                   </div>
@@ -135,25 +145,25 @@ export const ClassifiedEmailsTable: React.FC<ClassifiedEmailsTableProps> = ({
                   )}
                 </td>
                 {!isCompact && (
-                  <td className="py-3.5 text-xs text-muted-foreground align-middle pr-3 max-w-[200px]">
+                  <td className="py-3 text-xs text-muted-foreground align-middle pr-3">
                     <HighlightText
-                      text={truncate(email.snippet || "—", 40)}
+                      text={truncate(email.snippet || "—", 42)}
                       query={searchQuery}
                     />
                   </td>
                 )}
-                <td className="py-3.5 align-middle whitespace-nowrap">
+                <td className="py-3 align-middle whitespace-nowrap pr-2">
                   <GmailSpamIndicator
                     mailsentryLabel={email.predicted_label}
                     gmailClassification={email.gmail_classification}
                   />
                 </td>
-                <td className="py-3.5 text-right font-medium text-xs align-middle pr-2">
+                <td className="py-3 text-left font-medium text-xs align-middle whitespace-nowrap">
                   {typeof email.predicted_score === "number"
                     ? formatConfidence(email.predicted_score)
                     : "—"}
                 </td>
-                <td className="py-3.5 text-center align-middle">
+                <td className="py-3 text-center align-middle">
                   <GmailOpenButton
                     messageId={email.message_id}
                     threadId={email.thread_id}
