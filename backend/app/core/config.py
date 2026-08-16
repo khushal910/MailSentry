@@ -134,6 +134,7 @@ class Settings:
         SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
         SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
         SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "True") == "True"
+        SMTP_TIMEOUT = int(os.getenv("SMTP_TIMEOUT", 10))
         EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@mailsentry.app")
         EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "MailSentry")
 
