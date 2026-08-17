@@ -19,7 +19,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { useAuth } from "@/context/AuthContext";
 import { GmailStatusCard } from "@/components/GmailStatusCard";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { usePredictiveHistory } from "@/hooks/usePredictiveHistory";
+import { usePredictiveHistory, prefetchClassifiedEmails } from "@/hooks/usePredictiveHistory";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({
@@ -53,6 +54,7 @@ function StatsSkeleton() {
 
 function DashboardHome() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { stats, isLoading: statsLoading, isError: statsError, error: statsErrorMessage, refetch: refetchStats } = useDashboardStats();
 
   // Shared TanStack Query for recent emails (5-8 latest items)
@@ -89,8 +91,15 @@ function DashboardHome() {
           </p>
         </div>
         <div className="flex items-center gap-2.5">
-          <Button asChild variant="outline" size="sm" className="shadow-xs">
-            <Link to="/dashboard/history">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="shadow-xs"
+            onMouseEnter={() => prefetchClassifiedEmails(queryClient)}
+            onFocus={() => prefetchClassifiedEmails(queryClient)}
+          >
+            <Link to="/dashboard/history" preload="intent">
               <MailIcon className="mr-1.5 h-4 w-4" /> Classified Emails ({totalCount})
             </Link>
           </Button>
