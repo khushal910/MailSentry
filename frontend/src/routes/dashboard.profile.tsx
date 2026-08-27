@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import {
@@ -60,11 +61,34 @@ interface ChangePasswordForm {
 }
 
 function ProfilePage() {
-  const { refresh: refreshAuthContext } = useAuth();
+  const { user, refresh: refreshAuthContext } = useAuth();
+  const queryClient = useQueryClient();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [profileError, setProfileError] = useState<string | null>(null);
+  const {
+    data: profile,
+    isLoading: isLoadingProfile,
+    error: profileQueryError,
+    refetch: loadProfile,
+  } = useQuery<UserProfile>({
+    queryKey: ["user-profile"],
+    queryFn: () => profileApi.getProfile(),
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+    initialData: user
+      ? {
+          id: user.id,
+          username: user.username || user.name || "",
+          email: user.email || "",
+          avatar_url: user.avatarUrl,
+          is_active: true,
+          created_at: "",
+          is_google_connected: Boolean(user.isGoogleConnected),
+          google_email: user.googleEmail,
+        }
+      : undefined,
+  });
+
+  const profileError = profileQueryError ? (profileQueryError instanceof Error ? profileQueryError.message : "Failed to load profile.") : null;
 
   // Dialog states
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -75,23 +99,6 @@ function ProfilePage() {
   const [pendingEmail, setPendingEmail] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-
-  const loadProfile = useCallback(async () => {
-    setIsLoadingProfile(true);
-    setProfileError(null);
-    try {
-      const data = await profileApi.getProfile();
-      setProfile(data);
-    } catch (err) {
-      setProfileError(err instanceof Error ? err.message : "Failed to load profile.");
-    } finally {
-      setIsLoadingProfile(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
 
   // Edit Profile Form
   const {
@@ -224,7 +231,7 @@ function ProfilePage() {
     }
   };
 
-  if (isLoadingProfile) {
+  if (isLoadingProfile && !profile) {
     return (
       <PageTransition>
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">

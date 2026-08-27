@@ -105,13 +105,13 @@ export function Navbar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/dashboard">Dashboard</Link>
+                    <Link to="/dashboard" preload="intent">Dashboard</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/dashboard/profile">Profile</Link>
+                    <Link to="/dashboard/profile" preload="intent">Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/dashboard/settings">Settings</Link>
+                    <Link to="/dashboard/settings" preload="intent">Settings</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -175,6 +175,7 @@ export function Navbar() {
                 <Link
                   key={l.to}
                   to={l.to}
+                  preload="intent"
                   onClick={() => setOpen(false)}
                   className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                 >
@@ -197,18 +198,18 @@ export function Navbar() {
                       </div>
                     </div>
                     <Button asChild size="sm" className="w-full bg-gradient-brand btn-gradient-glow">
-                      <Link to="/dashboard" onClick={() => setOpen(false)}>
+                      <Link to="/dashboard" preload="intent" onClick={() => setOpen(false)}>
                         Dashboard
                       </Link>
                     </Button>
                     <div className="grid grid-cols-2 gap-2">
                       <Button asChild variant="outline" size="sm">
-                        <Link to="/dashboard/profile" onClick={() => setOpen(false)}>
+                        <Link to="/dashboard/profile" preload="intent" onClick={() => setOpen(false)}>
                           Profile
                         </Link>
                       </Button>
                       <Button asChild variant="outline" size="sm">
-                        <Link to="/dashboard/settings" onClick={() => setOpen(false)}>
+                        <Link to="/dashboard/settings" preload="intent" onClick={() => setOpen(false)}>
                           Settings
                         </Link>
                       </Button>

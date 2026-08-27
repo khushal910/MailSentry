@@ -1,4 +1,5 @@
 import apiClient from "./apiClient";
+import { emailSummaryService } from "./emailSummaryService";
 
 export interface GmailClassification {
   is_spam?: boolean | null;
@@ -7,12 +8,17 @@ export interface GmailClassification {
 }
 
 export interface ClassifiedEmail {
+  id?: string;
+  _id?: string;
+  email_id?: string;
   message_id: string;
   gmail_message_id?: string;
   thread_id?: string | null;
   subject: string;
   snippet?: string | null;
   sender?: string | null;
+  receiver?: string | null;
+  body?: string | null;
   predicted_label: string;
   predicted_score?: number | null;
   gmail_classification?: GmailClassification | null;
@@ -20,6 +26,9 @@ export interface ClassifiedEmail {
   classified_at?: string;
   received_at?: string | null;
   sent_at?: string | null;
+  summary?: string | null;
+  summary_created_at?: string | null;
+  summary_model?: string | null;
 }
 
 
@@ -150,7 +159,6 @@ export const emailsApi = {
    * Returns AI summary for specified email_id using Gemini API.
    */
   async getEmailSummary(emailId: string) {
-    const { emailSummaryService } = await import("./emailSummaryService");
     return emailSummaryService.getEmailSummary(emailId);
   },
 };

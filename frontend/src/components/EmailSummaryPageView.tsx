@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Sparkles,
   ArrowLeft,
@@ -19,12 +20,10 @@ import {
   Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EmailLabelBadge } from "@/components/EmailLabelBadge";
 import { GmailSpamIndicator } from "@/components/GmailSpamIndicator";
-import { emailSummaryService, type EmailSummaryData } from "@/services/emailSummaryService";
-import { formatConfidence, formatDate } from "@/utils/format";
-
+import { formatDate } from "@/utils/format";
 import { getGmailUrl, openGmailInNewTab } from "@/utils/gmail";
+import { useEmailSummary, regenerateEmailSummary } from "@/hooks/useEmailSummary";
 
 interface EmailSummaryPageViewProps {
   emailId: string;
@@ -35,39 +34,35 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
   emailId,
   onBack,
 }) => {
-  const [data, setData] = useState<EmailSummaryData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showRegenerateTooltip, setShowRegenerateTooltip] = useState(false);
+  const queryClient = useQueryClient();
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
-  const fetchSummary = async () => {
-    if (!emailId || !emailId.trim()) {
-      setError("Invalid Email ID provided.");
-      setIsLoading(false);
-      return;
-    }
+  // Instant TanStack Query hook - 0ms memory retrieval if previously seen or prefetched
+  const {
+    data,
+    isLoading,
+    isError,
+    error: queryError,
+    refetch,
+  } = useEmailSummary(emailId);
 
-    setIsLoading(true);
-    setError(null);
+  const error = regenerateError || (isError ? queryError?.message || "Failed to load summary" : null);
 
+  const handleRegenerate = async () => {
+    if (!emailId || isRegenerating) return;
+    setIsRegenerating(true);
+    setRegenerateError(null);
     try {
-      // Call GET /emails/{email_id}/summary using Axios service
-      const res = await emailSummaryService.getEmailSummary(emailId.trim());
-      setData(res);
+      await regenerateEmailSummary(queryClient, emailId);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Failed to fetch email summary. The email ID may be invalid or missing.";
-      setError(msg);
+      setRegenerateError(
+        err instanceof Error ? err.message : "Failed to regenerate AI summary."
+      );
     } finally {
-      setIsLoading(false);
+      setIsRegenerating(false);
     }
   };
-
-  useEffect(() => {
-    fetchSummary();
-  }, [emailId]);
 
   // Helper to extract structured items (Purpose, Dates, Actions, Tone) from summary text
   const parseSummarySections = (rawSummary: string) => {
@@ -106,7 +101,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
       } else if (lower.startsWith("tone:")) {
         tone = strippedLine.replace(/^tone:\s*/i, "").trim();
       } else {
-        // Keep in main text summary body (cleaning outer asterisks for clean display)
+        // Keep in main text summary body
         cleanLines.push(line.replace(/\*\*/g, ""));
       }
     });
@@ -178,6 +173,18 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
         </Button>
 
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRegenerate}
+            disabled={isRegenerating || isLoading}
+            className="gap-2 bg-background/50 border-border/60 hover:bg-muted text-xs"
+            title="Force refresh & regenerate AI summary"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRegenerating ? "animate-spin text-primary" : ""}`} />
+            {isRegenerating ? "Regenerating…" : "Regenerate Summary"}
+          </Button>
+
           {gmailUrl && (
             <Button
               variant="outline"
@@ -192,19 +199,25 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
         </div>
       </div>
 
-      {/* SKELETON LOADERS WHILE LOADING */}
+      {/* SKELETON LOADERS WHILE INITIAL LOADING */}
       {isLoading && (
         <div className="space-y-6">
           {/* Main Summary Skeleton */}
           <div className="glass rounded-2xl p-6 md:p-8 space-y-4 animate-pulse border-2 border-primary/20">
             <div className="flex items-center justify-between pb-2">
-              <div className="h-7 w-48 rounded-lg bg-primary/20" />
-              <div className="h-6 w-32 rounded-full bg-muted/40" />
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/20" />
+                <div className="space-y-1.5">
+                  <div className="h-5 w-48 rounded bg-primary/30" />
+                  <div className="h-3 w-32 rounded bg-muted/40" />
+                </div>
+              </div>
+              <div className="h-6 w-28 rounded-full bg-muted/40" />
             </div>
-            <div className="space-y-2">
-              <div className="h-5 w-full rounded bg-primary/10" />
-              <div className="h-5 w-5/6 rounded bg-primary/10" />
-              <div className="h-5 w-4/6 rounded bg-primary/10" />
+            <div className="space-y-2.5 pt-3">
+              <div className="h-4 w-full rounded bg-primary/15" />
+              <div className="h-4 w-11/12 rounded bg-primary/15" />
+              <div className="h-4 w-4/6 rounded bg-primary/15" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-4">
               <div className="h-20 rounded-xl bg-muted/30" />
@@ -226,7 +239,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
       )}
 
       {/* ERROR STATE / INVALID EMAIL ID */}
-      {!isLoading && error && (
+      {!isLoading && error && !data && (
         <div className="glass rounded-2xl p-8 text-center space-y-4 border-destructive/30">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
             <AlertCircle className="h-7 w-7" />
@@ -236,7 +249,7 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
             <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">{error}</p>
           </div>
           <div className="flex justify-center gap-3 pt-2">
-            <Button variant="outline" onClick={fetchSummary} className="gap-2">
+            <Button variant="outline" onClick={() => refetch()} className="gap-2">
               <RefreshCw className="h-4 w-4" /> Try Again
             </Button>
             <Button onClick={handleBackNavigation}>Back to Emails</Button>
@@ -244,10 +257,10 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
         </div>
       )}
 
-      {/* CONTENT WHEN FINISHED LOADING */}
-      {!isLoading && !error && data && (
+      {/* CONTENT (RENDERED INSTANTLY WHEN CACHED) */}
+      {data && (
         <>
-          {/* PROMINENT HIGHLIGHTED AI EXECUTIVE SUMMARY CARD (FEATURED FIRST) */}
+          {/* PROMINENT HIGHLIGHTED AI EXECUTIVE SUMMARY CARD */}
           <div className="glass rounded-2xl p-6 md:p-8 border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-background to-primary/5 shadow-2xl relative overflow-hidden">
             {/* Subtle Glowing Background Accents */}
             <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
@@ -394,7 +407,6 @@ export const EmailSummaryPageView: React.FC<EmailSummaryPageViewProps> = ({
                   )}
                 </div>
               </div>
-
             </div>
           </div>
 
