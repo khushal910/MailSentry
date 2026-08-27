@@ -1,4 +1,5 @@
-import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { Link, useRouterState, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
@@ -42,11 +43,49 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
+  // Proactively warm up route code for all sidebar items when idle
+  useEffect(() => {
+    const idlePrefetch = () => {
+      links.forEach((l) => {
+        router.preloadRoute({ to: l.to }).catch(() => {});
+      });
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const id = (window as unknown as { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(
+        idlePrefetch,
+        { timeout: 1500 }
+      );
+      return () => {
+        if ("cancelIdleCallback" in window) {
+          (window as unknown as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(id);
+        }
+      };
+    } else {
+      const t = setTimeout(idlePrefetch, 200);
+      return () => clearTimeout(t);
+    }
+  }, [router]);
+
   const handleLinkPrefetch = (to: string) => {
+    router.preloadRoute({ to: to as any }).catch(() => {});
     if (to === "/dashboard/history" || to === "/dashboard") {
       prefetchClassifiedEmails(queryClient);
+    } else if (to === "/dashboard/production-model") {
+      queryClient.prefetchQuery({
+        queryKey: ["production-model"],
+        queryFn: () => import("@/services/modelService").then((m) => m.modelService.getProductionModel()),
+        staleTime: 1000 * 60 * 5,
+      });
+    } else if (to === "/dashboard/profile") {
+      queryClient.prefetchQuery({
+        queryKey: ["user-profile"],
+        queryFn: () => import("@/services/profileApi").then((m) => m.profileApi.getProfile()),
+        staleTime: 1000 * 60 * 5,
+      });
     }
   };
 

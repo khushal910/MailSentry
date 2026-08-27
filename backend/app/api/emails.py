@@ -12,10 +12,16 @@ emails_router = APIRouter()
 
 # Safe fields to expose to the frontend (no tokens, no raw body, no sensitive IDs)
 _SAFE_FIELDS = {
+    "id",
+    "email_id",
     "message_id",
     "thread_id",
     "subject",
     "snippet",
+    "sender",
+    "receiver",
+    "from",
+    "to",
     "predicted_label",
     "predicted_score",
     "gmail_classification",
@@ -23,11 +29,27 @@ _SAFE_FIELDS = {
     "classified_at",
     "received_at",
     "sent_at",
+    "summary",
+    "summary_created_at",
+    "summary_model",
 }
 
 
-
 MAX_LIMIT = 100
+
+
+def _extract_clean_email(*candidates: Any) -> str:
+    for cand in candidates:
+        if not cand or not isinstance(cand, str):
+            continue
+        cleaned = cand.strip()
+        if ObjectId.is_valid(cleaned) or (len(cleaned) == 24 and all(c in "0123456789abcdefABCDEF" for c in cleaned)):
+            continue
+        if "@" in cleaned or "." in cleaned:
+            return cleaned
+        if cleaned and not cleaned.isalnum():
+            return cleaned
+    return ""
 
 
 def _sanitize_email(doc: dict) -> dict:
@@ -54,6 +76,25 @@ def _sanitize_email(doc: dict) -> dict:
                     iso_str += "Z"
                 val = iso_str
             result[key] = val
+
+    # Ensure doc ID is present as clean UI id / email_id without exposing internal _id
+    if "_id" in doc:
+        doc_id_str = str(doc["_id"])
+        if "id" not in result:
+            result["id"] = doc_id_str
+        if "email_id" not in result:
+            result["email_id"] = doc_id_str
+
+    # Ensure sender and receiver are cleaned
+    if not result.get("sender"):
+        clean_sender = _extract_clean_email(doc.get("sender"), doc.get("from"), doc.get("sender_email"), doc.get("from_email"))
+        if clean_sender:
+            result["sender"] = clean_sender
+
+    if not result.get("receiver"):
+        clean_receiver = _extract_clean_email(doc.get("receiver"), doc.get("to"), doc.get("recipient"), doc.get("receiver_email"))
+        if clean_receiver:
+            result["receiver"] = clean_receiver
 
     # Guarantee gmail_classification is present even for legacy database records
     if "gmail_classification" not in result or result["gmail_classification"] is None:

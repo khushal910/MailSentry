@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import {
@@ -62,9 +63,23 @@ interface ChangePasswordForm {
 function ProfilePage() {
   const { refresh: refreshAuthContext } = useAuth();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [profileError, setProfileError] = useState<string | null>(null);
+  const {
+    data: profile,
+    isLoading: isLoadingProfile,
+    error: profileQueryError,
+    refetch: loadProfile,
+  } = useQuery<UserProfile>({
+    queryKey: ["user-profile"],
+    queryFn: () => profileApi.getProfile(),
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+  });
+
+  const profileError = profileQueryError
+    ? profileQueryError instanceof Error
+      ? profileQueryError.message
+      : "Failed to load profile."
+    : null;
 
   // Dialog states
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -75,23 +90,6 @@ function ProfilePage() {
   const [pendingEmail, setPendingEmail] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-
-  const loadProfile = useCallback(async () => {
-    setIsLoadingProfile(true);
-    setProfileError(null);
-    try {
-      const data = await profileApi.getProfile();
-      setProfile(data);
-    } catch (err) {
-      setProfileError(err instanceof Error ? err.message : "Failed to load profile.");
-    } finally {
-      setIsLoadingProfile(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
 
   // Edit Profile Form
   const {
@@ -224,7 +222,7 @@ function ProfilePage() {
     }
   };
 
-  if (isLoadingProfile) {
+  if (isLoadingProfile && !profile) {
     return (
       <PageTransition>
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
@@ -244,7 +242,7 @@ function ProfilePage() {
           <p className="text-sm text-muted-foreground max-w-sm">
             {profileError || "Profile information is unavailable."}
           </p>
-          <Button variant="outline" onClick={loadProfile}>
+          <Button variant="outline" onClick={() => loadProfile()}>
             <RefreshCw className="mr-2 h-4 w-4" /> Try Again
           </Button>
         </div>

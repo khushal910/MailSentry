@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Sparkles, X, RefreshCw, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EmailLabelBadge } from "@/components/EmailLabelBadge";
 import { GmailSpamIndicator } from "@/components/GmailSpamIndicator";
-import { emailSummaryService, type EmailSummaryData } from "@/services/emailSummaryService";
-
+import { useEmailSummary, regenerateEmailSummary } from "@/hooks/useEmailSummary";
 
 export interface HistoryEmailItem {
   email_id?: string;
@@ -19,6 +18,9 @@ export interface HistoryEmailItem {
   predicted_label?: string | null;
   predicted_score?: number | null;
   gmail_classification?: any;
+  summary?: string | null;
+  summary_created_at?: string | null;
+  summary_model?: string | null;
 }
 
 interface EmailSummaryModalProps {
@@ -27,48 +29,41 @@ interface EmailSummaryModalProps {
   onClose: () => void;
 }
 
-
 export const EmailSummaryModal: React.FC<EmailSummaryModalProps> = ({
   email,
   isOpen,
   onClose,
 }) => {
-  const [summaryData, setSummaryData] = useState<EmailSummaryData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenerateError, setRegenerateError] = useState<string | null>(null);
 
   const emailId = email?.email_id || email?.message_id || email?.id;
 
-  const fetchSummary = async () => {
-    if (!emailId) return;
+  const {
+    data: summaryData,
+    isLoading,
+    isError,
+    error: queryError,
+    refetch,
+  } = useEmailSummary(emailId, { enabled: isOpen && Boolean(emailId) });
 
-    setIsLoading(true);
-    setError(null);
+  const error = regenerateError || (isError ? queryError?.message || "Failed to generate summary" : null);
+
+  const handleRegenerate = async () => {
+    if (!emailId || isRegenerating) return;
+    setIsRegenerating(true);
+    setRegenerateError(null);
     try {
-      // Call GET /emails/{email_id}/summary using Axios service
-      const data = await emailSummaryService.getEmailSummary(emailId);
-      setSummaryData(data);
+      await regenerateEmailSummary(queryClient, emailId);
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error
-          ? err.message
-          : "Failed to generate email summary. Please try again.";
-      setError(errorMsg);
+      setRegenerateError(
+        err instanceof Error ? err.message : "Failed to regenerate AI summary."
+      );
     } finally {
-      setIsLoading(false);
+      setIsRegenerating(false);
     }
   };
-
-  useEffect(() => {
-    if (isOpen && emailId) {
-      setSummaryData(null);
-      fetchSummary();
-    } else {
-      setSummaryData(null);
-      setError(null);
-      setIsLoading(false);
-    }
-  }, [isOpen, emailId]);
 
   if (!isOpen || !email) return null;
 
@@ -123,26 +118,40 @@ export const EmailSummaryModal: React.FC<EmailSummaryModalProps> = ({
                 <h3 className="text-sm font-semibold text-foreground">AI Email Summary</h3>
               </div>
 
-              {summaryData && (
-                <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                  {summaryData.cached ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-muted-foreground border border-border/40">
-                      <Clock className="h-3 w-3" /> Cached
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 border border-emerald-500/20">
-                      <CheckCircle2 className="h-3 w-3" /> Generated via Gemini
-                    </span>
-                  )}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {summaryData && (
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                    {summaryData.cached ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-muted-foreground border border-border/40">
+                        <Clock className="h-3 w-3" /> Cached
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 border border-emerald-500/20">
+                        <CheckCircle2 className="h-3 w-3" /> Generated
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRegenerate}
+                  disabled={isRegenerating || isLoading}
+                  className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                  title="Regenerate Summary"
+                >
+                  <RefreshCw className={`h-3 w-3 mr-1 ${isRegenerating ? "animate-spin text-primary" : ""}`} />
+                  {isRegenerating ? "Regenerating…" : "Regenerate"}
+                </Button>
+              </div>
             </div>
 
             {/* Loading State */}
             {isLoading && (
               <div className="flex flex-col items-center justify-center py-6 text-center text-sm text-muted-foreground">
                 <RefreshCw className="h-5 w-5 animate-spin text-primary mb-2" />
-                <p className="font-medium text-foreground">Generating concise summary with Gemini API…</p>
+                <p className="font-medium text-foreground">Generating concise summary with AI…</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Extracting key topics, action items, deadlines, and tone.
                 </p>
@@ -150,7 +159,7 @@ export const EmailSummaryModal: React.FC<EmailSummaryModalProps> = ({
             )}
 
             {/* Error State */}
-            {error && !isLoading && (
+            {error && !isLoading && !summaryData && (
               <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                 <div className="flex-1">
@@ -158,7 +167,7 @@ export const EmailSummaryModal: React.FC<EmailSummaryModalProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchSummary}
+                    onClick={() => refetch()}
                     className="mt-2 h-7 px-2.5 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
                   >
                     <RefreshCw className="h-3 w-3 mr-1" /> Retry
@@ -168,7 +177,7 @@ export const EmailSummaryModal: React.FC<EmailSummaryModalProps> = ({
             )}
 
             {/* Summary Result */}
-            {summaryData && !isLoading && (
+            {summaryData && (
               <div className="text-sm leading-relaxed text-foreground whitespace-pre-line font-normal">
                 {summaryData.summary}
               </div>

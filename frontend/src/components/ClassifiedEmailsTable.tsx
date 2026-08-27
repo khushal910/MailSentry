@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { MailX, Sparkles } from "lucide-react";
 import { GmailSpamIndicator } from "./GmailSpamIndicator";
@@ -7,6 +8,7 @@ import { GmailOpenButton } from "./GmailOpenButton";
 import { HighlightText } from "./HighlightText";
 import { formatConfidence, formatDate, truncate } from "@/utils/format";
 import type { ClassifiedEmail } from "@/services/emailsApi";
+import { prefetchEmailSummary, seedEmailSummaryQuery } from "@/hooks/useEmailSummary";
 
 export interface ClassifiedEmailsTableProps {
   emails: ClassifiedEmail[];
@@ -32,6 +34,18 @@ export const ClassifiedEmailsTable: React.FC<ClassifiedEmailsTableProps> = ({
   emptySubtitle = "Emails fetched from Gmail or processed by the classifier will appear here.",
 }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Automatically seed TanStack query cache for all emails in this page that already have summaries
+  useEffect(() => {
+    if (emails && emails.length > 0) {
+      emails.forEach((email) => {
+        if (email.summary) {
+          seedEmailSummaryQuery(queryClient, email);
+        }
+      });
+    }
+  }, [emails, queryClient]);
 
   const handleRowClick = (email: ClassifiedEmail, e: React.MouseEvent) => {
     // Prevent navigation if clicking interactive child elements (e.g. Gmail open button or external link)
@@ -114,6 +128,8 @@ export const ClassifiedEmailsTable: React.FC<ClassifiedEmailsTableProps> = ({
             const dateVal =
               email.sent_at || email.received_at || email.classified_at || email.fetch_time;
 
+            const targetId = email.message_id || (email as any)._id || (email as any).id;
+
             return (
               <motion.tr
                 key={email.message_id || index}
@@ -121,6 +137,8 @@ export const ClassifiedEmailsTable: React.FC<ClassifiedEmailsTableProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.15, delay: index * 0.02 }}
                 onClick={(e) => handleRowClick(email, e)}
+                onMouseEnter={() => targetId && prefetchEmailSummary(queryClient, String(targetId))}
+                onFocus={() => targetId && prefetchEmailSummary(queryClient, String(targetId))}
                 className="group transition-colors hover:bg-muted/40 cursor-pointer border-b border-border/40 last:border-0"
               >
                 {!isCompact && (

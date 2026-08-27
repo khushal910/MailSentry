@@ -3,6 +3,7 @@ import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-quer
 import { emailsApi, type GetEmailsResponse } from "@/services/emailsApi";
 import { dashboardApi } from "@/services/dashboardApi";
 import { DASHBOARD_STATS_QUERY_KEY } from "./useDashboardStats";
+import { seedEmailSummaryQuery } from "./useEmailSummary";
 
 export interface UsePredictiveHistoryOptions {
   page: number;
@@ -106,7 +107,18 @@ export function usePredictiveHistory({
     placeholderData: (previousData) => previousData, // Smooth transition between pages
   });
 
-  // 2. Predictive Idle Prefetching for Next Page
+  // 2. Automatically seed AI summary query cache for all emails in current page that already have summaries
+  useEffect(() => {
+    if (query.data?.emails && query.data.emails.length > 0) {
+      query.data.emails.forEach((email) => {
+        if (email.summary) {
+          seedEmailSummaryQuery(queryClient, email);
+        }
+      });
+    }
+  }, [query.data?.emails, queryClient]);
+
+  // 3. Predictive Idle Prefetching for Next Page
   useEffect(() => {
     if (!query.data || query.isFetching) return;
 
