@@ -61,8 +61,7 @@ interface ChangePasswordForm {
 }
 
 function ProfilePage() {
-  const { user, refresh: refreshAuthContext } = useAuth();
-  const queryClient = useQueryClient();
+  const { refresh: refreshAuthContext } = useAuth();
 
   const {
     data: profile,
@@ -74,21 +73,13 @@ function ProfilePage() {
     queryFn: () => profileApi.getProfile(),
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 30,
-    initialData: user
-      ? {
-          id: user.id,
-          username: user.username || user.name || "",
-          email: user.email || "",
-          avatar_url: user.avatarUrl,
-          is_active: true,
-          created_at: "",
-          is_google_connected: Boolean(user.isGoogleConnected),
-          google_email: user.googleEmail,
-        }
-      : undefined,
   });
 
-  const profileError = profileQueryError ? (profileQueryError instanceof Error ? profileQueryError.message : "Failed to load profile.") : null;
+  const profileError = profileQueryError
+    ? profileQueryError instanceof Error
+      ? profileQueryError.message
+      : "Failed to load profile."
+    : null;
 
   // Dialog states
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -251,7 +242,7 @@ function ProfilePage() {
           <p className="text-sm text-muted-foreground max-w-sm">
             {profileError || "Profile information is unavailable."}
           </p>
-          <Button variant="outline" onClick={loadProfile}>
+          <Button variant="outline" onClick={() => loadProfile()}>
             <RefreshCw className="mr-2 h-4 w-4" /> Try Again
           </Button>
         </div>
