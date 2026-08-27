@@ -38,12 +38,14 @@ interface FormValues {
 }
 
 import { useMaintenance } from "@/context/MaintenanceContext";
+import { AiLoadingScreen } from "@/components/AiLoadingScreen";
 
 function LoginPage() {
   const { login, isAuthenticated, isLoading } = useAuth();
   const { isMaintenance, adminBypass } = useMaintenance();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const { oauth_error: oauthError, redirect } = Route.useSearch();
 
   useEffect(() => {
@@ -66,7 +68,6 @@ function LoginPage() {
     }
   }, [isLoading, isAuthenticated, redirect, navigate]);
 
-
   const {
     register,
     handleSubmit,
@@ -74,15 +75,18 @@ function LoginPage() {
   } = useForm<FormValues>();
 
   const onSubmit = async (values: FormValues) => {
+    setIsAuthenticating(true);
     try {
       const res = await login(values.email, values.password);
       if (res.success) {
         const target = redirect && redirect.startsWith("/") ? redirect : "/dashboard";
-        navigate({ to: target, replace: true });
+        await navigate({ to: target, replace: true });
       } else {
+        setIsAuthenticating(false);
         toast.error(res.message);
       }
     } catch (e) {
+      setIsAuthenticating(false);
       toast.error(e instanceof Error ? e.message : "Login failed");
     }
   };
@@ -100,15 +104,13 @@ function LoginPage() {
     window.location.href = `${backendUrl}/auth/google/login`;
   };
 
-  // Show a loading screen while we're checking if the user is already logged in
-  if (isLoading) {
+  // Show the attractive AI loading screen during authentication and initial session loading
+  if (isLoading || isAuthenticating || isGoogleLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="relative h-12 w-12">
-          <div className="absolute inset-0 rounded-full border-4 border-muted" />
-          <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-brand" />
-        </div>
-      </div>
+      <AiLoadingScreen
+        title={isGoogleLoading ? "Connecting to Google OAuth" : "Authenticating Secure Session"}
+        subtitle="Verifying credentials & launching MailSentry AI engine..."
+      />
     );
   }
 
