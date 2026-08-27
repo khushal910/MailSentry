@@ -5,6 +5,7 @@ import {
   type PredictionRequest,
   type PredictionResponse,
 } from "../services/predictionApi";
+import { prefetchClassifiedEmails } from "@/hooks/usePredictiveHistory";
 
 interface PredictionContextValue {
   isPredicting: boolean;
@@ -29,8 +30,7 @@ export function PredictionProvider({ children }: { children: ReactNode }) {
       try {
         const res = await predictionApi.predict(payload);
         setLatest(res);
-        queryClient.invalidateQueries({ queryKey: ["history"] });
-        queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
+        prefetchClassifiedEmails(queryClient);
         return res;
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Prediction failed";

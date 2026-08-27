@@ -37,8 +37,6 @@ function DashboardLayout() {
     return null;
   }
 
-
-  // Show a full-screen loading spinner while the auth check is running
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">

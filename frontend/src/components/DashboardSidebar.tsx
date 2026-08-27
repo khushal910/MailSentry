@@ -1,4 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Wand2,
@@ -13,6 +14,7 @@ import { BrandLogo } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { prefetchClassifiedEmails } from "@/hooks/usePredictiveHistory";
 
 const links: Array<{
   to:
@@ -40,6 +42,13 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const handleLinkPrefetch = (to: string) => {
+    if (to === "/dashboard/history" || to === "/dashboard") {
+      prefetchClassifiedEmails(queryClient);
+    }
+  };
 
   return (
     <aside className="glass-strong sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-border/60 p-4 transition-colors duration-300">
@@ -59,6 +68,8 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               key={l.to}
               to={l.to}
               preload="intent"
+              onMouseEnter={() => handleLinkPrefetch(l.to)}
+              onFocus={() => handleLinkPrefetch(l.to)}
               onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",

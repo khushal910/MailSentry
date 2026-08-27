@@ -25,6 +25,7 @@ import { emailsApi, type UnclassifiedEmail } from "@/services/emailsApi";
 import { googleAuthApi } from "@/services/googleAuthApi";
 import { formatDate, truncate } from "@/utils/format";
 import { useDebounce } from "@/hooks/useDebounce";
+import { prefetchClassifiedEmails } from "@/hooks/usePredictiveHistory";
 import { HighlightText } from "@/components/HighlightText";
 import { GmailOpenButton } from "@/components/GmailOpenButton";
 import { getGmailUrl, openGmailInNewTab } from "@/utils/gmail";
@@ -231,10 +232,9 @@ function AutoClassifierPage() {
               setSearchTerm("");
               setPage(1);
 
-              // Force refetch and invalidate history query cache immediately!
-              await queryClient.resetQueries({ queryKey: ["history"] });
-              await queryClient.invalidateQueries({ queryKey: ["history"] });
-              await queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
+              // Proactively load classified emails and stats in the background so navigating
+              // to Classified Emails (or Dashboard) is completely instantaneous!
+              prefetchClassifiedEmails(queryClient);
 
               if (count > 0 && skipped === 0) {
                 toast.success(

@@ -1,6 +1,8 @@
 import { useEffect, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { emailsApi, type GetEmailsResponse } from "@/services/emailsApi";
+import { dashboardApi } from "@/services/dashboardApi";
+import { DASHBOARD_STATS_QUERY_KEY } from "./useDashboardStats";
 
 export interface UsePredictiveHistoryOptions {
   page: number;
@@ -8,6 +10,73 @@ export interface UsePredictiveHistoryOptions {
   label?: string;
   search?: string;
 }
+
+export const getHistoryQueryKey = (params: {
+  page: number;
+  limit?: number;
+  label?: string;
+  search?: string;
+}) => {
+  const activeLabel = params.label && params.label !== "all" ? params.label : undefined;
+  const activeSearch = params.search?.trim() ? params.search.trim() : undefined;
+  return [
+    "history",
+    {
+      page: params.page,
+      limit: params.limit ?? 10,
+      label: activeLabel,
+      search: activeSearch,
+    },
+  ];
+};
+
+/**
+ * Automatically loads classified emails and dashboard statistics in the background
+ * immediately after classification completes (or on navigation prefetch).
+ * This ensures the user experiences instant zero-delay loading when visiting Classified Emails.
+ */
+export const prefetchClassifiedEmails = (
+  queryClient: QueryClient,
+  options?: { limit?: number; page?: number }
+) => {
+  const page = options?.page ?? 1;
+  const limit = options?.limit ?? 15;
+
+  // Invalidate any active history queries to ensure stale state is marked
+  queryClient.invalidateQueries({ queryKey: ["history"] });
+  queryClient.invalidateQueries({ queryKey: DASHBOARD_STATS_QUERY_KEY });
+
+  // 1. Prefetch Classified Emails (default limit: 15 for history view)
+  const p1 = queryClient.prefetchQuery({
+    queryKey: ["history", { page, limit, label: undefined, search: undefined }],
+    queryFn: () =>
+      emailsApi.getEmails({
+        page,
+        limit,
+      }),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // 2. Prefetch Dashboard Home recent emails (limit: 8)
+  const p2 = queryClient.prefetchQuery({
+    queryKey: ["history", { page: 1, limit: 8, label: undefined, search: undefined }],
+    queryFn: () =>
+      emailsApi.getEmails({
+        page: 1,
+        limit: 8,
+      }),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // 3. Prefetch Dashboard Statistics
+  const p3 = queryClient.prefetchQuery({
+    queryKey: DASHBOARD_STATS_QUERY_KEY,
+    queryFn: () => dashboardApi.getStats(),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  return Promise.allSettled([p1, p2, p3]);
+};
 
 export function usePredictiveHistory({
   page,

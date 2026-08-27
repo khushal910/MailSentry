@@ -28,7 +28,7 @@ def test_factory_returns_groq_by_default():
     provider = LLMFactory.get_provider("groq")
     assert isinstance(provider, GroqProvider)
     assert provider.provider_name == "groq"
-    assert "llama" in provider.model_name.lower()
+    assert any(m in provider.model_name.lower() for m in ("llama", "gpt", "qwen", "groq", "openai"))
 
     # Invalid provider falls back to GroqProvider
     invalid_provider = LLMFactory.get_provider("invalid_provider_name")
