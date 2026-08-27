@@ -181,9 +181,8 @@ class Settings:
         FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8080")
 
         # LLM Provider & API Configs (Groq default, Gemini secondary)
-        LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower().strip()
-        GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-        GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+        GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b").strip()
 
         # Gemini API Config
         GEMINI_API_KEY = (

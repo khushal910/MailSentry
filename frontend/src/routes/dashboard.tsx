@@ -15,8 +15,6 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardLayout,
 });
 
-import { AiLoadingScreen } from "@/components/AiLoadingScreen";
-
 function DashboardLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const { isMaintenance, adminBypass } = useMaintenance();
@@ -39,13 +37,14 @@ function DashboardLayout() {
     return null;
   }
 
-  // Show the attractive AI loading screen while the auth check is running
   if (isLoading) {
     return (
-      <AiLoadingScreen
-        title="Loading Security Dashboard"
-        subtitle="Synchronizing email threat telemetry & model metrics..."
-      />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="relative h-12 w-12">
+          <div className="absolute inset-0 rounded-full border-4 border-muted" />
+          <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-brand" />
+        </div>
+      </div>
     );
   }
 

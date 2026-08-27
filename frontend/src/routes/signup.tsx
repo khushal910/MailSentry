@@ -38,8 +38,6 @@ interface FormValues {
   confirm: string;
 }
 
-import { AiLoadingScreen } from "@/components/AiLoadingScreen";
-
 function SignupPage() {
   const { signup, isAuthenticated, isLoading } = useAuth();
   const { isMaintenance } = useMaintenance();
@@ -108,12 +106,11 @@ function SignupPage() {
     window.location.href = `${backendUrl}/auth/google/login`;
   };
 
-  if (isLoading || isCreatingAccount || isGoogleLoading) {
+  if (isLoading) {
     return (
-      <AiLoadingScreen
-        title={isGoogleLoading ? "Connecting to Google OAuth" : "Configuring AI Protection"}
-        subtitle="Setting up your MailSentry guardian environment..."
-      />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader size={28} />
+      </div>
     );
   }
 

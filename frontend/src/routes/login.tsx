@@ -38,7 +38,6 @@ interface FormValues {
 }
 
 import { useMaintenance } from "@/context/MaintenanceContext";
-import { AiLoadingScreen } from "@/components/AiLoadingScreen";
 
 function LoginPage() {
   const { login, isAuthenticated, isLoading } = useAuth();
@@ -80,7 +79,7 @@ function LoginPage() {
       const res = await login(values.email, values.password);
       if (res.success) {
         const target = redirect && redirect.startsWith("/") ? redirect : "/dashboard";
-        await navigate({ to: target, replace: true });
+        navigate({ to: target, replace: true });
       } else {
         setIsAuthenticating(false);
         toast.error(res.message);
@@ -104,13 +103,11 @@ function LoginPage() {
     window.location.href = `${backendUrl}/auth/google/login`;
   };
 
-  // Show the attractive AI loading screen during authentication and initial session loading
-  if (isLoading || isAuthenticating || isGoogleLoading) {
+  if (isLoading) {
     return (
-      <AiLoadingScreen
-        title={isGoogleLoading ? "Connecting to Google OAuth" : "Authenticating Secure Session"}
-        subtitle="Verifying credentials & launching MailSentry AI engine..."
-      />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader size={28} />
+      </div>
     );
   }
 
@@ -184,10 +181,10 @@ function LoginPage() {
 
         <Button
           type="submit"
-          disabled={isSubmitting || isGoogleLoading}
+          disabled={isSubmitting || isAuthenticating || isGoogleLoading}
           className="w-full bg-gradient-brand shadow-elegant"
         >
-          {isSubmitting ? <Loader label="Signing in…" /> : "Sign in"}
+          {isSubmitting || isAuthenticating ? <Loader label="Signing in…" /> : "Sign in"}
         </Button>
 
         <div className="relative py-2">
