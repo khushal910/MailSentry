@@ -66,48 +66,56 @@ export function DashboardTopbar() {
         <Search className="h-5 w-5" />
       </button>
 
-      <div className="flex-1 md:hidden" />
+      {/* Spacer to push actions to the right */}
+      <div className="flex-1" />
 
-      <ThemeToggle />
+      <div className="flex items-center gap-2 md:gap-3">
+        <ThemeToggle />
 
-      <button className="relative rounded-lg p-2 text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors">
-        <Bell className="h-4 w-4" />
-        <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-brand" />
-      </button>
+        <button
+          onClick={() => navigate({ to: "/dashboard" })}
+          className="relative rounded-lg p-2 text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors"
+          aria-label="Notifications"
+          title="Notifications"
+        >
+          <Bell className="h-4 w-4" />
+          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-brand" />
+        </button>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger className="focus-visible:outline-none">
-          <Avatar className="h-8 w-8 border border-border/60 hover:ring-2 hover:ring-brand/40 transition-all">
-            <AvatarImage src={user?.avatarUrl} />
-            <AvatarFallback className="bg-brand/20 text-xs font-semibold text-foreground">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="text-xs">
-            <div className="font-medium">{user?.name ?? "Guest"}</div>
-            <div className="text-muted-foreground">{user?.email ?? "Not signed in"}</div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link to="/dashboard/profile">Profile</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/dashboard/settings">Settings</Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={async () => {
-              await logout();
-              navigate({ to: "/login" });
-            }}
-            className="text-destructive"
-          >
-            Log out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="focus-visible:outline-none rounded-full">
+            <Avatar className="h-8 w-8 border border-border/60 hover:ring-2 hover:ring-brand/40 transition-all cursor-pointer">
+              <AvatarImage src={user?.avatarUrl} />
+              <AvatarFallback className="bg-brand/20 text-xs font-semibold text-foreground">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="text-xs">
+              <div className="font-medium">{user?.name ?? "Guest"}</div>
+              <div className="text-muted-foreground truncate">{user?.email ?? "Not signed in"}</div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/dashboard/profile">Profile</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/dashboard/settings">Settings</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={async () => {
+                await logout();
+                navigate({ to: "/login" });
+              }}
+              className="text-destructive cursor-pointer"
+            >
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* Global Command Palette Search Modal */}
       <GlobalSearchModal {...searchState} />

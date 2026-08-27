@@ -1,10 +1,19 @@
 import { useState } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, X } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Bell, Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BrandLogo } from "./BrandLogo";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +28,16 @@ const links = [
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const initials =
+    user?.name
+      ?.split(" ")
+      .map((s) => s[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "MS";
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/60 backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-300 shadow-soft">
@@ -58,14 +76,56 @@ export function Navbar() {
 
         <div className="hidden items-center gap-3 md:flex">
           <ThemeToggle />
+
           {isAuthenticated ? (
-            <Button
-              asChild
-              size="sm"
-              className="bg-gradient-brand shadow-elegant btn-gradient-glow font-semibold"
-            >
-              <Link to="/dashboard" preload="intent">Dashboard</Link>
-            </Button>
+            <>
+              <button
+                onClick={() => navigate({ to: "/dashboard" })}
+                className="relative rounded-lg p-2 text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors"
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <Bell className="h-4 w-4" />
+                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-brand" />
+              </button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger className="focus-visible:outline-none rounded-full">
+                  <Avatar className="h-8 w-8 border border-border/60 hover:ring-2 hover:ring-brand/40 transition-all cursor-pointer">
+                    <AvatarImage src={user?.avatarUrl} />
+                    <AvatarFallback className="bg-brand/20 text-xs font-semibold text-foreground">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="text-xs">
+                    <div className="font-medium">{user?.name ?? "Guest"}</div>
+                    <div className="text-muted-foreground truncate">{user?.email ?? "Not signed in"}</div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/profile">Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/settings">Settings</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={async () => {
+                      await logout();
+                      navigate({ to: "/login" });
+                    }}
+                    className="text-destructive cursor-pointer"
+                  >
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           ) : (
             <>
               <Button asChild variant="ghost" size="sm" className="hover:bg-accent/50">
@@ -84,6 +144,14 @@ export function Navbar() {
 
         <div className="flex items-center gap-2 md:hidden">
           <ThemeToggle />
+          {isAuthenticated && (
+            <Avatar className="h-7 w-7 border border-border/60">
+              <AvatarImage src={user?.avatarUrl} />
+              <AvatarFallback className="bg-brand/20 text-[10px] font-semibold text-foreground">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          )}
           <button
             onClick={() => setOpen((v) => !v)}
             className="rounded-lg p-2 text-foreground hover:bg-accent/50"
@@ -113,15 +181,53 @@ export function Navbar() {
                   {l.label}
                 </Link>
               ))}
-              <div className="mt-2 flex gap-2 border-t border-border/60 pt-3">
+              <div className="mt-2 flex flex-col gap-2 border-t border-border/60 pt-3">
                 {isAuthenticated ? (
-                  <Button asChild size="sm" className="w-full bg-gradient-brand btn-gradient-glow">
-                    <Link to="/dashboard" onClick={() => setOpen(false)}>
-                      Dashboard
-                    </Link>
-                  </Button>
-                ) : (
                   <>
+                    <div className="flex items-center gap-3 px-2 py-2">
+                      <Avatar className="h-8 w-8 border border-border/60">
+                        <AvatarImage src={user?.avatarUrl} />
+                        <AvatarFallback className="bg-brand/20 text-xs font-semibold text-foreground">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="text-xs">
+                        <div className="font-medium text-foreground">{user?.name ?? "User"}</div>
+                        <div className="text-muted-foreground truncate max-w-[200px]">{user?.email ?? ""}</div>
+                      </div>
+                    </div>
+                    <Button asChild size="sm" className="w-full bg-gradient-brand btn-gradient-glow">
+                      <Link to="/dashboard" onClick={() => setOpen(false)}>
+                        Dashboard
+                      </Link>
+                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button asChild variant="outline" size="sm">
+                        <Link to="/dashboard/profile" onClick={() => setOpen(false)}>
+                          Profile
+                        </Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm">
+                        <Link to="/dashboard/settings" onClick={() => setOpen(false)}>
+                          Settings
+                        </Link>
+                      </Button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10 justify-start px-2"
+                      onClick={async () => {
+                        setOpen(false);
+                        await logout();
+                        navigate({ to: "/login" });
+                      }}
+                    >
+                      Log out
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex gap-2">
                     <Button asChild variant="outline" size="sm" className="flex-1">
                       <Link to="/login" onClick={() => setOpen(false)}>
                         Login
@@ -136,7 +242,7 @@ export function Navbar() {
                         Sign up
                       </Link>
                     </Button>
-                  </>
+                  </div>
                 )}
               </div>
             </div>

@@ -45,6 +45,7 @@ function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
 
   useEffect(() => {
     if (isMaintenance) {
@@ -79,15 +80,18 @@ function SignupPage() {
   const password = watch("password");
 
   const onSubmit = async (values: FormValues) => {
+    setIsCreatingAccount(true);
     try {
       const res = await signup(values.name, values.email, values.password);
       if (res.success) {
         toast.success(res.message);
-        navigate({ to: "/dashboard", replace: true });
+        await navigate({ to: "/dashboard", replace: true });
       } else {
+        setIsCreatingAccount(false);
         toast.error(res.message);
       }
     } catch (e) {
+      setIsCreatingAccount(false);
       toast.error(e instanceof Error ? e.message : "Sign up failed");
     }
   };
@@ -105,10 +109,7 @@ function SignupPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="relative h-12 w-12">
-          <div className="absolute inset-0 rounded-full border-4 border-muted" />
-          <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-brand" />
-        </div>
+        <Loader size={28} />
       </div>
     );
   }
