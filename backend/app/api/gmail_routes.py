@@ -81,6 +81,17 @@ async def start_classify_job(
     user_id = str(current_user["_id"])
     from app.core.config import settings
 
+    job_service = JobService()
+
+    # If a job is already actively running for this user, return it directly so the client connects to it
+    active_job = job_service.get_active_job(user_id=user_id)
+    if active_job:
+        return return_response(
+            status_code=status.HTTP_200_OK,
+            message="Classification job already in progress",
+            data=active_job.to_dict(),
+        )
+
     emails_to_process = payload.emails if (payload and payload.emails) else []
 
     # If no emails provided in payload and Google account is not connected -> require connection
@@ -92,7 +103,6 @@ async def start_classify_job(
     default_max = int(getattr(settings, "FETCH_MAX_RESULTS", 50))
     total_count = len(emails_to_process) if emails_to_process else default_max
 
-    job_service = JobService()
     job = job_service.create_job(user_id=user_id, total=total_count)
 
     background_tasks.add_task(
@@ -107,6 +117,25 @@ async def start_classify_job(
         status_code=status.HTTP_202_ACCEPTED,
         message="Classification job started",
         data=job.to_dict(),
+    )
+
+
+@gmail_router.get("/active-job", summary="Get currently running classification job for user")
+async def get_active_job(
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    GET /api/gmail/active-job
+    Returns the currently running classification job for the user, or null if none is active.
+    Allows clients to seamlessly resume progress tracking across page reloads and route changes.
+    """
+    user_id = str(current_user["_id"])
+    job_service = JobService()
+    active = job_service.get_active_job(user_id=user_id)
+    return return_response(
+        status_code=status.HTTP_200_OK,
+        message="Active job retrieved" if active else "No active job",
+        data=active.to_dict() if active else None,
     )
 
 
