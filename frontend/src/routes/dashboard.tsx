@@ -1,9 +1,12 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { DashboardTopbar } from "@/components/DashboardTopbar";
 import { useAuth } from "@/context/AuthContext";
 import { useMaintenance } from "@/context/MaintenanceContext";
+import { prefetchUnclassifiedEmails } from "@/hooks/useUnclassifiedQueue";
+import { prefetchClassifiedEmails } from "@/hooks/usePredictiveHistory";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -19,6 +22,24 @@ function DashboardLayout() {
   const { isAuthenticated, isLoading } = useAuth();
   const { isMaintenance, adminBypass } = useMaintenance();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const hasPrefetchedRef = useRef(false);
+
+  // Proactively and silently fetch emails in the background upon login
+  // NEVER blocks navigation, UI rendering, or other dashboard services
+  useEffect(() => {
+    if (isAuthenticated && !isLoading && !hasPrefetchedRef.current) {
+      hasPrefetchedRef.current = true;
+      void prefetchUnclassifiedEmails(queryClient);
+      void prefetchClassifiedEmails(queryClient);
+    }
+  }, [isAuthenticated, isLoading, queryClient]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      hasPrefetchedRef.current = false;
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isMaintenance && (!adminBypass || !isAuthenticated)) {

@@ -26,6 +26,7 @@ import { googleAuthApi } from "@/services/googleAuthApi";
 import { formatDate, truncate } from "@/utils/format";
 import { useDebounce } from "@/hooks/useDebounce";
 import { prefetchClassifiedEmails } from "@/hooks/usePredictiveHistory";
+import { useUnclassifiedQueue } from "@/hooks/useUnclassifiedQueue";
 import { HighlightText } from "@/components/HighlightText";
 import { GmailOpenButton } from "@/components/GmailOpenButton";
 import { getGmailUrl, openGmailInNewTab } from "@/utils/gmail";
@@ -59,8 +60,15 @@ function AutoClassifierPage() {
     }
   };
 
-  const [pageState, setPageState] = useState<PageState>("loading");
-  const [isFetching, setIsFetching] = useState(false);
+  const [pageState, setPageState] = useState<PageState>("ready");
+  const {
+    emails: unclassifiedEmails,
+    isFetching: isQueueFetching,
+    setEmails: setUnclassifiedEmails,
+    fetchQueue,
+  } = useUnclassifiedQueue();
+  const [isManualFetching, setIsManualFetching] = useState(false);
+  const isFetching = isQueueFetching || isManualFetching;
   const [isClassifying, setIsClassifying] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState<{
@@ -77,22 +85,17 @@ function AutoClassifierPage() {
   const debouncedSearch = useDebounce(searchTerm, 300);
   const [page, setPage] = useState(1);
 
-  // Auto Classifier strictly represents the queue of UNCLASSIFIED emails (max 50 new)
-  const [unclassifiedEmails, setUnclassifiedEmails] = useState<UnclassifiedEmail[]>([]);
-
   const isJobActiveRef = useRef(false);
   const activeJobIdRef = useRef<string | null>(null);
   // PRODUCTION FIX: Snapshot email count at classification start to avoid stale closures
   const classifySnapshotRef = useRef<{ total: number; emails: UnclassifiedEmail[] }>({ total: 0, emails: [] });
 
-  /* ─── Fetch unclassified emails from Gmail ─── */
+  /* ─── Fetch unclassified emails from Gmail on explicit user action ─── */
   const triggerFetch = useCallback(async () => {
-    setIsFetching(true);
+    setIsManualFetching(true);
     setFetchError(null);
     try {
-      const result = await emailsApi.fetchUnclassifiedEmails();
-      const newItems = result.unclassified_emails || [];
-      setUnclassifiedEmails(newItems);
+      const newItems = await fetchQueue();
       setPage(1);
 
       if (newItems.length > 0) {
@@ -117,9 +120,9 @@ function AutoClassifierPage() {
         setFetchError(msg);
       }
     } finally {
-      setIsFetching(false);
+      setIsManualFetching(false);
     }
-  }, []);
+  }, [fetchQueue]);
 
   /* ─── Classify displayed unclassified emails ─── */
   const handleClassify = async () => {
@@ -361,32 +364,18 @@ function AutoClassifierPage() {
     return filteredEmails.slice(start, start + PAGE_SIZE);
   }, [filteredEmails, page]);
 
-  /* ─── on mount: check Gmail status, then fetch unclassified queue ─── */
+  /* ─── on mount: verify Gmail connection status quietly in background ─── */
   useEffect(() => {
     let isMounted = true;
 
     (async () => {
       try {
-        // PRODUCTION FIX: Skip re-fetching if a classification job is already active.
-        // Without this guard, refreshing the page mid-classification triggers a fresh
-        // Gmail fetch. Emails that were already classified get filtered out server-side,
-        // making them "disappear" from the queue without any progress bar feedback.
-        if (isJobActiveRef.current) {
-          setPageState("ready");
-          return;
-        }
-
-        setPageState("loading");
         const status = await googleAuthApi.getStatus();
         if (!isMounted) return;
         if (!status.connected) {
           setPageState("gmail-not-connected");
-          return;
-        }
-
-        await triggerFetch();
-        if (isMounted) {
-          setPageState((prev) => (prev === "gmail-not-connected" ? prev : "ready"));
+        } else {
+          setPageState("ready");
         }
       } catch (err) {
         if (!isMounted) return;
@@ -394,8 +383,6 @@ function AutoClassifierPage() {
         const lower = msg.toLowerCase();
         if (lower.includes("not connected") || lower.includes("connect google")) {
           setPageState("gmail-not-connected");
-        } else {
-          setPageState("error");
         }
       }
     })();
@@ -405,17 +392,9 @@ function AutoClassifierPage() {
       isJobActiveRef.current = false;
       activeJobIdRef.current = null;
     };
-  }, [triggerFetch]);
+  }, []);
 
   /* ─── render states ─── */
-
-  if (pageState === "loading") {
-    return (
-      <PageTransition>
-        <LoadingState message="Connecting to Gmail & fetching unclassified email queue…" />
-      </PageTransition>
-    );
-  }
 
   if (pageState === "gmail-not-connected") {
     return (
@@ -431,8 +410,8 @@ function AutoClassifierPage() {
         <ErrorState
           message="Something went wrong loading the page."
           onRetry={() => {
-            setPageState("loading");
-            void triggerFetch().then(() => setPageState("ready"));
+            setPageState("ready");
+            void triggerFetch();
           }}
         />
       </PageTransition>
@@ -628,18 +607,6 @@ function AutoClassifierPage() {
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={handleClassify}
-                  disabled={isClassifying || isFetching}
-                  className="bg-gradient-brand text-xs shadow-elegant font-semibold"
-                >
-                  <Wand2 className="mr-1.5 h-3.5 w-3.5" />
-                  Classify All ({unclassifiedEmails.length})
-                </Button>
               </div>
             </div>
           )}

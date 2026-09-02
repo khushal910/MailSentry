@@ -509,13 +509,15 @@ class GmailFetchService:
         """
         headers = {"Authorization": f"Bearer {access_token}"}
         target_max_results = int(getattr(settings, "FETCH_MAX_RESULTS", 50))
-        message_summaries = []
         page_token = None
+        new_msg_ids: list[str] = []
+        max_scan = max(500, target_max_results * 5)
+        scanned_count = 0
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                while len(message_summaries) < target_max_results:
-                    remaining = target_max_results - len(message_summaries)
+                while len(new_msg_ids) < target_max_results and scanned_count < max_scan:
+                    remaining = target_max_results - len(new_msg_ids)
                     page_size = min(remaining, 500)
                     url_list = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults={page_size}&includeSpamTrash=true"
                     if page_token:
@@ -533,25 +535,21 @@ class GmailFetchService:
                     if not page_messages:
                         break
 
-                    message_summaries.extend(page_messages)
+                    scanned_count += len(page_messages)
+                    page_msg_ids = [m.get("id") for m in page_messages if m.get("id")]
+                    if page_msg_ids:
+                        existing_ids = self.email_repo.get_existing_message_ids(
+                            user_id, page_msg_ids
+                        )
+                        for m_id in page_msg_ids:
+                            if m_id not in existing_ids and m_id not in new_msg_ids:
+                                new_msg_ids.append(m_id)
+                                if len(new_msg_ids) >= target_max_results:
+                                    break
+
                     page_token = data.get("nextPageToken")
                     if not page_token:
                         break
-
-                if not message_summaries:
-                    return []
-
-                all_msg_ids = [
-                    item.get("id") for item in message_summaries if item.get("id")
-                ]
-                if not all_msg_ids:
-                    return []
-
-                # Batch check database in 1 single query instead of N sequential queries
-                existing_ids = self.email_repo.get_existing_message_ids(
-                    user_id, all_msg_ids
-                )
-                new_msg_ids = [m_id for m_id in all_msg_ids if m_id not in existing_ids]
 
                 if not new_msg_ids:
                     return []
