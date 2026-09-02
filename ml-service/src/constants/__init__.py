@@ -18,9 +18,12 @@ FETCH_REAL_USER_DATA: bool = os.getenv("FETCH_REAL_USER_DATA", "false").lower() 
 # Data Ingestion related constant start with DATA_INGESTION VAR NAME
 DATA_INGESTION_COLLECTION_NAME: str = COLLECTION_NAME
 DATA_INGESTION_DIR_NAME: str = "data_ingestion"
-DATA_INGESTION_FEATURE_STORE_DIR: str = "feature_store"
-DATA_INGESTION_INGESTED_DIR: str = "ingested"
+DATA_INGESTION_OLD_DATA_DIR: str = "old_data"
+DATA_INGESTION_NEW_DATA_DIR: str = "new_data"
+DATA_INGESTION_COMBINE_DATA_DIR: str = "combine_data"
+DATA_INGESTION_TRAIN_TEST_SPLIT_DIR: str = "combine_train_test_split"
 DATA_INGESTION_TRAIN_TEST_SPLIT_RATIO: float = 0.25
+OLD_DATA_FILE_NAME: str = "old_data.csv"
 REAL_USER_CURATED_FILE_NAME: str = "real_user_curated.csv"
 INGESTION_STATE_FILE_NAME: str = "ingestion_state.json"
 

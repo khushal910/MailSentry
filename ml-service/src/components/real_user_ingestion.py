@@ -89,6 +89,33 @@ class RealUserIngestion:
             state_file_path = self.config.ingestion_state_file_path
             schema_cols = ["Message ID", "Subject", "Message", "Spam/Ham", "Date"]
 
+            # Migrate legacy files if present (from root or previous real_user/ folder) into new_data/
+            legacy_curated_candidates = [
+                os.path.join(self.config.data_ingestion_dir, "real_user", "real_user_curated.csv"),
+                os.path.join(self.config.data_ingestion_dir, "real_user_curated.csv"),
+            ]
+            legacy_state_candidates = [
+                os.path.join(self.config.data_ingestion_dir, "real_user", "ingestion_state.json"),
+                os.path.join(self.config.data_ingestion_dir, "ingestion_state.json"),
+            ]
+            if not os.path.exists(curated_path):
+                for cand in legacy_curated_candidates:
+                    if os.path.exists(cand):
+                        import shutil
+                        os.makedirs(os.path.dirname(curated_path), exist_ok=True)
+                        shutil.copy2(cand, curated_path)
+                        logger.info(f"Migrated legacy curated dataset from {cand} to {curated_path}")
+                        break
+
+            if not os.path.exists(state_file_path):
+                for cand in legacy_state_candidates:
+                    if os.path.exists(cand):
+                        import shutil
+                        os.makedirs(os.path.dirname(state_file_path), exist_ok=True)
+                        shutil.copy2(cand, state_file_path)
+                        logger.info(f"Migrated legacy state checkpoint from {cand} to {state_file_path}")
+                        break
+
             # Load existing curated real-user dataset if present
             existing_curated_df = DataFrame(columns=schema_cols)
 

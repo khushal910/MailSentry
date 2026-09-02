@@ -10,17 +10,21 @@ stages:
       - src/data_access/fetch_data.py
 
     outs:
-      - artifact/data_ingestion/feature_store/data.csv
-      - artifact/data_ingestion/ingested/train.csv
-      - artifact/data_ingestion/ingested/test.csv
+      - artifact/data_ingestion/old_data/old_data.csv:
+          persist: true
+      - artifact/data_ingestion/new_data/real_user_curated.csv:
+          persist: true
+      - artifact/data_ingestion/combine_data/data.csv
+      - artifact/data_ingestion/combine_train_test_split/train.csv
+      - artifact/data_ingestion/combine_train_test_split/test.csv
 
   data_transformation:
 
     cmd: python -m src.components.data_transformation
 
     deps:
-      - artifact/data_ingestion/ingested/train.csv
-      - artifact/data_ingestion/ingested/test.csv
+      - artifact/data_ingestion/combine_train_test_split/train.csv
+      - artifact/data_ingestion/combine_train_test_split/test.csv
       - src/components/data_transformation.py
       - config/schema.yaml
    

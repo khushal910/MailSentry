@@ -191,7 +191,7 @@ class BackendModelStorage:
         norm_auc = _normalize_metric_val(raw_auc, 99.93)
 
         defaults = {
-            "version": "v1.0.0",
+            "version": data.get("version") or "v1.0.0",
             "model_name": data.get("model_name", "LinearSVC"),
             "algorithm": data.get(
                 "algorithm", data.get("model_name", "Linear Support Vector Classifier")

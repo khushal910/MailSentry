@@ -159,24 +159,42 @@ class ModelRegistry:
             metadata.score,
         )
 
-        # Step 5: Sync directly into backend/models/ (independent backend storage)
+        # Step 5: Sync directly into backend/models/ and ml-service/models (independent backend storage)
         try:
+            backend_storage_file = os.path.abspath(
+                os.path.join(self.root, "..", "backend", "app", "services", "backend_model_storage.py")
+            )
             backend_models_dir = os.path.abspath(
                 os.path.join(self.root, "..", "backend", "models")
             )
-            if os.path.exists(os.path.dirname(backend_models_dir)):
-                # Import BackendModelStorage dynamically
-                import sys
-                backend_path = os.path.abspath(os.path.join(self.root, "..", "backend"))
-                if backend_path not in sys.path:
-                    sys.path.insert(0, backend_path)
-                from app.services.backend_model_storage import BackendModelStorage
-                b_storage = BackendModelStorage(models_dir=backend_models_dir)
-                b_storage.promote_new_version(
-                    new_artifacts_dir=self.champion_path,
-                    new_metadata=metadata.to_dict(),
-                )
-                logger.info("Synced new champion promotion to backend/models storage.")
+            ml_service_models_dir = os.path.abspath(
+                os.path.join(self.root, "..", "ml-service", "models")
+            )
+
+            if os.path.exists(backend_storage_file):
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("backend_storage_sync_mod", backend_storage_file)
+                if spec and spec.loader:
+                    backend_storage_sync_mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(backend_storage_sync_mod)
+                    BackendModelStorage = backend_storage_sync_mod.BackendModelStorage
+
+                    # Sync to backend/models
+                    b_storage = BackendModelStorage(models_dir=backend_models_dir)
+                    b_storage.promote_new_version(
+                        new_artifacts_dir=self.champion_path,
+                        new_metadata=metadata.to_dict(),
+                    )
+
+                    # Also sync to ml-service/models
+                    if os.path.exists(ml_service_models_dir):
+                        ml_storage = BackendModelStorage(models_dir=ml_service_models_dir)
+                        ml_storage.promote_new_version(
+                            new_artifacts_dir=self.champion_path,
+                            new_metadata=metadata.to_dict(),
+                        )
+
+                    logger.info("Synced new champion promotion to backend/models and ml-service/models storage.")
         except Exception as sync_err:
             logger.warning("Failed to sync model to backend/models storage: %s", sync_err)
 

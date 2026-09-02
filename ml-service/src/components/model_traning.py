@@ -511,7 +511,7 @@ class ModelTrainer:
                         log_model_to_mlflow(
                             model_name=winner.name,
                             model=winner.model,
-                            params=winner.hyperparameters,
+                            params=getattr(winner, "params", getattr(winner, "hyperparameters", {})),
                             metrics=winner.metrics,
                             preprocessor_path=self.transform_config.preprocessor_file,
                             label_encoder_path=self.transform_config.label_encoder_file_path,

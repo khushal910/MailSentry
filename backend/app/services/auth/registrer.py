@@ -22,13 +22,16 @@ async def register_user(user: UserRegisterSchema, response: Response):
     try:
         username, email, password = user.username, user.email, user.password
 
-        val = validate_email(email)
-        if not val["is_valid"]:
-            return return_response(status_code=400, message=val["message"])
+        if not validate_email(email):
+            return return_response(status_code=400, message="Invalid email address format")
 
-        val_pw = validate_password_strength(password)
-        if not val_pw["is_valid"]:
-            return return_response(status_code=400, message=val_pw["message"])
+        if not validate_password_strength(password):
+            pwd_msg = (
+                f"Password must be at least {settings.PASSWORD_LENGTH} characters long and include at least one uppercase letter, one lowercase letter, and one number"
+                if settings.PASSWORD_RULE_APPLY
+                else f"Password must be at least {settings.PASSWORD_LENGTH} characters long"
+            )
+            return return_response(status_code=400, message=pwd_msg)
 
         db = get_database()
         users_col = db[settings.USER_COLLECTION_NAME]

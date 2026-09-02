@@ -177,13 +177,10 @@ def decode_token(token: str) -> dict:
 
 def validate_email(email: str) -> bool:
     """Simple email format validation."""
-
     try:
         return re.match(r"^[^@]+@[^@]+\.[^@]+$", email) is not None
-    except Exception as e:
-        return return_response(
-            status_code=500, message=f"Error validating email: {e!s}"
-        )
+    except Exception:
+        return False
 
 
 def validate_password_strength(password: str) -> bool:
@@ -202,10 +199,8 @@ def validate_password_strength(password: str) -> bool:
             if not re.search(r"\d", password):
                 return False
         return True
-    except Exception as e:
-        return return_response(
-            status_code=500, message=f"Error validating password strength: {e!s}"
-        )
+    except Exception:
+        return False
 
 
 def return_response(status_code: int, message: str, data: dict = None):

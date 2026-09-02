@@ -25,7 +25,7 @@ To enable incremental real user email data ingestion from MongoDB 2:
 
 ### Environment Variable
 - `FETCH_REAL_USER_DATA=false` (Default): Pipeline ingests Kaggle baseline dataset from MongoDB 1 only.
-- `FETCH_REAL_USER_DATA=true`: Incrementally fetches new real-user emails from MongoDB 2 (`_id > last_processed_id`), deduplicates against existing records, appends valid records to `artifact/data_ingestion/real_user_curated.csv`, and trains on **Kaggle Baseline + Accumulated Real User Dataset**.
+- `FETCH_REAL_USER_DATA=true`: Incrementally fetches new real-user emails from MongoDB 2 (`_id > last_processed_id`), deduplicates against existing records, appends valid records to `artifact/data_ingestion/real_user/real_user_curated.csv`, and trains on **Kaggle Baseline + Accumulated Real User Dataset**.
 
 ### Weekly Retraining Command
 
