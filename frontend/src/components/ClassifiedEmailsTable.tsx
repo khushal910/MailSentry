@@ -67,21 +67,79 @@ export const ClassifiedEmailsTable: React.FC<ClassifiedEmailsTableProps> = ({
   };
 
   if (isLoading) {
+    const rowCount = isCompact ? 5 : Math.min(pageSize, 8);
+    const skeletonRows = Array.from({ length: rowCount });
+
     return (
-      <div className="py-12 space-y-3">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-muted/20 animate-pulse border border-border/30"
-          >
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="h-4 w-20 rounded bg-muted/60" />
-              <div className="h-4 w-48 rounded bg-muted/80" />
-            </div>
-            <div className="h-6 w-20 rounded-full bg-muted/40" />
-            <div className="h-4 w-12 rounded bg-muted/50" />
-          </div>
-        ))}
+      <div className="w-full overflow-x-auto">
+        {/* Subtle top indicator bar */}
+        <div className="relative mb-3 h-1 w-full overflow-hidden rounded-full bg-muted/40">
+          <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-transparent via-primary/60 to-transparent animate-pulse" />
+        </div>
+
+        <table className="w-full min-w-[640px] text-sm">
+          <thead>
+            <tr className="border-b border-border/60 text-xs uppercase tracking-wider text-muted-foreground">
+              {!isCompact && <th className="pb-3 text-left font-medium w-[5%] pl-2">#</th>}
+              <th className={`pb-3 text-left font-medium ${isCompact ? "w-[22%]" : "w-[16%]"}`}>
+                {isCompact ? "Date" : "Email Sent Date"}
+              </th>
+              <th className={`pb-3 text-left font-medium ${isCompact ? "w-[42%]" : "w-[26%]"}`}>
+                Subject
+              </th>
+              {!isCompact && <th className="pb-3 text-left font-medium w-[24%]">Snippet</th>}
+              <th className={`pb-3 text-left font-medium ${isCompact ? "w-[18%]" : "w-[13%]"}`}>
+                Category
+              </th>
+              <th className={`pb-3 text-left font-medium ${isCompact ? "w-[10%]" : "w-[9%]"}`}>
+                Score
+              </th>
+              <th className={`pb-3 text-center font-medium ${isCompact ? "w-[8%]" : "w-[7%]"}`}>
+                Open
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/30">
+            {skeletonRows.map((_, i) => (
+              <tr key={i} className="border-b border-border/30 last:border-0">
+                {!isCompact && (
+                  <td className="py-3.5 pl-2">
+                    <div className="h-4 w-4 rounded bg-muted/50 animate-pulse" />
+                  </td>
+                )}
+                <td className="py-3.5 pr-2">
+                  <div className="h-4 w-24 rounded-md bg-muted/60 animate-pulse" />
+                </td>
+                <td className="py-3.5 pr-3">
+                  <div className="space-y-1.5">
+                    <div
+                      className="h-4 rounded-md bg-muted/80 animate-pulse"
+                      style={{ width: `${Math.max(50, ((i * 37 + 53) % 45) + 50)}%` }}
+                    />
+                    <div className="h-3 w-40 rounded bg-muted/40 animate-pulse" />
+                  </div>
+                </td>
+                {!isCompact && (
+                  <td className="py-3.5 pr-3">
+                    <div
+                      className="h-3.5 rounded bg-muted/50 animate-pulse"
+                      style={{ width: `${Math.max(45, ((i * 29 + 61) % 40) + 55)}%` }}
+                    />
+                  </td>
+                )}
+                <td className="py-3.5 pr-2 whitespace-nowrap">
+                  <div className="h-6 w-20 rounded-full bg-muted/60 animate-pulse" />
+                </td>
+                <td className="py-3.5 whitespace-nowrap">
+                  <div className="h-4 w-12 rounded-md bg-muted/50 animate-pulse" />
+                </td>
+                <td className="py-3.5 text-center">
+                  <div className="mx-auto h-7 w-7 rounded-lg bg-muted/40 animate-pulse" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }
