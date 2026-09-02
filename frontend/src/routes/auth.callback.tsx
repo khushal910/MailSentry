@@ -1,8 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import apiClient from "@/services/apiClient";
 import { useAuth } from "@/context/AuthContext";
+import { prefetchUnclassifiedEmails } from "@/hooks/useUnclassifiedQueue";
+import { prefetchClassifiedEmails } from "@/hooks/usePredictiveHistory";
 
 /**
  * /auth/callback
@@ -29,6 +32,7 @@ export const Route = createFileRoute("/auth/callback")({
 
 function OAuthCallbackPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { refresh } = useAuth();
   const handled = useRef(false);
 
@@ -68,6 +72,10 @@ function OAuthCallbackPage() {
 
         // Step 2: Re-fetch the user so AuthContext is populated with the logged-in user.
         await refresh();
+
+        // Silent background prefetching — does not block navigation or UI
+        void prefetchUnclassifiedEmails(queryClient);
+        void prefetchClassifiedEmails(queryClient);
 
         // Step 3: Navigate to dashboard smoothly using SPA router replace
         navigate({ to: "/dashboard", replace: true });

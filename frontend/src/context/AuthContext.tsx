@@ -11,6 +11,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { authApi, type AuthUser } from "../services/authApi";
 import { setSessionExpiredHandler } from "../services/apiClient";
 import { SessionExpiredModal } from "@/components/SessionExpiredModal";
+import { prefetchUnclassifiedEmails } from "@/hooks/useUnclassifiedQueue";
+import { prefetchClassifiedEmails } from "@/hooks/usePredictiveHistory";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -114,10 +116,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setIsSessionExpired(false);
         await refresh();
+        // Silent background prefetching — does not block navigation, auth, or other services
+        void prefetchUnclassifiedEmails(queryClient);
+        void prefetchClassifiedEmails(queryClient);
       }
       return { success: res.success, message: res.message };
     },
-    [refresh],
+    [refresh, queryClient],
   );
 
   const signup = useCallback(
@@ -132,10 +137,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setIsSessionExpired(false);
         await refresh();
+        // Silent background prefetching — does not block navigation, auth, or other services
+        void prefetchUnclassifiedEmails(queryClient);
+        void prefetchClassifiedEmails(queryClient);
       }
       return { success: res.success, message: res.message };
     },
-    [refresh],
+    [refresh, queryClient],
   );
 
   const logout = useCallback(async () => {
