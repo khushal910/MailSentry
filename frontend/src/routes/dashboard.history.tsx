@@ -83,10 +83,12 @@ function HistoryPage() {
           </div>
         </div>
 
-        {isFetching && !isLoading && (
+        {(isFetching || isLoading) && (
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary shadow-sm">
             <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-            <span className="hidden sm:inline">Syncing Emails</span>
+            <span className="hidden sm:inline">
+              {isLoading ? "Loading Classified Emails..." : "Syncing Emails"}
+            </span>
           </div>
         )}
       </div>
@@ -162,7 +164,15 @@ function HistoryPage() {
         </div>
 
         {/* Pagination Bar */}
-        {!isLoading && totalCount > 0 && (
+        {isLoading ? (
+          <div className="mt-5 flex items-center justify-between border-t border-border/40 pt-4 text-xs text-muted-foreground animate-pulse">
+            <div className="h-4 w-32 rounded bg-muted/50" />
+            <div className="flex gap-2">
+              <div className="h-8 w-18 rounded-md bg-muted/40" />
+              <div className="h-8 w-14 rounded-md bg-muted/40" />
+            </div>
+          </div>
+        ) : totalCount > 0 ? (
           <div className="mt-5 flex items-center justify-between border-t border-border/40 pt-4 text-xs text-muted-foreground">
             <span>
               Page {page} of {pageCount} · {totalCount} total email
@@ -187,7 +197,7 @@ function HistoryPage() {
               </Button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </PageTransition>
   );
