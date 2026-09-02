@@ -510,16 +510,15 @@ class GmailFetchService:
         headers = {"Authorization": f"Bearer {access_token}"}
         target_max_results = int(getattr(settings, "FETCH_MAX_RESULTS", 50))
         page_token = None
-        new_msg_ids: list[str] = []
-        max_scan = max(500, target_max_results * 5)
-        scanned_count = 0
+        candidate_msg_ids: list[str] = []
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                while len(new_msg_ids) < target_max_results and scanned_count < max_scan:
-                    remaining = target_max_results - len(new_msg_ids)
+                # Fetch up to target_max_results of the latest messages from Gmail (current dates first)
+                while len(candidate_msg_ids) < target_max_results:
+                    remaining = target_max_results - len(candidate_msg_ids)
                     page_size = min(remaining, 500)
-                    url_list = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults={page_size}&includeSpamTrash=true"
+                    url_list = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults={page_size}"
                     if page_token:
                         url_list += f"&pageToken={page_token}"
 
@@ -535,21 +534,25 @@ class GmailFetchService:
                     if not page_messages:
                         break
 
-                    scanned_count += len(page_messages)
-                    page_msg_ids = [m.get("id") for m in page_messages if m.get("id")]
-                    if page_msg_ids:
-                        existing_ids = self.email_repo.get_existing_message_ids(
-                            user_id, page_msg_ids
-                        )
-                        for m_id in page_msg_ids:
-                            if m_id not in existing_ids and m_id not in new_msg_ids:
-                                new_msg_ids.append(m_id)
-                                if len(new_msg_ids) >= target_max_results:
-                                    break
+                    for m in page_messages:
+                        mid = m.get("id")
+                        if mid and mid not in candidate_msg_ids:
+                            candidate_msg_ids.append(mid)
+                            if len(candidate_msg_ids) >= target_max_results:
+                                break
 
                     page_token = data.get("nextPageToken")
                     if not page_token:
                         break
+
+                if not candidate_msg_ids:
+                    return []
+
+                # Filter out messages that already exist in MongoDB
+                existing_ids = self.email_repo.get_existing_message_ids(
+                    user_id, candidate_msg_ids
+                )
+                new_msg_ids = [m_id for m_id in candidate_msg_ids if m_id not in existing_ids]
 
                 if not new_msg_ids:
                     return []
@@ -626,6 +629,12 @@ class GmailFetchService:
                 tasks = [_fetch_one_details(msg_id) for msg_id in new_msg_ids]
                 fetched_results = await asyncio.gather(*tasks)
                 new_raw_emails = [res for res in fetched_results if res is not None]
+
+                # Ensure newest emails are always first
+                new_raw_emails.sort(
+                    key=lambda x: str(x.get("sent_at") or x.get("received_at") or ""),
+                    reverse=True,
+                )
 
                 return new_raw_emails
         except Exception as err:

@@ -316,16 +316,22 @@ class EmailRepository:
         """
         Returns a set of message_ids from the given list that already exist in MongoDB for the user.
         Uses a single $in batch query instead of N individual database queries.
+        Supports both string and ObjectId user_id formats for robust MongoDB compatibility.
         """
         if not message_ids:
             return set()
         clean_ids = [str(m).strip() for m in message_ids if str(m).strip()]
         if not clean_ids:
             return set()
-        query = {"user_id": str(user_id), "message_id": {"$in": clean_ids}}
+        user_filter = (
+            {"$in": [str(user_id), ObjectId(user_id)]}
+            if ObjectId.is_valid(user_id)
+            else str(user_id)
+        )
+        query = {"user_id": user_filter, "message_id": {"$in": clean_ids}}
         try:
             docs = self.collection.find(query, {"message_id": 1})
-            return {doc["message_id"] for doc in docs if "message_id" in doc}
+            return {str(doc["message_id"]) for doc in docs if "message_id" in doc}
         except Exception as e:
             logger.error(
                 f"Error querying existing message_ids for user_id={user_id}: {e}"

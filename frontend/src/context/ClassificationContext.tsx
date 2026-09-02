@@ -42,10 +42,16 @@ export function ClassificationProvider({ children }: { children: React.ReactNode
   const activeJobIdRef = useRef<string | null>(null);
   const snapshotTotalRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastReportedRef = useRef<{
+    processed: number;
+    status: string;
+    current_subject?: string | null;
+  } | null>(null);
 
   const cancelTracking = useCallback(() => {
     isJobActiveRef.current = false;
     activeJobIdRef.current = null;
+    lastReportedRef.current = null;
     if (pollTimerRef.current) {
       clearTimeout(pollTimerRef.current);
       pollTimerRef.current = null;
@@ -56,13 +62,16 @@ export function ClassificationProvider({ children }: { children: React.ReactNode
   }, []);
 
   /**
-   * Internal polling engine that continues running across all route changes.
+   * Internal polling engine with throttled, deduplicated updates.
+   * Runs at a calm 1000ms cadence in the background so navigating between
+   * dashboard pages remains buttery-smooth with ZERO lag.
    */
   const pollJobStatus = useCallback(
     async (jobId: string, totalCount: number, startMs: number) => {
       isJobActiveRef.current = true;
       activeJobIdRef.current = jobId;
       snapshotTotalRef.current = totalCount;
+      lastReportedRef.current = null;
       setActiveJobId(jobId);
       setIsClassifying(true);
       setError(null);
@@ -104,7 +113,7 @@ export function ClassificationProvider({ children }: { children: React.ReactNode
             });
 
             // Smooth delay for visual completion
-            await new Promise((resolve) => setTimeout(resolve, 650));
+            await new Promise((resolve) => setTimeout(resolve, 600));
 
             // Sync all relevant queries
             void queryClient.invalidateQueries({ queryKey: UNCLASSIFIED_EMAILS_QUERY_KEY });
@@ -125,6 +134,7 @@ export function ClassificationProvider({ children }: { children: React.ReactNode
 
             isJobActiveRef.current = false;
             activeJobIdRef.current = null;
+            lastReportedRef.current = null;
             setIsClassifying(false);
             setActiveJobId(null);
             setJobProgress(null);
@@ -137,24 +147,40 @@ export function ClassificationProvider({ children }: { children: React.ReactNode
             toast.error(errMsg, { duration: 5000 });
             isJobActiveRef.current = false;
             activeJobIdRef.current = null;
+            lastReportedRef.current = null;
             setIsClassifying(false);
             setActiveJobId(null);
             setJobProgress(null);
             return;
           }
 
-          // Active running / started state
-          setJobProgress({
-            processed,
-            total,
-            status: statusRes.status as "started" | "running",
-            current_subject: statusRes.current_subject,
-            startTime: startMs,
-            estRemainingSec,
-          });
+          // DEDUPLICATION FIX: Only trigger React state update if values actually changed.
+          // Prevents redundant re-renders and CPU spikes while user browses other pages.
+          const hasChanged =
+            !lastReportedRef.current ||
+            lastReportedRef.current.processed !== processed ||
+            lastReportedRef.current.status !== statusRes.status ||
+            lastReportedRef.current.current_subject !== statusRes.current_subject;
 
-          // Schedule next poll step
-          pollTimerRef.current = setTimeout(runPoll, 400);
+          if (hasChanged) {
+            lastReportedRef.current = {
+              processed,
+              status: statusRes.status,
+              current_subject: statusRes.current_subject,
+            };
+
+            setJobProgress({
+              processed,
+              total,
+              status: statusRes.status as "started" | "running",
+              current_subject: statusRes.current_subject,
+              startTime: startMs,
+              estRemainingSec,
+            });
+          }
+
+          // Calm 1000ms polling interval ensures smooth 60fps navigation across all dashboard pages
+          pollTimerRef.current = setTimeout(runPoll, 1000);
         } catch (pollErr) {
           consecutiveFailures += 1;
           if (consecutiveFailures > 5) {
@@ -162,13 +188,14 @@ export function ClassificationProvider({ children }: { children: React.ReactNode
             setError(errMsg);
             isJobActiveRef.current = false;
             activeJobIdRef.current = null;
+            lastReportedRef.current = null;
             setIsClassifying(false);
             setActiveJobId(null);
             setJobProgress(null);
             return;
           }
           // Exponential backoff retry on transient errors
-          pollTimerRef.current = setTimeout(runPoll, 1000);
+          pollTimerRef.current = setTimeout(runPoll, 1500);
         }
       };
 
@@ -216,7 +243,6 @@ export function ClassificationProvider({ children }: { children: React.ReactNode
 
   /**
    * On initial mount of the dashboard layout, check if a classification job is already running on the server
-   * (e.g. if the user navigated away, or refreshed the browser window).
    */
   useEffect(() => {
     let isCancelled = false;
@@ -228,7 +254,7 @@ export function ClassificationProvider({ children }: { children: React.ReactNode
           return;
         }
 
-        // Active job found on server: attach global polling seamlessly
+        // Active job found on server: attach global polling smoothly
         const total = active.total || 1;
         void pollJobStatus(active.job_id, total, Date.now());
       } catch {
