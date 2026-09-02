@@ -8,6 +8,9 @@ import { useMaintenance } from "@/context/MaintenanceContext";
 import { prefetchUnclassifiedEmails } from "@/hooks/useUnclassifiedQueue";
 import { prefetchClassifiedEmails } from "@/hooks/usePredictiveHistory";
 
+import { ClassificationProvider } from "@/context/ClassificationContext";
+import { GlobalClassificationIndicator } from "@/components/GlobalClassificationIndicator";
+
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
@@ -72,18 +75,20 @@ function DashboardLayout() {
   // While unauthenticated (redirect pending), render nothing
   if (!isAuthenticated) return null;
 
-
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      <div className="hidden md:block">
-        <DashboardSidebar />
+    <ClassificationProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <div className="hidden md:block">
+          <DashboardSidebar />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <DashboardTopbar />
+          <main className="flex-1 p-4 md:p-8">
+            <Outlet />
+          </main>
+        </div>
+        <GlobalClassificationIndicator />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <DashboardTopbar />
-        <main className="flex-1 p-4 md:p-8">
-          <Outlet />
-        </main>
-      </div>
-    </div>
+    </ClassificationProvider>
   );
 }

@@ -168,6 +168,32 @@ class JobService:
             return None
         return job
 
+    def get_active_job(self, user_id: str) -> ClassificationJob | None:
+        """
+        Finds any currently active (started or running) classification job for this user.
+        Checks MongoDB first for multi-worker safety, then falls back to memory.
+        """
+        try:
+            coll = _get_jobs_collection()
+            if coll is not None:
+                doc = coll.find_one(
+                    {"user_id": user_id, "status": {"$in": ["started", "running"]}},
+                    sort=[("created_at", -1)],
+                )
+                if doc:
+                    job = ClassificationJob.from_dict(doc)
+                    with self._lock:
+                        self._jobs[job.job_id] = job
+                    return job
+        except Exception as err:
+            logger.warning(f"Failed to query active job for user {user_id} from MongoDB: {err}")
+
+        with self._lock:
+            for job in sorted(self._jobs.values(), key=lambda j: j.created_at, reverse=True):
+                if job.user_id == user_id and job.status in ("started", "running"):
+                    return job
+        return None
+
     def set_total(self, job_id: str, total: int) -> None:
         job = self.get_job(job_id)
         if job:

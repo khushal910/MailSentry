@@ -27,6 +27,7 @@ import { formatDate, truncate } from "@/utils/format";
 import { useDebounce } from "@/hooks/useDebounce";
 import { prefetchClassifiedEmails } from "@/hooks/usePredictiveHistory";
 import { useUnclassifiedQueue } from "@/hooks/useUnclassifiedQueue";
+import { useClassification } from "@/context/ClassificationContext";
 import { HighlightText } from "@/components/HighlightText";
 import { GmailOpenButton } from "@/components/GmailOpenButton";
 import { getGmailUrl, openGmailInNewTab } from "@/utils/gmail";
@@ -69,26 +70,19 @@ function AutoClassifierPage() {
   } = useUnclassifiedQueue();
   const [isManualFetching, setIsManualFetching] = useState(false);
   const isFetching = isQueueFetching || isManualFetching;
-  const [isClassifying, setIsClassifying] = useState(false);
+  const {
+    isClassifying,
+    jobProgress,
+    startClassification,
+    error: classificationError,
+  } = useClassification();
+
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [jobProgress, setJobProgress] = useState<{
-    processed: number;
-    total: number;
-    status: string;
-    current_subject?: string | null;
-    startTime?: number;
-    estRemainingSec?: number;
-  } | null>(null);
 
   // Search & Pagination state
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
   const [page, setPage] = useState(1);
-
-  const isJobActiveRef = useRef(false);
-  const activeJobIdRef = useRef<string | null>(null);
-  // PRODUCTION FIX: Snapshot email count at classification start to avoid stale closures
-  const classifySnapshotRef = useRef<{ total: number; emails: UnclassifiedEmail[] }>({ total: 0, emails: [] });
 
   /* ─── Fetch unclassified emails from Gmail on explicit user action ─── */
   const triggerFetch = useCallback(async () => {
@@ -124,198 +118,12 @@ function AutoClassifierPage() {
     }
   }, [fetchQueue]);
 
-  /* ─── Classify displayed unclassified emails ─── */
+  /* ─── Classify displayed unclassified emails via global context ─── */
   const handleClassify = async () => {
     if (unclassifiedEmails.length === 0 || isClassifying) return;
-    setIsClassifying(true);
     setFetchError(null);
-    const startMs = Date.now();
-
-    // PRODUCTION FIX: Snapshot the current email list and count at classification start.
-    // This prevents stale closure bugs where the list changes mid-classification
-    // (e.g., user refreshes, or emails get filtered) from breaking progress calculations.
-    const emailSnapshot = [...unclassifiedEmails];
-    const snapshotTotal = emailSnapshot.length;
-    classifySnapshotRef.current = { total: snapshotTotal, emails: emailSnapshot };
-
     try {
-      // Step 1: Start background job (returns in <100ms)
-      const job = await emailsApi.startClassifyJob(emailSnapshot);
-      const currentJobId = job.job_id;
-
-      isJobActiveRef.current = true;
-      activeJobIdRef.current = currentJobId;
-
-      // Use snapshot total for initial progress (backend may return total=0 during race window)
-      const initialTotal = job.total || snapshotTotal;
-
-      setJobProgress({
-        processed: job.processed,
-        total: initialTotal,
-        status: job.status,
-        current_subject: job.current_subject,
-        startTime: startMs,
-        estRemainingSec: 0,
-      });
-
-      // Step 2: Poll status sequentially every 350ms with up to 3 transient retries
-      let retryCount = 0;
-      await new Promise<void>((resolve, reject) => {
-        const pollStep = async () => {
-          if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
-            resolve();
-            return;
-          }
-
-          try {
-            const statusRes = await emailsApi.getJobStatus(currentJobId);
-            retryCount = 0; // reset retry counter on successful poll response
-
-            // Ignore response if job was completed/cancelled while HTTP request was in flight
-            if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
-              resolve();
-              return;
-            }
-
-            const nowMs = Date.now();
-            // PRODUCTION FIX: Use snapshot total when backend returns total=0
-            // (race window where job document hasn't been fully written yet)
-            const total = statusRes.total || classifySnapshotRef.current.total || snapshotTotal;
-            const processed = statusRes.processed;
-            const elapsedSec = (nowMs - startMs) / 1000;
-            const avgItemSec = processed > 0 ? elapsedSec / processed : 0;
-            const estRemainingSec =
-              processed > 0 && processed < total
-                ? Math.max(1, Math.ceil((total - processed) * avgItemSec))
-                : 0;
-
-            if (statusRes.status === "completed") {
-              // First display 100% completed state on UI so progress bar finishes animating
-              setJobProgress({
-                processed: total,
-                total,
-                status: "completed",
-                current_subject: statusRes.current_subject,
-                startTime: startMs,
-                estRemainingSec: 0,
-              });
-
-              // Allow 600ms for visual progress bar & counter to fill up smoothly
-              await new Promise((r) => setTimeout(r, 600));
-
-              isJobActiveRef.current = false;
-              activeJobIdRef.current = null;
-              setJobProgress(null);
-              setIsClassifying(false);
-
-              const count = statusRes.classified ?? 0;
-              const skipped = statusRes.skipped ?? 0;
-              const classifiedList = statusRes.result?.classified_emails || [];
-
-              if (classifiedList.length > 0) {
-                const classifiedIds = new Set(
-                  classifiedList
-                    .map((item) => item.message_id || item.gmail_message_id)
-                    .filter(Boolean)
-                );
-                setUnclassifiedEmails((prev) =>
-                  prev.filter((email) => {
-                    const id = email.message_id || email.gmail_message_id;
-                    return !classifiedIds.has(id);
-                  })
-                );
-              } else if (count > 0) {
-                // Fallback: use snapshot total since classified_emails wasn't returned
-                if (count >= snapshotTotal) {
-                  setUnclassifiedEmails([]);
-                }
-              }
-              // NOTE: If count === 0 or classification failed, emails remain in unclassifiedEmails list!
-
-              setSearchTerm("");
-              setPage(1);
-
-              // Proactively load classified emails and stats in the background so navigating
-              // to Classified Emails (or Dashboard) is completely instantaneous!
-              prefetchClassifiedEmails(queryClient);
-
-              if (count > 0 && skipped === 0) {
-                toast.success(
-                  `Successfully classified ${count} email(s)! You can view them on the History page.`,
-                  {
-                    duration: 5000,
-                    action: {
-                      label: "View History",
-                      onClick: () => navigate({ to: "/dashboard/history" }),
-                    },
-                  },
-                );
-              } else if (count > 0 && skipped > 0) {
-                toast.warning(
-                  `Classified ${count} email(s). ${skipped} email(s) could not be classified and remain in queue.`,
-                  {
-                    duration: 5000,
-                    action: {
-                      label: "View History",
-                      onClick: () => navigate({ to: "/dashboard/history" }),
-                    },
-                  },
-                );
-              } else if (skipped > 0 || count === 0) {
-                toast.error(
-                  `Could not classify ${skipped || snapshotTotal} email(s). All emails remain in queue.`,
-                  { duration: 5000 },
-                );
-              } else {
-                toast.info("No emails were classified.");
-              }
-              resolve();
-              return;
-            }
-
-            if (statusRes.status === "failed") {
-              isJobActiveRef.current = false;
-              activeJobIdRef.current = null;
-              setJobProgress(null);
-              setIsClassifying(false);
-              reject(new Error(statusRes.error || "Background classification job failed."));
-              return;
-            }
-
-            // Job still running: update progress safely
-            setJobProgress({
-              processed,
-              total,
-              status: statusRes.status,
-              current_subject: statusRes.current_subject,
-              startTime: startMs,
-              estRemainingSec,
-            });
-
-            // Schedule next poll ONLY after this request finished (production-safe 1000ms interval)
-            if (isJobActiveRef.current && activeJobIdRef.current === currentJobId) {
-              setTimeout(pollStep, 1000);
-            }
-          } catch (pollErr) {
-            if (!isJobActiveRef.current || activeJobIdRef.current !== currentJobId) {
-              resolve();
-              return;
-            }
-            // Allow up to 10 transient retries before rejecting to handle production network latency & multi-worker sync
-            if (retryCount < 10) {
-              retryCount++;
-              setTimeout(pollStep, 1000);
-              return;
-            }
-            isJobActiveRef.current = false;
-            activeJobIdRef.current = null;
-            reject(pollErr);
-          }
-        };
-
-        // Start first poll after 1000ms
-        setTimeout(pollStep, 1000);
-      });
+      await startClassification(unclassifiedEmails);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to classify emails.";
       const lower = msg.toLowerCase();
@@ -327,16 +135,12 @@ function AutoClassifierPage() {
         lower.includes("403")
       ) {
         setPageState("gmail-not-connected");
-        toast.error("Please connect your Gmail account to start classifying emails.", { duration: 6000 });
+        toast.error("Please connect your Gmail account to start classifying emails.", {
+          duration: 6000,
+        });
       } else {
         setFetchError(msg);
-        toast.error(msg, { duration: 5000 });
       }
-    } finally {
-      isJobActiveRef.current = false;
-      activeJobIdRef.current = null;
-      setIsClassifying(false);
-      setJobProgress(null);
     }
   };
 
@@ -389,8 +193,6 @@ function AutoClassifierPage() {
 
     return () => {
       isMounted = false;
-      isJobActiveRef.current = false;
-      activeJobIdRef.current = null;
     };
   }, []);
 
@@ -545,9 +347,9 @@ function AutoClassifierPage() {
           )}
         </AnimatePresence>
 
-        {/* Fetch error banner */}
+        {/* Fetch and classification error banner */}
         <AnimatePresence>
-          {fetchError && (
+          {(fetchError || classificationError) && (
             <motion.div
               key="error-banner"
               initial={{ opacity: 0, y: -8 }}
@@ -556,7 +358,7 @@ function AutoClassifierPage() {
               className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
             >
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{fetchError}</span>
+              <span>{fetchError || classificationError}</span>
             </motion.div>
           )}
         </AnimatePresence>

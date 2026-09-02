@@ -105,6 +105,19 @@ export const emailsApi = {
   },
 
   /**
+   * GET /api/gmail/active-job
+   * Retrieves any currently active (running or started) background classification job.
+   */
+  async getActiveJob(): Promise<JobStatusResponse | null> {
+    try {
+      const { data } = await apiClient.get<{ data: JobStatusResponse | null }>("/api/gmail/active-job");
+      return data.data ?? null;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
    * GET /api/gmail/jobs/:job_id
    * Polls progress of an active background classification job.
    */
