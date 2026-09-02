@@ -17,16 +17,30 @@ training_pipeline_config: TrainingPipelineConfig = TrainingPipelineConfig()
 @dataclass
 class DataIngestionConfig:
     data_ingestion_dir: str = os.path.join(training_pipeline_config.artifact_dir, DATA_INGESTION_DIR_NAME)
-    feature_store_file_path: str = os.path.join(data_ingestion_dir, DATA_INGESTION_FEATURE_STORE_DIR, FILE_NAME)
-    training_file_path: str = os.path.join(data_ingestion_dir, DATA_INGESTION_INGESTED_DIR, TRAIN_FILE_NAME)
-    testing_file_path: str = os.path.join(data_ingestion_dir, DATA_INGESTION_INGESTED_DIR, TEST_FILE_NAME)
+    
+    # Old baseline data directory and local cached file
+    old_data_dir: str = os.path.join(data_ingestion_dir, DATA_INGESTION_OLD_DATA_DIR)
+    old_data_file_path: str = os.path.join(old_data_dir, OLD_DATA_FILE_NAME)
+    
+    # New real-user data directory and files
+    new_data_dir: str = os.path.join(data_ingestion_dir, DATA_INGESTION_NEW_DATA_DIR)
+    real_user_curated_file_path: str = os.path.join(new_data_dir, REAL_USER_CURATED_FILE_NAME)
+    ingestion_state_file_path: str = os.path.join(new_data_dir, INGESTION_STATE_FILE_NAME)
+    
+    # Combined data directory and combined dataset
+    combine_data_dir: str = os.path.join(data_ingestion_dir, DATA_INGESTION_COMBINE_DATA_DIR)
+    feature_store_file_path: str = os.path.join(combine_data_dir, FILE_NAME)
+    
+    # Combined train/test split directory and split files
+    combine_train_test_split_dir: str = os.path.join(data_ingestion_dir, DATA_INGESTION_TRAIN_TEST_SPLIT_DIR)
+    training_file_path: str = os.path.join(combine_train_test_split_dir, TRAIN_FILE_NAME)
+    testing_file_path: str = os.path.join(combine_train_test_split_dir, TEST_FILE_NAME)
+    
     train_test_split_ratio: float = DATA_INGESTION_TRAIN_TEST_SPLIT_RATIO
     collection_name: str = DATA_INGESTION_COLLECTION_NAME
     fetch_real_user_data: bool = FETCH_REAL_USER_DATA
     real_user_db_name: str = DATABASE_NAME_REAL_USER
     real_user_collection_name: str = EMAIL_COLLECTION_NAME_REAL_USER
-    real_user_curated_file_path: str = os.path.join(data_ingestion_dir, REAL_USER_CURATED_FILE_NAME)
-    ingestion_state_file_path: str = os.path.join(data_ingestion_dir, INGESTION_STATE_FILE_NAME)
 
 @dataclass
 class DataValidationConfig:

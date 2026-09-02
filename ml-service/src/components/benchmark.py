@@ -34,13 +34,17 @@ class Benchmark:
 
     # ── Individual measurements ───────────────────────────────────────────
 
-    def measure_inference_time(self, model: Any, x_sample: np.ndarray) -> float:
+    def measure_inference_time(self, model: Any, x_sample: Any) -> float:
         """
         Average single-sample inference time in **milliseconds**.
 
         Runs a warm-up prediction first, then averages over *n* samples.
         """
-        n = min(self.n_inference_samples, len(x_sample))
+        n_samples = x_sample.shape[0] if hasattr(x_sample, "shape") else len(x_sample)
+        n = min(self.n_inference_samples, n_samples)
+        if n <= 0:
+            return 0.0
+
         sample = x_sample[:n]
 
         # Warm-up call — JIT / cache effects
@@ -84,13 +88,16 @@ class Benchmark:
             logger.warning("Could not measure model size: %s", exc)
             return 0.0
 
-    def measure_memory_usage(self, model: Any, x_sample: np.ndarray) -> float:
+    def measure_memory_usage(self, model: Any, x_sample: Any) -> float:
         """
         Peak memory delta in **MB** during a single prediction call.
 
         Uses ``tracemalloc`` to capture Python-level allocations.
         """
         try:
+            n_samples = x_sample.shape[0] if hasattr(x_sample, "shape") else len(x_sample)
+            if n_samples <= 0:
+                return 0.0
             sample = x_sample[:1]
             tracemalloc.start()
             model.predict(sample)
@@ -108,7 +115,7 @@ class Benchmark:
     def run(
         self,
         model: Any,
-        x_test: np.ndarray,
+        x_test: Any,
         serialization: str,
         training_time_sec: float = 0.0,
     ) -> Dict[str, float]:

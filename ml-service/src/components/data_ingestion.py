@@ -24,46 +24,62 @@ class DataIngestion:
                   raise MyException(e,sys)
 
 
-      def export_data_into_feature_store(self)->DataFrame:
+      def export_data_into_feature_store(self) -> DataFrame:
             """
             Method Name :   export_data_into_feature_store
-            Description :   This method exports data from mongodb 1 (Kaggle) and optionally mongodb 2 (Real User)
-            
-            Output      :   data is returned as artifact of data ingestion components
-            On Failure  :   Write an exception log and then raise an exception
+            Description :   Loads baseline old data (cached locally in old_data/ so it doesn't re-download)
+                            and combines it with new real user data from MongoDB 2 into combine_data/data.csv.
             """
             try:
-                  logger.info(f"Exporting baseline Kaggle data from MongoDB 1")
+                  old_data_file_path = self.data_ingestion_config.old_data_file_path
                   
-                  my_data = FetchMail()
-                  dataframe = my_data.export_collection_as_dataframe(collection_name=self.data_ingestion_config.collection_name)
-                  
-                  logger.info(f"Shape of Kaggle baseline dataframe: {dataframe.shape}")
+                  # 1. Check if baseline old data is already cached locally
+                  if os.path.exists(old_data_file_path) and os.path.getsize(old_data_file_path) > 0:
+                        logger.info(f"Loading cached baseline old data from local disk: {old_data_file_path}")
+                        dataframe = pd.read_csv(old_data_file_path)
+                  else:
+                        # Check fallback to local raw dataset in data/enron_spam_data.csv
+                        fallback_local_csv = os.path.join("data", "enron_spam_data.csv")
+                        if os.path.exists(fallback_local_csv) and os.path.getsize(fallback_local_csv) > 0:
+                              logger.info(f"Loading baseline old data from local seed file: {fallback_local_csv}")
+                              dataframe = pd.read_csv(fallback_local_csv)
+                        else:
+                              logger.info("Local baseline old data not found. Exporting baseline data from MongoDB 1...")
+                              my_data = FetchMail()
+                              dataframe = my_data.export_collection_as_dataframe(collection_name=self.data_ingestion_config.collection_name)
+                        
+                        # Cache it locally in old_data/ so it never needs to be re-downloaded over network
+                        os.makedirs(os.path.dirname(old_data_file_path), exist_ok=True)
+                        dataframe.to_csv(old_data_file_path, index=False, header=True)
+                        logger.info(f"Cached baseline old data locally to: {old_data_file_path}")
 
-                  # Optional Real User Data Ingestion from MongoDB 2
+                  logger.info(f"Shape of baseline old dataframe: {dataframe.shape}")
+
+                  # 2. Incremental Real User Data Ingestion from MongoDB 2 (new_data/)
                   if self.data_ingestion_config.fetch_real_user_data:
                         logger.info("FETCH_REAL_USER_DATA=True. Triggering incremental real user data ingestion from MongoDB 2.")
                         real_user_ingestion = RealUserIngestion(config=self.data_ingestion_config)
                         real_user_df = real_user_ingestion.ingest_incremental_real_user_data()
 
                         if not real_user_df.empty:
-                              logger.info(f"Combining Kaggle baseline ({len(dataframe)}) with accumulated real-user dataset ({len(real_user_df)}).")
-                              # Combine Kaggle + Real User data
+                              logger.info(f"Combining baseline old data ({len(dataframe)}) with accumulated new real-user dataset ({len(real_user_df)}).")
                               cols = ["Message ID", "Subject", "Message", "Spam/Ham", "Date"]
                               dataframe = pd.concat([dataframe[cols], real_user_df[cols]], ignore_index=True)
-                              logger.info(f"Final combined training dataset shape: {dataframe.shape}")
+                              # Randomly shuffle old and new data rows together rather than appending at the end
+                              dataframe = dataframe.sample(frac=1.0, random_state=42).reset_index(drop=True)
+                              logger.info(f"Randomly shuffled combined dataset shape: {dataframe.shape}")
                         else:
-                              logger.info("No real-user data available to append. Using Kaggle baseline dataset.")
+                              logger.info("No new real-user data available to append. Using baseline old dataset.")
                   else:
-                        logger.info("FETCH_REAL_USER_DATA=False. Proceeding with Kaggle baseline dataset only.")
-                  
-                  feature_store_file_path  = self.data_ingestion_config.feature_store_file_path
+                        logger.info("FETCH_REAL_USER_DATA=False. Proceeding with baseline old dataset only.")
+
+                  # 3. Save combined dataset to combine_data/data.csv
+                  feature_store_file_path = self.data_ingestion_config.feature_store_file_path
                   dir_path = os.path.dirname(feature_store_file_path)
-                  os.makedirs(dir_path,exist_ok=True)
-                  
-                  logger.info(f"Saving exported data into feature store file path: {feature_store_file_path}")
-                  
-                  dataframe.to_csv(feature_store_file_path,index=False,header=True)
+                  os.makedirs(dir_path, exist_ok=True)
+
+                  logger.info(f"Saving combined data into feature store file path: {feature_store_file_path}")
+                  dataframe.to_csv(feature_store_file_path, index=False, header=True)
                   return dataframe
 
             except Exception as e:
